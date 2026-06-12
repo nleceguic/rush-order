@@ -27,15 +27,46 @@ rush-order/
 └── .github/workflows/
 ```
 
-## Requisitos
+## Quick Start
 
-| Herramienta | Versión mínima |
-|-------------|----------------|
-| .NET SDK    | 8.0            |
-| Node.js     | 20 LTS         |
-| npm         | 10             |
+### 1. Requisitos previos
 
-## Setup rápido
+| Herramienta | Versión mínima | Necesario para        |
+|-------------|----------------|-----------------------|
+| .NET SDK    | 8.0            | Backend               |
+| Node.js     | 20 LTS         | PWA                   |
+| npm         | 10             | PWA                   |
+| Docker      | 24             | Infraestructura local  |
+| Docker Compose | 2.x         | Infraestructura local  |
+
+### 2. Levantar la infraestructura
+
+```bash
+# Primera vez: copia las variables de entorno
+cp .env.example .env
+
+# Levantar todos los servicios (postgres, redis, pgadmin, mailhog)
+bash infrastructure/docker/start-dev.sh
+
+# Reset completo (elimina volúmenes y reinicia desde cero)
+bash infrastructure/docker/reset-dev.sh
+```
+
+### 3. URLs de acceso
+
+| Servicio        | URL / Host                          | Credenciales                          |
+|-----------------|-------------------------------------|---------------------------------------|
+| API (Swagger)   | http://localhost:5000/swagger        | —                                     |
+| PWA             | http://localhost:5173                | —                                     |
+| pgAdmin         | http://localhost:5050                | admin@rushorder.local / admin         |
+| MailHog UI      | http://localhost:8025                | —                                     |
+| PostgreSQL      | localhost:5432                       | rushorder / rushorder_dev_pass        |
+| Redis           | localhost:6379                       | sin autenticación (solo dev)          |
+| MailHog SMTP    | localhost:1025                       | —                                     |
+
+---
+
+## Setup de desarrollo
 
 ### Backend
 
@@ -44,7 +75,7 @@ rush-order/
 dotnet restore rush-order.sln
 dotnet build rush-order.sln
 
-# Ejecutar API
+# Ejecutar API (requiere infraestructura Docker activa)
 cd backend/src/RushOrder.API
 dotnet run
 
@@ -61,27 +92,11 @@ npm run dev        # http://localhost:5173
 npm run build      # output en dist/
 ```
 
-### Docker (desarrollo)
-
-```bash
-docker compose -f infrastructure/docker/docker-compose.yml up -d
-```
-
 ## Variables de entorno
 
-Copia `appsettings.Development.json.example` a `appsettings.Development.json` y configura:
-
-```json
-{
-  "ConnectionStrings": {
-    "Default": "Server=localhost;Database=RushOrder;..."
-  },
-  "Jwt": {
-    "Key": "...",
-    "Issuer": "rush-order-api"
-  }
-}
-```
+Copia `.env.example` a `.env` en la raíz del proyecto y ajusta los valores si es necesario.
+El archivo `backend/src/RushOrder.API/appsettings.Development.json` ya apunta a los servicios
+Docker con las credenciales por defecto.
 
 ## Arquitectura de capas
 

@@ -52,7 +52,7 @@ artifacts/
 ScaffoldingReadMe.txt
 
 # Docker
-**/docker-compose.override.yml
+**/docker-compose.local.yml
 
 # Benchmark
 BenchmarkDotNet.Artifacts/
@@ -131,8 +131,8 @@ terraform.rc
 *.key
 *.cer
 *.crt
-appsettings.Development.json
 appsettings.Local.json
+appsettings.*.Local.json
 
 ## Documents
 *.pdf
