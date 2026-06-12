@@ -64,11 +64,12 @@ services:
       - "${API_PORT:-5000}:8080"
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=${POSTGRES_DB:-rushorder_dev};Username=${POSTGRES_USER:-rushorder};Password=${POSTGRES_PASSWORD:-rushorder_dev_pass}"
-      ConnectionStrings__Redis: "redis:6379"
-      Jwt__Secret: "${JWT_KEY:-change_me_in_development_only_secret_key}"
+      Database__ConnectionString: "Host=postgres;Port=5432;Database=${POSTGRES_DB:-rushorder_dev};Username=${POSTGRES_USER:-rushorder};Password=${POSTGRES_PASSWORD:-rushorder_dev_pass}"
+      Redis__ConnectionString: "redis:6379"
+      Jwt__Secret: "${JWT_KEY:-change_me_in_development_only_secret_key_32chars}"
       Jwt__Issuer: "${JWT_ISSUER:-rush-order-api}"
       Jwt__Audience: "${JWT_AUDIENCE:-rush-order-clients}"
+      Cors__AllowedOrigins__0: "http://localhost:5173"
     volumes:
       - ../../backend/src:/app/src
     depends_on:
