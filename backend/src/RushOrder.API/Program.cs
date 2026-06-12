@@ -22,6 +22,7 @@ try
         cfg.RegisterServicesFromAssemblies(AppDomain.CurrentDomain.GetAssemblies()));
 
     builder.Services.AddValidatorsFromAssemblies(AppDomain.CurrentDomain.GetAssemblies());
+    builder.Services.AddHealthChecks();
 
     var app = builder.Build();
 
@@ -33,6 +34,7 @@ try
 
     app.UseHttpsRedirection();
     app.UseSerilogRequestLogging();
+    app.MapHealthChecks("/health");
     app.MapControllers();
 
     app.Run();

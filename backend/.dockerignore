@@ -1,0 +1,35 @@
+# Build output
+**/bin/
+**/obj/
+
+# Test projects (no van en la imagen de producción)
+tests/
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# CI
+.github/
+
+# Secrets y configuración local
+**/appsettings.Local.json
+**/appsettings.*.Local.json
+**/*.pfx
+**/*.p12
+
+# Logs
+**/logs/
+**/*.log
+
+# Cobertura
+**/coverage/
+**/coverage-report/

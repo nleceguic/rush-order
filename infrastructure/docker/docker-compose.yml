@@ -54,6 +54,30 @@ services:
       - "${MAILHOG_UI_PORT:-8025}:8025"
     restart: unless-stopped
 
+  api:
+    build:
+      context: ../../backend
+      dockerfile: Dockerfile
+      target: development
+    container_name: rushorder_api
+    ports:
+      - "${API_PORT:-5000}:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=${POSTGRES_DB:-rushorder_dev};Username=${POSTGRES_USER:-rushorder};Password=${POSTGRES_PASSWORD:-rushorder_dev_pass}"
+      ConnectionStrings__Redis: "redis:6379"
+      Jwt__Secret: "${JWT_KEY:-change_me_in_development_only_secret_key}"
+      Jwt__Issuer: "${JWT_ISSUER:-rush-order-api}"
+      Jwt__Audience: "${JWT_AUDIENCE:-rush-order-clients}"
+    volumes:
+      - ../../backend/src:/app/src
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   pgadmin_data:
