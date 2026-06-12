@@ -96,8 +96,9 @@ public sealed class AppDbContext : DbContext, IUnitOfWork
 
         entities.ForEach(e => e.ClearDomainEvents());
 
+        // Cast to object so MediatR uses runtime type dispatch (not IDomainEvent handlers)
         foreach (var domainEvent in domainEvents)
-            await _mediator.Publish(domainEvent, cancellationToken);
+            await _mediator.Publish((object)domainEvent, cancellationToken);
     }
 
     // IUnitOfWork

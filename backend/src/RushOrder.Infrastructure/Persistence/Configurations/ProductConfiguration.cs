@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using RushOrder.Domain.Entities;
 using RushOrder.Domain.Enums;
 
@@ -26,28 +26,30 @@ public sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
             m.Property(x => x.Currency).HasColumnName("price_currency").HasMaxLength(3);
         });
 
-        var listComparer = new ValueComparer<IReadOnlyList<string>>(
-            (a, b) => a != null && b != null && a.SequenceEqual(b),
-            v => v.Aggregate(0, (h, s) => HashCode.Combine(h, s.GetHashCode())),
-            v => v.ToList());
-
-        var tagComparer = new ValueComparer<IReadOnlyList<ProductTag>>(
-            (a, b) => a != null && b != null && a.SequenceEqual(b),
-            v => v.Aggregate(0, (h, t) => HashCode.Combine(h, t.GetHashCode())),
-            v => v.ToList());
-
-        // PostgreSQL native text[] and smallint[] arrays
+        // PostgreSQL text[] — backing field is List<string>, natively supported by Npgsql
         builder.Property(p => p.Allergens)
+            .HasField("_allergens")
+            .UsePropertyAccessMode(PropertyAccessMode.Field)
             .HasColumnType("text[]")
-            .HasConversion(v => v.ToArray(), v => (IReadOnlyList<string>)v.ToList())
-            .Metadata.SetValueComparer(listComparer);
+            .HasColumnName("allergens")
+            .Metadata.SetValueComparer(new ValueComparer<IReadOnlyList<string>>(
+                (a, b) => a != null && b != null && a.SequenceEqual(b),
+                v => v.Aggregate(0, (h, s) => HashCode.Combine(h, s.GetHashCode())),
+                v => (IReadOnlyList<string>)v.ToList()));
 
+        // Tags stored as text[] with enum↔string conversion via backing field
         builder.Property(p => p.Tags)
+            .HasField("_tags")
+            .UsePropertyAccessMode(PropertyAccessMode.Field)
             .HasColumnType("text[]")
+            .HasColumnName("tags")
             .HasConversion(
                 v => v.Select(t => t.ToString()).ToArray(),
                 v => (IReadOnlyList<ProductTag>)v.Select(Enum.Parse<ProductTag>).ToList())
-            .Metadata.SetValueComparer(tagComparer);
+            .Metadata.SetValueComparer(new ValueComparer<IReadOnlyList<ProductTag>>(
+                (a, b) => a != null && b != null && a.SequenceEqual(b),
+                v => v.Aggregate(0, (h, t) => HashCode.Combine(h, t.GetHashCode())),
+                v => (IReadOnlyList<ProductTag>)v.ToList()));
 
         builder.HasIndex(p => new { p.CategoryId, p.IsAvailable, p.SortOrder });
     }

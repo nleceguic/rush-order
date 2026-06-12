@@ -9,6 +9,9 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using RushOrder.API.Filters;
 using RushOrder.API.Middleware;
 using RushOrder.API.Options;
+using RushOrder.Application.Common.Interfaces;
+using RushOrder.Infrastructure;
+using RushOrder.Infrastructure.Persistence;
 using Serilog;
 using Serilog.Events;
 
@@ -124,28 +127,34 @@ try
     builder.Services.AddProblemDetails();
     builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
-    // ── 7. MEDIATR ────────────────────────────────────────────────────────────
+    // ── 7. INFRASTRUCTURE (EF Core, repositories, tenant service) ───────────
+    builder.Services.AddInfrastructure(builder.Configuration);
+
+    // ── 8. MEDIATR ────────────────────────────────────────────────────────────
     builder.Services.AddMediatR(cfg =>
         cfg.RegisterServicesFromAssemblies(
             typeof(Program).Assembly,
-            typeof(RushOrder.Application.Class1).Assembly));
+            typeof(ICurrentTenantService).Assembly));   // Application assembly
 
-    // ── 8. FLUENT VALIDATION ──────────────────────────────────────────────────
+    // ── 9. FLUENT VALIDATION ──────────────────────────────────────────────────
     builder.Services.AddValidatorsFromAssemblies(
     [
         typeof(Program).Assembly,
-        typeof(RushOrder.Application.Class1).Assembly
+        typeof(ICurrentTenantService).Assembly          // Application assembly
     ]);
 
-    // ── 9. CONTROLLERS + AUDIT FILTER ────────────────────────────────────────
+    // ── 10. CONTROLLERS + AUDIT FILTER ───────────────────────────────────────
     builder.Services.AddControllers(options =>
         options.Filters.Add<AuditActionFilter>());
 
-    // ── 10. AUTHENTICATION & AUTHORIZATION ────────────────────────────────────
+    // ── 11. AUTHENTICATION & AUTHORIZATION ────────────────────────────────────
     builder.Services.AddAuthentication();
     builder.Services.AddAuthorization();
 
-    // ── 11. OPENAPI / SWAGGER ────────────────────────────────────────────────
+    // ── 12. DATABASE INITIALIZER (migrations + seeding on startup) ────────────
+    builder.Services.AddHostedService<DatabaseInitializer>();
+
+    // ── 13. OPENAPI / SWAGGER ────────────────────────────────────────────────
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen(options =>
         options.SwaggerDoc("v1", new() { Title = "Rush Order API", Version = "v1" }));

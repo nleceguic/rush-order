@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using RushOrder.Domain.Entities;
 
@@ -15,7 +16,13 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
 
         builder.OwnsOne(u => u.Email, e =>
         {
-            e.Property(x => x.Value).HasColumnName("email").HasMaxLength(200).IsRequired();
+            e.Property(x => x.Value)
+                .HasColumnName("email")
+                .HasMaxLength(200)
+                .IsRequired();
+            e.HasIndex(x => x.Value)
+                .IsUnique()
+                .HasDatabaseName("ix_users_email");
         });
 
         builder.Property(u => u.PasswordHash).HasMaxLength(200).IsRequired();
@@ -24,17 +31,15 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.Role).HasConversion<string>().HasMaxLength(20);
         builder.Property(u => u.MfaSecret).HasMaxLength(200);
 
-        // PostgreSQL native uuid[] array column
+        // PostgreSQL native uuid[] — use backing field so EF sees List<Guid>
         builder.Property(u => u.RestaurantIds)
+            .HasField("_restaurantIds")
+            .UsePropertyAccessMode(PropertyAccessMode.Field)
             .HasColumnType("uuid[]")
-            .HasConversion(
-                v => v.ToArray(),
-                v => v.ToList())
-            .Metadata.SetValueComparer(new Microsoft.EntityFrameworkCore.ChangeTracking.ValueComparer<IReadOnlyList<Guid>>(
+            .HasColumnName("restaurant_ids")
+            .Metadata.SetValueComparer(new ValueComparer<IReadOnlyList<Guid>>(
                 (a, b) => a != null && b != null && a.SequenceEqual(b),
                 v => v.Aggregate(0, (h, g) => HashCode.Combine(h, g.GetHashCode())),
-                v => v.ToList()));
-
-        builder.HasIndex("email").IsUnique().HasFilter("email IS NOT NULL");
+                v => (IReadOnlyList<Guid>)v.ToList()));
     }
 }
