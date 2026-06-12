@@ -1,0 +1,32 @@
+# Propietarios de código por área
+# Formato: <patrón> <@usuario o @org/equipo>
+# Docs: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Propietario por defecto para todo lo no cubierto abajo
+*                                       @nleceguic
+
+# Backend — Domain (cambios críticos)
+/backend/src/RushOrder.Domain/          @nleceguic
+
+# Backend — Application
+/backend/src/RushOrder.Application/     @nleceguic
+
+# Backend — Infrastructure
+/backend/src/RushOrder.Infrastructure/  @nleceguic
+
+# Backend — API
+/backend/src/RushOrder.API/             @nleceguic
+
+# Tests
+/backend/tests/                         @nleceguic
+
+# Desktop
+/desktop/                               @nleceguic
+
+# PWA
+/pwa/                                   @nleceguic
+
+# Infraestructura y CI/CD (revisión obligatoria para cambios de pipeline)
+/infrastructure/                        @nleceguic
+/.github/                               @nleceguic
+/Dockerfile                             @nleceguic

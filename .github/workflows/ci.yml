@@ -2,44 +2,151 @@ name: CI
 
 on:
   push:
-    branches: [main, develop]
+    branches: ['**']
   pull_request:
-    branches: [main]
+    branches: [main, develop]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  backend:
-    name: Backend (.NET)
+  # ─── JOB 1: Backend ────────────────────────────────────────────────────────
+  backend-ci:
+    name: Backend CI (.NET)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+
+      - name: Setup .NET 9
+        uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: '9.0.x'
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj') }}
+          restore-keys: nuget-${{ runner.os }}-
+
       - name: Restore
         run: dotnet restore rush-order.sln
-      - name: Build
-        run: dotnet build rush-order.sln --no-restore -c Release
-      - name: Test
-        run: dotnet test rush-order.sln --no-build -c Release --logger trx
 
-  frontend:
-    name: Frontend (PWA)
+      - name: Build
+        run: dotnet build rush-order.sln -c Release --no-restore
+
+      - name: Test with coverage
+        run: |
+          dotnet test rush-order.sln -c Release --no-build \
+            --collect:"XPlat Code Coverage" \
+            --results-directory ./coverage \
+            --logger "trx;LogFileName=test-results.trx"
+
+      - name: Install ReportGenerator
+        run: dotnet tool install -g dotnet-reportgenerator-globaltool
+
+      - name: Generate coverage report
+        run: |
+          reportgenerator \
+            -reports:"./coverage/**/coverage.cobertura.xml" \
+            -targetdir:"./coverage-report" \
+            -reporttypes:"HtmlInline_AzurePipelines;Cobertura" \
+            "-assemblyfilters:+RushOrder.Domain;+RushOrder.Application;+RushOrder.Infrastructure"
+
+      - name: Check coverage threshold (≥ 70%)
+        run: |
+          python3 - <<'EOF'
+          import xml.etree.ElementTree as ET, sys, os
+
+          report = "coverage-report/Cobertura.xml"
+          if not os.path.exists(report):
+              print("No coverage report found — skipping threshold check")
+              sys.exit(0)
+
+          rate = float(ET.parse(report).getroot().get("line-rate", 0)) * 100
+          print(f"Line coverage: {rate:.1f}%")
+          if rate < 70:
+              print(f"ERROR: {rate:.1f}% is below the 70% threshold")
+              sys.exit(1)
+          EOF
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: coverage-report/
+          retention-days: 14
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: coverage/**/*.trx
+          retention-days: 14
+
+  # ─── JOB 2: PWA ────────────────────────────────────────────────────────────
+  pwa-ci:
+    name: PWA CI (Node)
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: pwa
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
           cache-dependency-path: pwa/package-lock.json
-      - name: Install
+
+      - name: Install dependencies
         run: npm ci
+
       - name: Lint
         run: npm run lint
+
+      - name: Type check
+        run: npm run type-check
+
       - name: Test
-        run: npm test
+        run: npm run test:ci
+
       - name: Build
         run: npm run build
+
+  # ─── JOB 3: Security scan (solo en PRs a main) ─────────────────────────────
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && github.base_ref == 'main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 9
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: Restore
+        run: dotnet restore rush-order.sln
+
+      - name: Check vulnerable NuGet packages
+        run: |
+          dotnet list package --vulnerable --include-transitive 2>&1 | tee vulnerable.txt
+          if grep -qi "has the following vulnerable packages" vulnerable.txt; then
+            echo "Vulnerable packages found — see output above."
+            exit 1
+          fi
+          echo "No vulnerable packages found."

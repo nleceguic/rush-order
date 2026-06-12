@@ -98,6 +98,30 @@ Copia `.env.example` a `.env` en la raíz del proyecto y ajusta los valores si e
 El archivo `backend/src/RushOrder.API/appsettings.Development.json` ya apunta a los servicios
 Docker con las credenciales por defecto.
 
+## Branch Protection Rules
+
+Reglas recomendadas para `main` y `develop` (configurar en GitHub → Settings → Branches):
+
+### `main`
+| Regla | Valor |
+|-------|-------|
+| Require pull request before merging | ✅ — 1 approval mínimo |
+| Require status checks to pass | ✅ — `backend-ci`, `pwa-ci` |
+| Require branches to be up to date | ✅ |
+| Require conversation resolution | ✅ |
+| Restrict force pushes | ✅ |
+| Restrict deletions | ✅ |
+| Require CODEOWNERS review | ✅ |
+
+### `develop`
+| Regla | Valor |
+|-------|-------|
+| Require pull request before merging | ✅ — 1 approval |
+| Require status checks to pass | ✅ — `backend-ci`, `pwa-ci` |
+| Restrict force pushes | ✅ |
+
+> Los status checks se activan automáticamente tras la primera ejecución del pipeline.
+
 ## Arquitectura de capas
 
 ```
