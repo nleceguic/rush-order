@@ -35,9 +35,16 @@ public static class DependencyInjection
 
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<AppDbContext>());
 
-        services.AddScoped<OrderRepository>();
-        services.AddScoped<ProductRepository>();
-        services.AddScoped<TableRepository>();
+        services.AddScoped<IOrderRepository, OrderRepository>();
+        services.AddScoped<IProductRepository, ProductRepository>();
+        services.AddScoped<ITableRepository, TableRepository>();
+        services.AddScoped<IRestaurantRepository, RestaurantRepository>();
+        services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<ICategoryRepository, CategoryRepository>();
+
+        var redisConnectionString = configuration.GetConnectionString("Redis") ?? "localhost:6379";
+        services.AddStackExchangeRedisCache(options => options.Configuration = redisConnectionString);
+        services.AddScoped<IMenuCacheService, RedisMenuCacheService>();
 
         return services;
     }

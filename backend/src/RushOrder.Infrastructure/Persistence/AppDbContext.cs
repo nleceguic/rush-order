@@ -29,6 +29,7 @@ public sealed class AppDbContext : DbContext, IUnitOfWork
     public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<Product> Products => Set<Product>();
+    public DbSet<Category> Categories => Set<Category>();
     public DbSet<Payment> Payments => Set<Payment>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -36,13 +37,13 @@ public sealed class AppDbContext : DbContext, IUnitOfWork
         base.OnModelCreating(modelBuilder);
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
 
-        // Global multi-tenant query filters on all TenantEntity subclasses
         modelBuilder.Entity<Restaurant>().HasQueryFilter(e => e.TenantId == _currentTenant.TenantId);
         modelBuilder.Entity<Table>().HasQueryFilter(e => e.TenantId == _currentTenant.TenantId);
         modelBuilder.Entity<User>().HasQueryFilter(e => e.TenantId == _currentTenant.TenantId);
         modelBuilder.Entity<Customer>().HasQueryFilter(e => e.TenantId == _currentTenant.TenantId);
         modelBuilder.Entity<Order>().HasQueryFilter(e => e.TenantId == _currentTenant.TenantId);
         modelBuilder.Entity<Product>().HasQueryFilter(e => e.TenantId == _currentTenant.TenantId);
+        modelBuilder.Entity<Category>().HasQueryFilter(e => e.TenantId == _currentTenant.TenantId && !e.IsDeleted);
         modelBuilder.Entity<Payment>().HasQueryFilter(e => e.TenantId == _currentTenant.TenantId);
     }
 
@@ -60,21 +61,15 @@ public sealed class AppDbContext : DbContext, IUnitOfWork
         foreach (var entry in ChangeTracker.Entries<BaseEntity>())
         {
             if (entry.State == EntityState.Added)
-            {
-                // CreatedAt and Id are set in the constructor; only protect UpdatedAt
                 entry.Property(nameof(BaseEntity.UpdatedAt)).CurrentValue = now;
-            }
             else if (entry.State == EntityState.Modified)
-            {
                 entry.Property(nameof(BaseEntity.UpdatedAt)).CurrentValue = now;
-            }
         }
 
         foreach (var entry in ChangeTracker.Entries<TenantEntity>())
         {
             if (entry.State == EntityState.Added && _currentTenant.TenantId.HasValue)
             {
-                // Only set TenantId if the entity hasn't already had it set via constructor
                 var current = (Guid)entry.Property(nameof(TenantEntity.TenantId)).CurrentValue!;
                 if (current == Guid.Empty)
                     entry.Property(nameof(TenantEntity.TenantId)).CurrentValue = _currentTenant.TenantId.Value;
@@ -90,18 +85,13 @@ public sealed class AppDbContext : DbContext, IUnitOfWork
             .Select(e => e.Entity)
             .ToList();
 
-        var domainEvents = entities
-            .SelectMany(e => e.DomainEvents)
-            .ToList();
-
+        var domainEvents = entities.SelectMany(e => e.DomainEvents).ToList();
         entities.ForEach(e => e.ClearDomainEvents());
 
-        // Cast to object so MediatR uses runtime type dispatch (not IDomainEvent handlers)
         foreach (var domainEvent in domainEvents)
             await _mediator.Publish((object)domainEvent, cancellationToken);
     }
 
-    // IUnitOfWork
     public async Task BeginTransactionAsync(CancellationToken cancellationToken = default)
     {
         if (_currentTransaction is not null)

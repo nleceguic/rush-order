@@ -1,0 +1,25 @@
+namespace RushOrder.Application.Orders.DTOs;
+
+public record OrderDetailDto(
+    Guid Id,
+    string OrderNumber,
+    Guid RestaurantId,
+    Guid TableId,
+    string? TableName,
+    Guid? WaiterId,
+    string? WaiterName,
+    Guid? CustomerId,
+    string Status,
+    string Source,
+    decimal Subtotal,
+    decimal TaxAmount,
+    decimal DiscountAmount,
+    decimal TipAmount,
+    decimal Total,
+    string Currency,
+    string? Notes,
+    DateTimeOffset? EstimatedReadyAt,
+    string? CancellationReason,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset UpdatedAt,
+    IReadOnlyList<OrderItemDto> Items);
