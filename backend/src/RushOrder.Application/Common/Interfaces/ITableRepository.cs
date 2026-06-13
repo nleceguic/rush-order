@@ -6,4 +6,5 @@ public interface ITableRepository : IRepository<Table>
 {
     Task<Table?> GetByQrCodeAsync(string qrCode, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Table>> GetByIdsAsync(IEnumerable<Guid> ids, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<Table>> GetByRestaurantAsync(Guid restaurantId, CancellationToken cancellationToken = default);
 }

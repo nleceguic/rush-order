@@ -80,4 +80,13 @@ public sealed class Table : TenantEntity
         Zone = zone?.Trim();
         UpdatedAt = DateTimeOffset.UtcNow;
     }
+
+    public void SetQrCode(string qrCode, string qrUrl)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(qrCode);
+        ArgumentException.ThrowIfNullOrWhiteSpace(qrUrl);
+        QrCode = qrCode;
+        QrUrl = qrUrl;
+        UpdatedAt = DateTimeOffset.UtcNow;
+    }
 }

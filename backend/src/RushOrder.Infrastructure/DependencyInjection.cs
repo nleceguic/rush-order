@@ -6,6 +6,7 @@ using RushOrder.Infrastructure.Interceptors;
 using RushOrder.Infrastructure.Persistence;
 using RushOrder.Infrastructure.Persistence.Repositories;
 using RushOrder.Infrastructure.Services;
+using RushOrder.Infrastructure.Settings;
 
 namespace RushOrder.Infrastructure;
 
@@ -41,6 +42,15 @@ public static class DependencyInjection
         services.AddScoped<IRestaurantRepository, RestaurantRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<ICategoryRepository, CategoryRepository>();
+        services.AddScoped<IReservationRepository, ReservationRepository>();
+        services.AddScoped<ICustomerRepository, CustomerRepository>();
+
+        services.Configure<SmtpSettings>(configuration.GetSection("Smtp"));
+        services.AddScoped<INotificationService, SmtpNotificationService>();
+
+        var qrCodeSettings = new QrCodeSettings();
+        configuration.GetSection("QrCode").Bind(qrCodeSettings);
+        services.AddSingleton<IQrCodeSettings>(qrCodeSettings);
 
         var redisConnectionString = configuration.GetConnectionString("Redis") ?? "localhost:6379";
         services.AddStackExchangeRedisCache(options => options.Configuration = redisConnectionString);

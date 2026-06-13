@@ -31,6 +31,7 @@ public sealed class AppDbContext : DbContext, IUnitOfWork
     public DbSet<Product> Products => Set<Product>();
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<Payment> Payments => Set<Payment>();
+    public DbSet<Reservation> Reservations => Set<Reservation>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -45,6 +46,7 @@ public sealed class AppDbContext : DbContext, IUnitOfWork
         modelBuilder.Entity<Product>().HasQueryFilter(e => e.TenantId == _currentTenant.TenantId);
         modelBuilder.Entity<Category>().HasQueryFilter(e => e.TenantId == _currentTenant.TenantId && !e.IsDeleted);
         modelBuilder.Entity<Payment>().HasQueryFilter(e => e.TenantId == _currentTenant.TenantId);
+        modelBuilder.Entity<Reservation>().HasQueryFilter(e => e.TenantId == _currentTenant.TenantId);
     }
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

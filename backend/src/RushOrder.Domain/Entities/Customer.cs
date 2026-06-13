@@ -72,6 +72,13 @@ public sealed class Customer : TenantEntity
         UpdatedAt = DateTimeOffset.UtcNow;
     }
 
+    public void AssociateDevice(string fingerprint)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(fingerprint);
+        DeviceFingerprint = fingerprint;
+        UpdatedAt = DateTimeOffset.UtcNow;
+    }
+
     private void UpdateLoyaltyLevel()
     {
         LoyaltyLevel = LoyaltyPoints switch
