@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat Code Coverage">
+        <Configuration>
+          <Format>opencover</Format>
+          <Include>
+            [RushOrder.Application]*
+            [RushOrder.Domain]*
+            [RushOrder.Infrastructure]*
+            [RushOrder.API]*
+          </Include>
+          <Exclude>
+            [*.Tests]*
+            [*.IntegrationTests]*
+          </Exclude>
+          <ExcludeByFile>
+            **/Migrations/**/*.cs
+            **/Seeders/**/*.cs
+          </ExcludeByFile>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>

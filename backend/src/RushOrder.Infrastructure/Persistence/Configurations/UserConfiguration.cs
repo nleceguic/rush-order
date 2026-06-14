@@ -30,6 +30,9 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.LastName).HasMaxLength(100).IsRequired();
         builder.Property(u => u.Role).HasConversion<string>().HasMaxLength(20);
         builder.Property(u => u.MfaSecret).HasMaxLength(200);
+        builder.Property(u => u.PendingMfaSecret).HasMaxLength(500);
+        builder.Property(u => u.MfaBackupCodesJson).HasColumnType("text");
+        builder.Ignore(u => u.MfaEnabled);
 
         // PostgreSQL native uuid[] — use backing field so EF sees List<Guid>
         builder.Property(u => u.RestaurantIds)

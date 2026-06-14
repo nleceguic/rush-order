@@ -57,6 +57,7 @@ public sealed class CreateOrderCommandHandler : IRequestHandler<CreateOrderComma
     private readonly IRestaurantRepository _restaurantRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentTenantService _tenantService;
+    private readonly IOrderVerificationService _verificationService;
 
     public CreateOrderCommandHandler(
         IOrderRepository orderRepository,
@@ -64,7 +65,8 @@ public sealed class CreateOrderCommandHandler : IRequestHandler<CreateOrderComma
         ITableRepository tableRepository,
         IRestaurantRepository restaurantRepository,
         IUnitOfWork unitOfWork,
-        ICurrentTenantService tenantService)
+        ICurrentTenantService tenantService,
+        IOrderVerificationService verificationService)
     {
         _orderRepository = orderRepository;
         _productRepository = productRepository;
@@ -72,6 +74,7 @@ public sealed class CreateOrderCommandHandler : IRequestHandler<CreateOrderComma
         _restaurantRepository = restaurantRepository;
         _unitOfWork = unitOfWork;
         _tenantService = tenantService;
+        _verificationService = verificationService;
     }
 
     public async Task<CreateOrderResult> Handle(CreateOrderCommand request, CancellationToken cancellationToken)
@@ -121,6 +124,7 @@ public sealed class CreateOrderCommandHandler : IRequestHandler<CreateOrderComma
         await _orderRepository.AddAsync(order, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return new CreateOrderResult(order.Id, order.OrderNumber, order.EstimatedReadyAt);
+        var trackingToken = _verificationService.GenerateToken(order.Id);
+        return new CreateOrderResult(order.Id, order.OrderNumber, order.EstimatedReadyAt, trackingToken);
     }
 }

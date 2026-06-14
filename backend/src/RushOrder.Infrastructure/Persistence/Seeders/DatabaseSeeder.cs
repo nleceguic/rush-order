@@ -8,23 +8,46 @@ namespace RushOrder.Infrastructure.Persistence.Seeders;
 
 public sealed class DatabaseSeeder
 {
-    // Stable plan ID (no Plan entity yet — just a foreign key)
-    private static readonly Guid DemoPlanId = Guid.Parse("a0000000-0000-0000-0000-000000000001");
-
     // Category IDs — stable Guids used as foreign keys in Product
     private static readonly Guid StartersCatId  = Guid.Parse("c1000000-0000-0000-0000-000000000001");
     private static readonly Guid MainsCatId     = Guid.Parse("c1000000-0000-0000-0000-000000000002");
     private static readonly Guid DessertsCatId  = Guid.Parse("c1000000-0000-0000-0000-000000000003");
     private static readonly Guid DrinksCatId    = Guid.Parse("c1000000-0000-0000-0000-000000000004");
 
+    public async Task SeedPlansAsync(AppDbContext ctx, CancellationToken ct = default)
+    {
+        if (await ctx.Plans.AnyAsync(ct)) return;
+
+        Money EUR(decimal amount) => new(amount, "EUR");
+
+        Plan[] plans =
+        [
+            Plan.Create("Starter",    EUR(29m),   EUR(290m),   10,  3,  1,
+                ["pos", "orders", "tables"]),
+            Plan.Create("Pro",        EUR(79m),   EUR(790m),   30,  10, 3,
+                ["pos", "orders", "tables", "reservations", "analytics"]),
+            Plan.Create("Business",   EUR(149m),  EUR(1490m),  100, 25, 5,
+                ["pos", "orders", "tables", "reservations", "analytics", "inventory"]),
+            Plan.Create("Enterprise", EUR(299m),  EUR(2990m),  999, 999, 999,
+                ["pos", "orders", "tables", "reservations", "analytics", "inventory", "delivery", "loyalty"]),
+        ];
+
+        await ctx.Plans.AddRangeAsync(plans, ct);
+        await ctx.SaveChangesAsync(ct);
+    }
+
     public async Task SeedDevelopmentDataAsync(AppDbContext ctx, CancellationToken ct = default)
     {
+        await SeedPlansAsync(ctx, ct);
+
         // Idempotent guard — Tenant has no query filter (BaseEntity)
         if (await ctx.Tenants.AnyAsync(t => t.Slug == "rincon-chef", ct)) return;
 
+        var demoPlan = await ctx.Plans.FirstAsync(p => p.Name == "Pro", ct);
+
         // ── 1. Tenant ────────────────────────────────────────────────────────
         var tenant = Tenant.Create(
-            "El Rincón del Chef", "rincon-chef", DemoPlanId,
+            "El Rincón del Chef", "rincon-chef", demoPlan.Id,
             trialEndsAt: DateTimeOffset.UtcNow.AddDays(30));
         await ctx.Tenants.AddAsync(tenant, ct);
         await ctx.SaveChangesAsync(ct);
@@ -79,6 +102,29 @@ public sealed class DatabaseSeeder
             User.Create(tenantId, "kitchen@demo.com", Hash("Demo1234!"), "Lucía",   "Sánchez",  UserRole.Kitchen),
         ];
 
+        // ── 4b. System Admin (for integration tests / admin panel) ────────────
+        var systemTenant = await ctx.Tenants.FirstOrDefaultAsync(t => t.Slug == "rushorder-system", ct);
+        if (systemTenant is null)
+        {
+            var enterprisePlan = await ctx.Plans.FirstAsync(p => p.Name == "Enterprise", ct);
+            systemTenant = Tenant.Create("Rush Order System", "rushorder-system", enterprisePlan.Id);
+            await ctx.Tenants.AddAsync(systemTenant, ct);
+            await ctx.SaveChangesAsync(ct);
+        }
+
+        if (!await ctx.Users.IgnoreQueryFilters()
+                .AnyAsync(u => u.Email.Value == "admin@rushorder.app", ct))
+        {
+            var adminUser = User.Create(
+                systemTenant.Id,
+                "admin@rushorder.app",
+                Hash("Admin1234!"),
+                "System", "Admin",
+                UserRole.Admin);
+            await ctx.Users.AddAsync(adminUser, ct);
+            await ctx.SaveChangesAsync(ct);
+        }
+
         foreach (var u in users)
             u.AddRestaurant(restaurantId);
 
@@ -98,9 +144,12 @@ public sealed class DatabaseSeeder
 
     public async Task SeedProductionDataAsync(AppDbContext ctx, CancellationToken ct = default)
     {
+        await SeedPlansAsync(ctx, ct);
+
         if (await ctx.Tenants.AnyAsync(t => t.Slug == "rushorder-system", ct)) return;
 
-        var systemTenant = Tenant.Create("Rush Order System", "rushorder-system", DemoPlanId);
+        var enterprisePlan = await ctx.Plans.FirstAsync(p => p.Name == "Enterprise", ct);
+        var systemTenant = Tenant.Create("Rush Order System", "rushorder-system", enterprisePlan.Id);
         await ctx.Tenants.AddAsync(systemTenant, ct);
         await ctx.SaveChangesAsync(ct);
 

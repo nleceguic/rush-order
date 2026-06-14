@@ -23,6 +23,8 @@ public sealed class AppDbContext : DbContext, IUnitOfWork
     }
 
     public DbSet<Tenant> Tenants => Set<Tenant>();
+    public DbSet<Plan> Plans => Set<Plan>();
+    public DbSet<Subscription> Subscriptions => Set<Subscription>();
     public DbSet<Restaurant> Restaurants => Set<Restaurant>();
     public DbSet<Table> Tables => Set<Table>();
     public DbSet<User> Users => Set<User>();
@@ -32,6 +34,7 @@ public sealed class AppDbContext : DbContext, IUnitOfWork
     public DbSet<Category> Categories => Set<Category>();
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<Reservation> Reservations => Set<Reservation>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

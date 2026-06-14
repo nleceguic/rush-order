@@ -11,6 +11,7 @@ using RushOrder.API.Middleware;
 using RushOrder.API.Options;
 using RushOrder.Application.Common.Interfaces;
 using RushOrder.Infrastructure;
+using RushOrder.Infrastructure.Hubs;
 using RushOrder.Infrastructure.Persistence;
 using Serilog;
 using Serilog.Events;
@@ -64,6 +65,12 @@ try
         .ValidateDataAnnotations()
         .ValidateOnStart();
 
+    builder.Services
+        .AddOptions<StripeApiOptions>()
+        .BindConfiguration(StripeApiOptions.Section)
+        .ValidateDataAnnotations()
+        .ValidateOnStart();
+
     // ── 3. CORS ───────────────────────────────────────────────────────────────
     var corsConfig = builder.Configuration
         .GetSection(CorsPolicyOptions.SectionName)
@@ -96,12 +103,17 @@ try
         opts => opts.Level = CompressionLevel.SmallestSize);
 
     // ── 5. RATE LIMITING: 100 req/min por IP (política global) ───────────────
+    var disableRateLimit = builder.Configuration["DisableRateLimit"] == "true";
     builder.Services.AddRateLimiter(options =>
     {
         options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
         options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(ctx =>
-            RateLimitPartition.GetFixedWindowLimiter(
+        {
+            if (disableRateLimit)
+                return RateLimitPartition.GetNoLimiter("no-limit");
+
+            return RateLimitPartition.GetFixedWindowLimiter(
                 partitionKey: ctx.Connection.RemoteIpAddress?.ToString() ?? "anonymous",
                 factory: _ => new FixedWindowRateLimiterOptions
                 {
@@ -109,7 +121,8 @@ try
                     Window = TimeSpan.FromMinutes(1),
                     QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                     QueueLimit = 0
-                }));
+                });
+        });
 
         options.OnRejected = async (context, token) =>
         {
@@ -145,11 +158,25 @@ try
 
     // ── 10. CONTROLLERS + AUDIT FILTER ───────────────────────────────────────
     builder.Services.AddControllers(options =>
-        options.Filters.Add<AuditActionFilter>());
+        options.Filters.Add<AuditActionFilter>())
+        .AddJsonOptions(opts =>
+            opts.JsonSerializerOptions.Converters.Add(
+                new System.Text.Json.Serialization.JsonStringEnumConverter()));
 
-    // ── 11. AUTHENTICATION & AUTHORIZATION ────────────────────────────────────
-    builder.Services.AddAuthentication();
-    builder.Services.AddAuthorization();
+    // ── 11. SIGNALR + REDIS BACKPLANE ─────────────────────────────────────────
+    var signalRRedis = builder.Configuration["Redis:ConnectionString"];
+    var signalR = builder.Services.AddSignalR(opts =>
+    {
+        opts.EnableDetailedErrors = builder.Environment.IsDevelopment();
+        opts.KeepAliveInterval = TimeSpan.FromSeconds(15);
+        opts.HandshakeTimeout = TimeSpan.FromSeconds(30);
+        opts.ClientTimeoutInterval = TimeSpan.FromSeconds(60);
+    });
+
+    if (!string.IsNullOrWhiteSpace(signalRRedis))
+        signalR.AddStackExchangeRedis(signalRRedis, opts =>
+            opts.Configuration.ChannelPrefix = new StackExchange.Redis.RedisChannel(
+                "rushorder", StackExchange.Redis.RedisChannel.PatternMode.Literal));
 
     // ── 12. DATABASE INITIALIZER (migrations + seeding on startup) ────────────
     builder.Services.AddHostedService<DatabaseInitializer>();
@@ -157,7 +184,25 @@ try
     // ── 13. OPENAPI / SWAGGER ────────────────────────────────────────────────
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen(options =>
-        options.SwaggerDoc("v1", new() { Title = "Rush Order API", Version = "v1" }));
+    {
+        options.SwaggerDoc("v1", new() { Title = "Rush Order API", Version = "v1" });
+        options.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.OpenApiSecurityScheme
+        {
+            In = Microsoft.OpenApi.ParameterLocation.Header,
+            Description = "JWT Bearer token",
+            Name = "Authorization",
+            Type = Microsoft.OpenApi.SecuritySchemeType.Http,
+            BearerFormat = "JWT",
+            Scheme = "bearer"
+        });
+        options.AddSecurityRequirement(doc => new Microsoft.OpenApi.OpenApiSecurityRequirement
+        {
+            {
+                new Microsoft.OpenApi.OpenApiSecuritySchemeReference("Bearer", doc),
+                new List<string>()
+            }
+        });
+    });
 
     // ── 12. HEALTH CHECKS ─────────────────────────────────────────────────────
     var dbConfig = builder.Configuration
@@ -210,6 +255,7 @@ try
 
     app.UseAuthentication();             // 7. Autenticación
     app.UseAuthorization();              // 8. Autorización
+    app.UseMiddleware<RushOrder.API.Middleware.PlanLimitsMiddleware>(); // 9. Plan limits
 
     if (app.Environment.IsDevelopment() || app.Environment.EnvironmentName == "Staging")
     {
@@ -252,6 +298,9 @@ try
 
     app.MapControllers();
 
+    app.MapHub<RestaurantHub>("/ws/restaurant");
+    app.MapHub<OrderTrackingHub>("/ws/order-tracking");
+
     app.Run();
 }
 catch (Exception ex) when (ex is not HostAbortedException)
@@ -262,3 +311,6 @@ finally
 {
     Log.CloseAndFlush();
 }
+
+// Required for WebApplicationFactory<Program> in integration tests
+public partial class Program { }

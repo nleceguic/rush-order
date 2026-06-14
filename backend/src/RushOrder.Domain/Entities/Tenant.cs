@@ -11,6 +11,7 @@ public sealed class Tenant : BaseEntity
     public Guid PlanId { get; private set; }
     public TenantStatus Status { get; private set; }
     public DateTimeOffset? TrialEndsAt { get; private set; }
+    public string? StripeCustomerId { get; private set; }
     public TenantSettings Settings { get; private set; } = TenantSettings.Default;
     public BillingInfo BillingInfo { get; private set; } = BillingInfo.Empty;
 
@@ -61,6 +62,28 @@ public sealed class Tenant : BaseEntity
     public void Cancel()
     {
         Status = TenantStatus.Cancelled;
+        UpdatedAt = DateTimeOffset.UtcNow;
+    }
+
+    public void MarkTrialExpired()
+    {
+        if (Status != TenantStatus.Trial)
+            throw new InvalidOperationException("Tenant is not in Trial status.");
+        Status = TenantStatus.TrialExpired;
+        UpdatedAt = DateTimeOffset.UtcNow;
+    }
+
+    public void SetStripeCustomerId(string customerId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(customerId);
+        StripeCustomerId = customerId;
+        UpdatedAt = DateTimeOffset.UtcNow;
+    }
+
+    public void ChangePlan(Guid newPlanId)
+    {
+        if (newPlanId == Guid.Empty) throw new ArgumentException("PlanId cannot be empty.", nameof(newPlanId));
+        PlanId = newPlanId;
         UpdatedAt = DateTimeOffset.UtcNow;
     }
 }

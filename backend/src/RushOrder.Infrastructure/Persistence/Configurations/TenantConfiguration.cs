@@ -17,6 +17,7 @@ public sealed class TenantConfiguration : IEntityTypeConfiguration<Tenant>
         builder.Property(t => t.Slug).HasMaxLength(100).IsRequired();
         builder.Property(t => t.Status).HasConversion<string>().HasMaxLength(20);
         builder.Property(t => t.TrialEndsAt);
+        builder.Property(t => t.StripeCustomerId).HasMaxLength(200);
 
         builder.HasIndex(t => t.Slug).IsUnique();
 

@@ -16,6 +16,7 @@ public sealed class Restaurant : TenantEntity
     public decimal TaxRate { get; private set; }
     public bool IsActive { get; private set; } = true;
     public RestaurantSettings Settings { get; private set; } = RestaurantSettings.Default;
+    public string? StripeAccountId { get; private set; }
 
     private Restaurant() { } // EF Core
 
@@ -88,6 +89,13 @@ public sealed class Restaurant : TenantEntity
     public void Activate()
     {
         IsActive = true;
+        UpdatedAt = DateTimeOffset.UtcNow;
+    }
+
+    public void SetStripeAccountId(string accountId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(accountId);
+        StripeAccountId = accountId;
         UpdatedAt = DateTimeOffset.UtcNow;
     }
 }

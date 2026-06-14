@@ -1,12 +1,19 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.IdentityModel.Tokens;
+using QuestPDF.Infrastructure;
 using RushOrder.Application.Common.Interfaces;
+using RushOrder.Infrastructure.Identity;
 using RushOrder.Infrastructure.Interceptors;
 using RushOrder.Infrastructure.Persistence;
 using RushOrder.Infrastructure.Persistence.Repositories;
 using RushOrder.Infrastructure.Services;
 using RushOrder.Infrastructure.Settings;
+using Stripe;
 
 namespace RushOrder.Infrastructure;
 
@@ -44,6 +51,15 @@ public static class DependencyInjection
         services.AddScoped<ICategoryRepository, CategoryRepository>();
         services.AddScoped<IReservationRepository, ReservationRepository>();
         services.AddScoped<ICustomerRepository, CustomerRepository>();
+        services.AddScoped<IPaymentRepository, PaymentRepository>();
+        services.AddScoped<IAnalyticsRepository, AnalyticsRepository>();
+
+        services.AddScoped<IPlanRepository, PlanRepository>();
+        services.AddScoped<ISubscriptionRepository, SubscriptionRepository>();
+        services.AddScoped<ITenantRepository, TenantRepository>();
+        services.AddScoped<IAdminRepository, AdminRepository>();
+        services.AddScoped<ISubscriptionService, RushOrder.Infrastructure.Services.SubscriptionService>();
+        services.AddScoped<ICurrentUserService, CurrentUserService>();
 
         services.Configure<SmtpSettings>(configuration.GetSection("Smtp"));
         services.AddScoped<INotificationService, SmtpNotificationService>();
@@ -52,9 +68,97 @@ public static class DependencyInjection
         configuration.GetSection("QrCode").Bind(qrCodeSettings);
         services.AddSingleton<IQrCodeSettings>(qrCodeSettings);
 
-        var redisConnectionString = configuration.GetConnectionString("Redis") ?? "localhost:6379";
+        var redisConnectionString = configuration["Redis:ConnectionString"] ?? "localhost:6379";
         services.AddStackExchangeRedisCache(options => options.Configuration = redisConnectionString);
         services.AddScoped<IMenuCacheService, RedisMenuCacheService>();
+        services.AddSingleton<IQrCodeImageService, QrCodeImageService>();
+
+        // ── Analytics ─────────────────────────────────────────────────────────
+        services.AddSingleton<IExcelExportService, ExcelExportService>();
+        services.AddHostedService<AlertMonitoringService>();
+
+        // ── Stripe ────────────────────────────────────────────────────────────
+        QuestPDF.Settings.License = LicenseType.Community;
+        services.AddSingleton<IPdfReceiptService, QuestPdfReceiptService>();
+
+        services.Configure<StripeOptions>(configuration.GetSection(StripeOptions.Section));
+        var stripeSecretKey = configuration[$"{StripeOptions.Section}:SecretKey"];
+        if (!string.IsNullOrEmpty(stripeSecretKey))
+            StripeConfiguration.ApiKey = stripeSecretKey;
+
+        services.AddScoped<IStripeGateway, StripeGateway>();
+        services.AddScoped<IStripeWebhookService, StripeWebhookService>();
+
+        // ── JWT Settings ──────────────────────────────────────────────────────
+        var jwtSection = configuration.GetSection("Jwt");
+        var jwtSettings = jwtSection.Get<JwtSettings>() ?? new JwtSettings();
+        if (!string.IsNullOrEmpty(configuration["Jwt:Issuer"]))
+            jwtSettings.Issuer = configuration["Jwt:Issuer"]!;
+        if (!string.IsNullOrEmpty(configuration["Jwt:Audience"]))
+            jwtSettings.Audience = configuration["Jwt:Audience"]!;
+
+        services.Configure<JwtSettings>(opts =>
+        {
+            opts.Issuer = jwtSettings.Issuer;
+            opts.Audience = jwtSettings.Audience;
+            opts.AccessTokenExpirationMinutes = jwtSettings.AccessTokenExpirationMinutes;
+            opts.RefreshTokenExpirationDays = jwtSettings.RefreshTokenExpirationDays;
+            opts.PrivateKeyPath = jwtSettings.PrivateKeyPath;
+            opts.PublicKeyPath = jwtSettings.PublicKeyPath;
+        });
+
+        // ── RSA Key Provider (singleton — loads/creates .pem files) ──────────
+        var rsaKeyProvider = new FileRsaKeyProvider(jwtSettings);
+        services.AddSingleton<IRsaKeyProvider>(rsaKeyProvider);
+
+        // ── Identity services ─────────────────────────────────────────────────
+        services.AddSingleton<IJwtTokenService, JwtTokenService>();
+        services.AddSingleton<IPasswordHasher, BcryptPasswordHasher>();
+        services.AddSingleton<ITotpService, TotpService>();
+        services.AddSingleton<IAuthCacheService, RedisAuthCacheService>();
+        services.AddSingleton<IOrderVerificationService, OrderVerificationService>();
+
+        // ── Repositories ──────────────────────────────────────────────────────
+        services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+
+        // ── JWT Bearer Authentication ─────────────────────────────────────────
+        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+            .AddJwtBearer(options =>
+            {
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuer = true,
+                    ValidIssuer = jwtSettings.Issuer,
+                    ValidateAudience = true,
+                    ValidAudience = jwtSettings.Audience,
+                    ValidateLifetime = true,
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = new RsaSecurityKey(rsaKeyProvider.GetPublicKey()),
+                    ClockSkew = TimeSpan.Zero
+                };
+                options.Events = new JwtBearerEvents
+                {
+                    // SignalR WebSocket cannot send Authorization header — pick token from query string
+                    OnMessageReceived = context =>
+                    {
+                        var accessToken = context.Request.Query["access_token"];
+                        var path = context.HttpContext.Request.Path;
+                        if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/ws"))
+                            context.Token = accessToken;
+                        return Task.CompletedTask;
+                    },
+                    OnTokenValidated = async context =>
+                    {
+                        var cache = context.HttpContext.RequestServices
+                            .GetRequiredService<IAuthCacheService>();
+                        var jti = context.Principal?.FindFirstValue(JwtRegisteredClaimNames.Jti);
+                        if (jti is not null && await cache.IsJtiBlockedAsync(jti))
+                            context.Fail("Token has been revoked.");
+                    }
+                };
+            });
+
+        services.AddAuthorization();
 
         return services;
     }

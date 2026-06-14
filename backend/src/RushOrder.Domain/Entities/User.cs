@@ -16,6 +16,9 @@ public sealed class User : TenantEntity
     public IReadOnlyList<Guid> RestaurantIds => _restaurantIds.AsReadOnly();
     public bool IsActive { get; private set; } = true;
     public string? MfaSecret { get; private set; }
+    public string? PendingMfaSecret { get; private set; }
+    public string? MfaBackupCodesJson { get; private set; }
+    public bool MfaEnabled => MfaSecret is not null;
     public DateTimeOffset? LastLoginAt { get; private set; }
 
     public string FullName => $"{FirstName} {LastName}".Trim();
@@ -89,6 +92,25 @@ public sealed class User : TenantEntity
     public void DisableMfa()
     {
         MfaSecret = null;
+        PendingMfaSecret = null;
+        MfaBackupCodesJson = null;
+        UpdatedAt = DateTimeOffset.UtcNow;
+    }
+
+    public void SetPendingMfaSecret(string secret)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(secret);
+        PendingMfaSecret = secret;
+        UpdatedAt = DateTimeOffset.UtcNow;
+    }
+
+    public void ActivatePendingMfa(IReadOnlyList<string> backupCodeHashes)
+    {
+        if (PendingMfaSecret is null)
+            throw new InvalidOperationException("No pending MFA secret to activate.");
+        EnableMfa(PendingMfaSecret);
+        PendingMfaSecret = null;
+        MfaBackupCodesJson = System.Text.Json.JsonSerializer.Serialize(backupCodeHashes);
         UpdatedAt = DateTimeOffset.UtcNow;
     }
 

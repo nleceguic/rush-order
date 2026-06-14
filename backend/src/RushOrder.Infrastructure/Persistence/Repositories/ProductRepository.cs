@@ -30,6 +30,17 @@ public sealed class ProductRepository : Repository<Product>, IProductRepository
             .ThenBy(p => p.Name)
             .ToListAsync(cancellationToken);
 
+    public async Task<IReadOnlyList<Product>> GetByRestaurantPublicAsync(
+        Guid restaurantId,
+        bool onlyAvailable,
+        CancellationToken cancellationToken = default)
+        => await DbSet.IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(p => p.RestaurantId == restaurantId && (!onlyAvailable || p.IsAvailable))
+            .OrderBy(p => p.SortOrder)
+            .ThenBy(p => p.Name)
+            .ToListAsync(cancellationToken);
+
     public async Task<IReadOnlyList<Product>> GetLowStockAsync(
         Guid restaurantId,
         int threshold = 5,

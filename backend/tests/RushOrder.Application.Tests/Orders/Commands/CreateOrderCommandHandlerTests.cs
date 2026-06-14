@@ -17,6 +17,7 @@ public sealed class CreateOrderCommandHandlerTests
     private readonly Mock<IRestaurantRepository> _restaurantRepo = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<ICurrentTenantService> _tenantService = new();
+    private readonly Mock<IOrderVerificationService> _verificationService = new();
 
     private readonly CreateOrderCommandHandler _handler;
 
@@ -28,13 +29,18 @@ public sealed class CreateOrderCommandHandlerTests
 
     public CreateOrderCommandHandlerTests()
     {
+        _verificationService
+            .Setup(s => s.GenerateToken(It.IsAny<Guid>()))
+            .Returns("test-tracking-token");
+
         _handler = new CreateOrderCommandHandler(
             _orderRepo.Object,
             _productRepo.Object,
             _tableRepo.Object,
             _restaurantRepo.Object,
             _unitOfWork.Object,
-            _tenantService.Object);
+            _tenantService.Object,
+            _verificationService.Object);
     }
 
     // --- helpers ---

@@ -17,4 +17,14 @@ public sealed class CategoryRepository : Repository<Category>, ICategoryReposito
             .OrderBy(c => c.SortOrder)
             .ThenBy(c => c.Name)
             .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<Category>> GetByRestaurantPublicAsync(
+        Guid restaurantId,
+        CancellationToken cancellationToken = default)
+        => await DbSet.IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(c => c.RestaurantId == restaurantId)
+            .OrderBy(c => c.SortOrder)
+            .ThenBy(c => c.Name)
+            .ToListAsync(cancellationToken);
 }

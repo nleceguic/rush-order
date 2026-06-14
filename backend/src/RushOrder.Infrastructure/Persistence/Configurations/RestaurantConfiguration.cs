@@ -23,6 +23,8 @@ public sealed class RestaurantConfiguration : IEntityTypeConfiguration<Restauran
         builder.Property(r => r.Currency).HasMaxLength(3);
         builder.Property(r => r.TaxRate).HasPrecision(5, 4);
 
+        builder.Property(r => r.StripeAccountId).HasMaxLength(100);
+
         builder.HasIndex(r => new { r.TenantId, r.IsActive });
 
         builder.OwnsOne(r => r.Settings, s => s.ToJson());

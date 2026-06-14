@@ -198,7 +198,7 @@ public sealed class Order : TenantEntity
         var previous = Status;
         Status = newStatus;
         UpdatedAt = DateTimeOffset.UtcNow;
-        RaiseDomainEvent(new OrderStatusChangedEvent(Id, previous, newStatus));
+        RaiseDomainEvent(new OrderStatusChangedEvent(Id, RestaurantId, previous, newStatus));
     }
 
     private void EnsureStatus(OrderStatus expected)

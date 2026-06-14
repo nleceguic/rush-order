@@ -43,8 +43,13 @@ public sealed class Payment : TenantEntity
         Money amount,
         PaymentMethod method,
         string provider,
-        Guid? customerId = null)
-        => new(tenantId, orderId, customerId, amount, method, provider);
+        Guid? customerId = null,
+        string? providerPaymentId = null)
+    {
+        var payment = new Payment(tenantId, orderId, customerId, amount, method, provider);
+        payment.ProviderPaymentId = providerPaymentId;
+        return payment;
+    }
 
     public void Complete(string providerPaymentId, string? receiptUrl = null)
     {
@@ -53,7 +58,7 @@ public sealed class Payment : TenantEntity
         ArgumentException.ThrowIfNullOrWhiteSpace(providerPaymentId);
 
         Status = PaymentStatus.Completed;
-        ProviderPaymentId = providerPaymentId;
+        ProviderPaymentId ??= providerPaymentId;
         ReceiptUrl = receiptUrl;
         UpdatedAt = DateTimeOffset.UtcNow;
     }

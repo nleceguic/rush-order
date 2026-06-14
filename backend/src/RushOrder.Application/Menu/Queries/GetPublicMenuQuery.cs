@@ -39,8 +39,8 @@ public sealed class GetPublicMenuQueryHandler : IRequestHandler<GetPublicMenuQue
         var restaurant = await _restaurantRepository.GetByIdAsync(table.RestaurantId, cancellationToken);
         if (restaurant is null || !restaurant.IsActive) return null;
 
-        var categories = await _categoryRepository.GetByRestaurantAsync(restaurant.Id, cancellationToken);
-        var allProducts = await _productRepository.GetByRestaurantAsync(restaurant.Id, onlyAvailable: true, cancellationToken: cancellationToken);
+        var categories = await _categoryRepository.GetByRestaurantPublicAsync(restaurant.Id, cancellationToken);
+        var allProducts = await _productRepository.GetByRestaurantPublicAsync(restaurant.Id, onlyAvailable: true, cancellationToken: cancellationToken);
 
         var productsByCategory = allProducts
             .GroupBy(p => p.CategoryId)

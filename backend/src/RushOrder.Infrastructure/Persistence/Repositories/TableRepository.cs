@@ -10,7 +10,7 @@ public sealed class TableRepository : Repository<Table>, ITableRepository
     public TableRepository(AppDbContext context) : base(context) { }
 
     public async Task<Table?> GetByQrCodeAsync(string qrCode, CancellationToken cancellationToken = default)
-        => await DbSet
+        => await DbSet.IgnoreQueryFilters()
             .AsNoTracking()
             .FirstOrDefaultAsync(t => t.QrCode == qrCode, cancellationToken);
 
