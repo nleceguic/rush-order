@@ -34,6 +34,11 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     {
         await Task.WhenAll(_postgres.StartAsync(), _redis.StartAsync());
 
+        // Trigger host build now that containers are ready.
+        // ConfigureWebHost overrides (test connection strings, DisableRateLimit, etc.) are applied
+        // here. DatabaseInitializer is removed below so the host starts without auto-migration.
+        _ = CreateClient();
+
         // Run migrations via EF Core
         using var scope = Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -75,6 +80,11 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
         builder.ConfigureServices(services =>
         {
+            // Remove DatabaseInitializer — migrations run manually in InitializeAsync after
+            // containers are confirmed ready, so the host can start cleanly without it.
+            foreach (var sd in services.Where(d => d.ImplementationType == typeof(DatabaseInitializer)).ToList())
+                services.Remove(sd);
+
             // Replace real SMTP with a no-op implementation
             var notifDescriptor = services.Single(d => d.ServiceType == typeof(INotificationService));
             services.Remove(notifDescriptor);

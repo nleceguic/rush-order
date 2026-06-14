@@ -94,9 +94,9 @@ public sealed class GetPublicMenuQueryHandlerTests
             .ReturnsAsync(table);
         _restaurantRepo.Setup(r => r.GetByIdAsync(RestaurantId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(restaurant);
-        _categoryRepo.Setup(r => r.GetByRestaurantAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+        _categoryRepo.Setup(r => r.GetByRestaurantPublicAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<Category>());
-        _productRepo.Setup(r => r.GetByRestaurantAsync(It.IsAny<Guid>(), true, It.IsAny<CancellationToken>()))
+        _productRepo.Setup(r => r.GetByRestaurantPublicAsync(It.IsAny<Guid>(), true, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<Product>());
 
         var result = await _handler.Handle(new GetPublicMenuQuery(table.QrCode), CancellationToken.None);
