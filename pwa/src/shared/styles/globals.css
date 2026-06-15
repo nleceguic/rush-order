@@ -1,0 +1,89 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply font-sans antialiased;
+  }
+
+  /* WCAG 2.1 AA — visible focus ring for keyboard users */
+  *:focus-visible {
+    outline: 2px solid #E63946;
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* Prevent iOS Safari from zooming on input focus (min 16px) */
+  input,
+  select,
+  textarea {
+    font-size: max(16px, 1em);
+  }
+}
+
+@layer base {
+  @keyframes check-circle {
+    from { stroke-dashoffset: 1; opacity: 0; }
+    to   { stroke-dashoffset: 0; opacity: 1; }
+  }
+  @keyframes check-draw {
+    from { stroke-dashoffset: 1; }
+    to   { stroke-dashoffset: 0; }
+  }
+  @keyframes scale-in {
+    from { transform: scale(0.75); opacity: 0; }
+    to   { transform: scale(1);    opacity: 1; }
+  }
+  @keyframes slide-up {
+    from { transform: translateY(100%); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
+  }
+  @keyframes pulse-ring {
+    0%   { transform: scale(1);    opacity: 1; }
+    100% { transform: scale(1.6);  opacity: 0; }
+  }
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  /* Honour prefers-reduced-motion — replaces animations with simple fades */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Screen-reader-only but revealed on focus (skip link pattern) */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
+}

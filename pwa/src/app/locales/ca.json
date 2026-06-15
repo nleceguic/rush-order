@@ -1,0 +1,217 @@
+{
+  "app": "Rush Order",
+  "action": {
+    "save":   "Desar",
+    "cancel": "Cancel·lar",
+    "close":  "Tancar",
+    "back":   "Tornar",
+    "submit": "Enviar",
+    "skip":   "Ometre",
+    "retry":  "Torna-ho a intentar",
+    "delete": "Eliminar",
+    "add":    "Afegir"
+  },
+  "common": {
+    "loading": "Carregant…",
+    "error":   "Error",
+    "noData":  "Sense dades",
+    "euro":    "€",
+    "minutes": "{{n}} min",
+    "points":  "{{n}} punts"
+  },
+  "nav": {
+    "menu":    "Menú",
+    "cart":    "Cistella",
+    "profile": "Perfil",
+    "loyalty": "Els meus punts"
+  },
+  "skipLink": "Saltar al contingut principal",
+  "cart": {
+    "title":           "La teva comanda",
+    "empty":           "La cistella és buida",
+    "clear":           "Buidar cistella",
+    "notes":           "Notes de la comanda",
+    "notesPlaceholder":"Al·lèrgies, preferències generals…",
+    "checkout":        "Confirmar comanda",
+    "continueBrowsing":"Continuar mirant el menú",
+    "round":           "Ronda {{n}}",
+    "unavailable":     "ja no està disponible",
+    "unavailableMany": "ja no estan disponibles",
+    "attention":       "Atenció"
+  },
+  "guestCount": {
+    "title":    "Quants mengeu?",
+    "subtitle": "Per preparar millor el teu servei"
+  },
+  "review": {
+    "title": "Revisa la teva comanda"
+  },
+  "payment": {
+    "title":         "Pagament digital",
+    "online":        "Pagar ara",
+    "cash":          "Pagar al final",
+    "tip":           "Propina",
+    "noTip":         "Sense propina",
+    "custom":        "Altre",
+    "split":         "Dividir el compte",
+    "processing":    "Processant…",
+    "pay":           "Pagar {{amount}} €",
+    "secure":        "🔒 Pagament segur · Stripe",
+    "error":         "Error en el pagament",
+    "errorGeneric":  "Ha ocorregut un error inesperat. Torna-ho a intentar.",
+    "success":       "Pagament completat!",
+    "successRedirect":"Redirigint al seguiment de la comanda…",
+    "canceled":      "Pagament cancel·lat",
+    "canceledDesc":  "Has cancel·lat el pagament. Pots tornar-ho a intentar quan vulguis.",
+    "failedDesc":    "No s'ha pogut processar el pagament. Verifica la teva targeta.",
+    "retryBtn":      "Torna-ho a intentar",
+    "splitTitle":    "Dividir el compte",
+    "splitDesc":     "Cada persona paga la seva part des del seu mòbil",
+    "howMany":       "Quants paguen?",
+    "persons":       "{{n}} persones",
+    "perPerson":     "Cada persona paga",
+    "paymentsReceived": "Pagaments rebuts",
+    "applyDivision": "Aplicar divisió"
+  },
+  "confirmation": {
+    "title":         "Comanda confirmada!",
+    "orderNumber":   "Comanda #{{number}}",
+    "estimatedTime": "Llesta en aprox. {{minutes}} min",
+    "addMore":       "Afegir més coses",
+    "track":         "Seguir la comanda"
+  },
+  "tracking": {
+    "title": "Seguiment de la comanda",
+    "steps": {
+      "new":       "Comanda rebuda",
+      "preparing": "En preparació",
+      "ready":     "Llesta!",
+      "served":    "Servida"
+    },
+    "ready": {
+      "title":    "La teva comanda està llesta!",
+      "subtitle": "El cambrer es dirigeix a la teva taula."
+    },
+    "estimatedTime": "Temps estimat",
+    "elapsed":       "Temps transcorregut",
+    "calculating":   "Calculant…",
+    "bon":           "Bon profit!",
+    "delivered":     "La teva comanda ha estat lliurada.",
+    "yourOrder":     "La teva comanda",
+    "itemStatus": {
+      "new":       "Pendent",
+      "preparing": "En preparació",
+      "ready":     "Llest",
+      "served":    "Servit"
+    }
+  },
+  "auth": {
+    "loginTitle":    "Benvingut de nou",
+    "registerTitle": "Crear compte",
+    "tabLogin":      "Entrar",
+    "tabRegister":   "Registrar-se",
+    "email":         "Correu electrònic",
+    "password":      "Contrasenya",
+    "name":          "El teu nom",
+    "loginCta":      "Entrar",
+    "registerCta":   "Crear compte",
+    "continueGoogle":"Continuar amb Google",
+    "continueGuest": "Continuar com a convidat →",
+    "loginError":    "Correu o contrasenya incorrectes.",
+    "registerError": "No s'ha pogut crear el compte. Torna-ho a intentar.",
+    "guestMode":     "Mode convidat",
+    "or":            "o"
+  },
+  "profile": {
+    "title":          "El meu perfil",
+    "logout":         "Tancar sessió",
+    "personalInfo":   "Informació personal",
+    "name":           "Nom",
+    "email":          "Correu electrònic",
+    "phone":          "Telèfon",
+    "phoneAdd":       "Afegir",
+    "dietary":        "Preferències alimentàries",
+    "dietaryDesc":    "S'apliquen com a filtres en obrir qualsevol menú.",
+    "notifications":  "Notificacions",
+    "notifyReady":    "Comanda llesta",
+    "notifyReadyDesc":"Quan la teva comanda estigui a taula",
+    "notifyPromos":   "Ofertes i promocions",
+    "notifyPromosDesc":"Descomptes i novetats",
+    "savedPayments":  "Mètodes de pagament guardats",
+    "noPayments":     "Sense mètodes guardats.",
+    "orderHistory":   "Historial de comandes",
+    "loginCta":       "Entrar / Registrar-se",
+    "loginDesc":      "Inicia sessió per veure el teu perfil, historial de comandes i gestionar el teu compte.",
+    "orders": {
+      "title":   "Historial de comandes",
+      "empty":   "Sense comandes encara",
+      "emptyDesc":"Les teves comandes apareixeran aquí.",
+      "repeat":  "↺ Repetir comanda",
+      "added":   "✓ Afegit",
+      "detail":  "Veure detall"
+    },
+    "dietary": {
+      "vegetarian": "Vegetarià",
+      "vegan":      "Vegà",
+      "glutenFree": "Sense gluten",
+      "dairyFree":  "Sense lactosa",
+      "spicy":      "M'agrada el picant"
+    }
+  },
+  "loyalty": {
+    "title":           "Els meus punts",
+    "currentLevel":    "Nivell actual",
+    "pointsAvailable": "punts disponibles",
+    "pointsToNext":    "{{points}} punts per a {{level}}",
+    "maxLevel":        "Nivell màxim assolit!",
+    "currentBenefits": "Beneficis del teu nivell",
+    "history":         "Historial de punts",
+    "noHistory":       "Sense moviments encara",
+    "nextLevel":       "Proper nivell — {{level}}",
+    "loginDesc":       "Acumula punts a cada comanda i bescanvia'ls per descomptes.",
+    "loginCta":        "Entrar / Registrar-se",
+    "levels": {
+      "bronze":   "Bronze",
+      "silver":   "Plata",
+      "gold":     "Or",
+      "platinum": "Platí"
+    },
+    "points": {
+      "available": "Tens {{n}} punts",
+      "maxRedeem": "Màxim bescanviable: {{amount}} €",
+      "none":      "Sense bescanviar",
+      "useAll":    "Usar tots els punts disponibles",
+      "remove":    "No bescanviar punts"
+    }
+  },
+  "pwa": {
+    "installTitle": "Afegir a la teva pantalla d'inici",
+    "installDesc":  "Accedeix més ràpid a Rush Order sense obrir el navegador.",
+    "install":      "Instal·lar",
+    "later":        "Ara no"
+  },
+  "offline": {
+    "title":   "Sense connexió",
+    "desc":    "No hi ha xarxa disponible. Mostrant l'últim menú guardat.",
+    "noCache": "No hi ha contingut en memòria cau per mostrar.",
+    "retry":   "Tornar a intentar"
+  },
+  "rating": {
+    "title":     "Com ha anat la teva experiència?",
+    "subtitle":  "Triga només 10 segons",
+    "food":      "Menjar",
+    "speed":     "Velocitat",
+    "service":   "Servei",
+    "comment":   "Comentari opcional…",
+    "submit":    "Enviar valoració",
+    "skip":      "Ometre",
+    "thanks":    "Gràcies per la teva valoració!",
+    "thanksDesc":"La teva opinió ens ajuda a millorar."
+  },
+  "push": {
+    "title":    "Activa les notificacions",
+    "desc":     "T'avisarem quan la teva comanda estigui llesta.",
+    "activate": "Activar",
+    "noThanks": "No, gràcies"
+  }
+}

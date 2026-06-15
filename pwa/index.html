@@ -2,11 +2,41 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#E63946" />
+    <meta name="description" content="Pide desde tu mesa sin esperas. Menú digital, pago integrado y seguimiento en tiempo real." />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Rush Order" />
+
+    <!-- Open Graph -->
+    <meta property="og:type"        content="website" />
+    <meta property="og:title"       content="Rush Order · Pide desde tu mesa" />
+    <meta property="og:description" content="Menú digital, pago integrado y seguimiento en tiempo real." />
+    <meta property="og:image"       content="/icons/icon-512x512.png" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card"        content="summary_large_image" />
+    <meta name="twitter:title"       content="Rush Order · Pide desde tu mesa" />
+    <meta name="twitter:description" content="Menú digital, pago integrado y seguimiento en tiempo real." />
+
+    <!-- Icons -->
+    <link rel="icon"             href="/favicon.ico" sizes="any" />
+    <link rel="icon"             href="/icons/icon-192x192.png" type="image/png" />
+    <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
+    <link rel="manifest"         href="/manifest.json" />
+
+    <!-- Self-hosted Inter font (no render-blocking external request) -->
+    <link rel="preload" href="/fonts/inter-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/inter-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/inter-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin />
+
     <title>Rush Order</title>
+
+    <!-- Plausible Analytics — privacy-first, no cookies -->
+    <script defer data-domain="rushorder.app" src="https://plausible.io/js/script.js"></script>
   </head>
-  <body>
+  <body id="main-content">
     <div id="root"></div>
     <script type="module" src="/src/app/main.tsx"></script>
   </body>

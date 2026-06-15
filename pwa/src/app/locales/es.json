@@ -1,0 +1,217 @@
+{
+  "app": "Rush Order",
+  "action": {
+    "save":   "Guardar",
+    "cancel": "Cancelar",
+    "close":  "Cerrar",
+    "back":   "Volver",
+    "submit": "Enviar",
+    "skip":   "Omitir",
+    "retry":  "Intentar de nuevo",
+    "delete": "Eliminar",
+    "add":    "Añadir"
+  },
+  "common": {
+    "loading": "Cargando…",
+    "error":   "Error",
+    "noData":  "Sin datos",
+    "euro":    "€",
+    "minutes": "{{n}} min",
+    "points":  "{{n}} puntos"
+  },
+  "nav": {
+    "menu":    "Menú",
+    "cart":    "Carrito",
+    "profile": "Perfil",
+    "loyalty": "Mis puntos"
+  },
+  "skipLink": "Saltar al contenido principal",
+  "cart": {
+    "title":           "Tu pedido",
+    "empty":           "El carrito está vacío",
+    "clear":           "Vaciar carrito",
+    "notes":           "Notas del pedido",
+    "notesPlaceholder":"Alergias, preferencias generales…",
+    "checkout":        "Confirmar pedido",
+    "continueBrowsing":"Seguir mirando el menú",
+    "round":           "Ronda {{n}}",
+    "unavailable":     "ya no está disponible",
+    "unavailableMany": "ya no están disponibles",
+    "attention":       "Atención"
+  },
+  "guestCount": {
+    "title":    "¿Cuántos coméis?",
+    "subtitle": "Para preparar mejor tu servicio"
+  },
+  "review": {
+    "title": "Revisa tu pedido"
+  },
+  "payment": {
+    "title":         "Pago digital",
+    "online":        "Pagar ahora",
+    "cash":          "Pagar al finalizar",
+    "tip":           "Propina",
+    "noTip":         "Sin propina",
+    "custom":        "Otro",
+    "split":         "Dividir la cuenta",
+    "processing":    "Procesando…",
+    "pay":           "Pagar {{amount}} €",
+    "secure":        "🔒 Pago seguro con cifrado SSL · Stripe",
+    "error":         "Error en el pago",
+    "errorGeneric":  "Ocurrió un error inesperado. Inténtalo de nuevo.",
+    "success":       "¡Pago completado!",
+    "successRedirect":"Redirigiendo al seguimiento de tu pedido…",
+    "canceled":      "Pago cancelado",
+    "canceledDesc":  "Cancelaste el pago. Puedes intentarlo de nuevo cuando quieras.",
+    "failedDesc":    "No se pudo procesar el pago. Verifica tu tarjeta e inténtalo de nuevo.",
+    "retryBtn":      "Intentar de nuevo",
+    "splitTitle":    "Dividir la cuenta",
+    "splitDesc":     "Cada persona paga su parte desde su móvil",
+    "howMany":       "¿Cuántos pagan?",
+    "persons":       "{{n}} personas",
+    "perPerson":     "Cada persona paga",
+    "paymentsReceived": "Pagos recibidos",
+    "applyDivision": "Aplicar división"
+  },
+  "confirmation": {
+    "title":         "¡Pedido confirmado!",
+    "orderNumber":   "Pedido #{{number}}",
+    "estimatedTime": "Listo en aprox. {{minutes}} min",
+    "addMore":       "Añadir más cosas",
+    "track":         "Seguir el pedido"
+  },
+  "tracking": {
+    "title": "Seguimiento del pedido",
+    "steps": {
+      "new":       "Pedido recibido",
+      "preparing": "En preparación",
+      "ready":     "¡Listo!",
+      "served":    "Servido"
+    },
+    "ready": {
+      "title":    "¡Tu pedido está listo!",
+      "subtitle": "El camarero se dirige a tu mesa."
+    },
+    "estimatedTime": "Tiempo estimado",
+    "elapsed":       "Tiempo transcurrido",
+    "calculating":   "Calculando…",
+    "bon":           "¡Buen provecho!",
+    "delivered":     "Tu pedido ha sido entregado.",
+    "yourOrder":     "Tu pedido",
+    "itemStatus": {
+      "new":       "Pendiente",
+      "preparing": "En preparación",
+      "ready":     "Listo",
+      "served":    "Servido"
+    }
+  },
+  "auth": {
+    "loginTitle":    "Bienvenido de nuevo",
+    "registerTitle": "Crear cuenta",
+    "tabLogin":      "Entrar",
+    "tabRegister":   "Registrarse",
+    "email":         "Email",
+    "password":      "Contraseña",
+    "name":          "Tu nombre",
+    "loginCta":      "Entrar",
+    "registerCta":   "Crear cuenta",
+    "continueGoogle":"Continuar con Google",
+    "continueGuest": "Continuar como invitado →",
+    "loginError":    "Email o contraseña incorrectos.",
+    "registerError": "No se pudo crear la cuenta. Inténtalo de nuevo.",
+    "guestMode":     "Modo invitado",
+    "or":            "o"
+  },
+  "profile": {
+    "title":          "Mi perfil",
+    "logout":         "Cerrar sesión",
+    "personalInfo":   "Información personal",
+    "name":           "Nombre",
+    "email":          "Email",
+    "phone":          "Teléfono",
+    "phoneAdd":       "Añadir",
+    "dietary":        "Preferencias alimentarias",
+    "dietaryDesc":    "Se aplican como filtros al abrir cualquier menú.",
+    "notifications":  "Notificaciones",
+    "notifyReady":    "Pedido listo",
+    "notifyReadyDesc":"Cuando tu pedido esté en la mesa",
+    "notifyPromos":   "Ofertas y promociones",
+    "notifyPromosDesc":"Descuentos y novedades",
+    "savedPayments":  "Métodos de pago guardados",
+    "noPayments":     "Sin métodos guardados.",
+    "orderHistory":   "Historial de pedidos",
+    "loginCta":       "Entrar / Registrarse",
+    "loginDesc":      "Inicia sesión para ver tu perfil, historial de pedidos y gestionar tu cuenta.",
+    "orders": {
+      "title":   "Historial de pedidos",
+      "empty":   "Sin pedidos aún",
+      "emptyDesc":"Tus pedidos aparecerán aquí.",
+      "repeat":  "↺ Repetir pedido",
+      "added":   "✓ Añadido",
+      "detail":  "Ver detalle"
+    },
+    "dietary": {
+      "vegetarian": "Vegetariano",
+      "vegan":      "Vegano",
+      "glutenFree": "Sin gluten",
+      "dairyFree":  "Sin lactosa",
+      "spicy":      "Me gusta picante"
+    }
+  },
+  "loyalty": {
+    "title":           "Mis puntos",
+    "currentLevel":    "Nivel actual",
+    "pointsAvailable": "puntos disponibles",
+    "pointsToNext":    "{{points}} puntos para {{level}}",
+    "maxLevel":        "¡Nivel máximo alcanzado!",
+    "currentBenefits": "Beneficios de tu nivel",
+    "history":         "Historial de puntos",
+    "noHistory":       "Sin movimientos aún",
+    "nextLevel":       "Próximo nivel — {{level}}",
+    "loginDesc":       "Acumula puntos en cada pedido y canjéalos por descuentos. Inicia sesión para ver tu saldo.",
+    "loginCta":        "Entrar / Registrarse",
+    "levels": {
+      "bronze":   "Bronce",
+      "silver":   "Plata",
+      "gold":     "Oro",
+      "platinum": "Platino"
+    },
+    "points": {
+      "available": "Tienes {{n}} puntos",
+      "maxRedeem": "Valor máximo canjeable: {{amount}} €",
+      "none":      "Sin canjear",
+      "useAll":    "Usar todos los puntos disponibles",
+      "remove":    "No canjear puntos"
+    }
+  },
+  "pwa": {
+    "installTitle": "Añadir a tu pantalla de inicio",
+    "installDesc":  "Accede más rápido a Rush Order sin abrir el navegador.",
+    "install":      "Instalar",
+    "later":        "Ahora no"
+  },
+  "offline": {
+    "title":   "Sin conexión",
+    "desc":    "No hay red disponible. Mostrando el último menú guardado.",
+    "noCache": "No hay contenido en caché para mostrar.",
+    "retry":   "Reintentar"
+  },
+  "rating": {
+    "title":     "¿Cómo fue tu experiencia?",
+    "subtitle":  "Tarda solo 10 segundos",
+    "food":      "Comida",
+    "speed":     "Velocidad",
+    "service":   "Servicio",
+    "comment":   "Comentario opcional…",
+    "submit":    "Enviar valoración",
+    "skip":      "Omitir",
+    "thanks":    "¡Gracias por tu valoración!",
+    "thanksDesc":"Tu opinión nos ayuda a mejorar."
+  },
+  "push": {
+    "title":      "Activa las notificaciones",
+    "desc":       "Te avisaremos cuando tu pedido esté listo, incluso si cierras esta pantalla.",
+    "activate":   "Activar",
+    "noThanks":   "No, gracias"
+  }
+}

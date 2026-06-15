@@ -1,0 +1,217 @@
+{
+  "app": "Rush Order",
+  "action": {
+    "save":   "Save",
+    "cancel": "Cancel",
+    "close":  "Close",
+    "back":   "Back",
+    "submit": "Submit",
+    "skip":   "Skip",
+    "retry":  "Try again",
+    "delete": "Delete",
+    "add":    "Add"
+  },
+  "common": {
+    "loading": "Loading…",
+    "error":   "Error",
+    "noData":  "No data",
+    "euro":    "€",
+    "minutes": "{{n}} min",
+    "points":  "{{n}} points"
+  },
+  "nav": {
+    "menu":    "Menu",
+    "cart":    "Cart",
+    "profile": "Profile",
+    "loyalty": "My points"
+  },
+  "skipLink": "Skip to main content",
+  "cart": {
+    "title":           "Your order",
+    "empty":           "Cart is empty",
+    "clear":           "Clear cart",
+    "notes":           "Order notes",
+    "notesPlaceholder":"Allergies, general preferences…",
+    "checkout":        "Place order",
+    "continueBrowsing":"Continue browsing",
+    "round":           "Round {{n}}",
+    "unavailable":     "is no longer available",
+    "unavailableMany": "are no longer available",
+    "attention":       "Warning"
+  },
+  "guestCount": {
+    "title":    "How many are dining?",
+    "subtitle": "This helps us serve you better"
+  },
+  "review": {
+    "title": "Review your order"
+  },
+  "payment": {
+    "title":         "Digital payment",
+    "online":        "Pay now",
+    "cash":          "Pay at the end",
+    "tip":           "Tip",
+    "noTip":         "No tip",
+    "custom":        "Other",
+    "split":         "Split the bill",
+    "processing":    "Processing…",
+    "pay":           "Pay {{amount}} €",
+    "secure":        "🔒 Secure payment · Stripe",
+    "error":         "Payment error",
+    "errorGeneric":  "An unexpected error occurred. Please try again.",
+    "success":       "Payment completed!",
+    "successRedirect":"Redirecting to order tracking…",
+    "canceled":      "Payment canceled",
+    "canceledDesc":  "You canceled the payment. You can try again any time.",
+    "failedDesc":    "Payment could not be processed. Please check your card and try again.",
+    "retryBtn":      "Try again",
+    "splitTitle":    "Split the bill",
+    "splitDesc":     "Each person pays their share from their own phone",
+    "howMany":       "How many are paying?",
+    "persons":       "{{n}} people",
+    "perPerson":     "Each person pays",
+    "paymentsReceived": "Payments received",
+    "applyDivision": "Apply split"
+  },
+  "confirmation": {
+    "title":         "Order confirmed!",
+    "orderNumber":   "Order #{{number}}",
+    "estimatedTime": "Ready in approx. {{minutes}} min",
+    "addMore":       "Add more items",
+    "track":         "Track my order"
+  },
+  "tracking": {
+    "title": "Order tracking",
+    "steps": {
+      "new":       "Order received",
+      "preparing": "Preparing",
+      "ready":     "Ready!",
+      "served":    "Served"
+    },
+    "ready": {
+      "title":    "Your order is ready!",
+      "subtitle": "Your waiter is on their way."
+    },
+    "estimatedTime": "Estimated time",
+    "elapsed":       "Elapsed time",
+    "calculating":   "Calculating…",
+    "bon":           "Enjoy your meal!",
+    "delivered":     "Your order has been delivered.",
+    "yourOrder":     "Your order",
+    "itemStatus": {
+      "new":       "Pending",
+      "preparing": "Preparing",
+      "ready":     "Ready",
+      "served":    "Served"
+    }
+  },
+  "auth": {
+    "loginTitle":    "Welcome back",
+    "registerTitle": "Create account",
+    "tabLogin":      "Log in",
+    "tabRegister":   "Sign up",
+    "email":         "Email",
+    "password":      "Password",
+    "name":          "Your name",
+    "loginCta":      "Log in",
+    "registerCta":   "Create account",
+    "continueGoogle":"Continue with Google",
+    "continueGuest": "Continue as guest →",
+    "loginError":    "Incorrect email or password.",
+    "registerError": "Could not create account. Please try again.",
+    "guestMode":     "Guest mode",
+    "or":            "or"
+  },
+  "profile": {
+    "title":          "My profile",
+    "logout":         "Sign out",
+    "personalInfo":   "Personal information",
+    "name":           "Name",
+    "email":          "Email",
+    "phone":          "Phone",
+    "phoneAdd":       "Add",
+    "dietary":        "Dietary preferences",
+    "dietaryDesc":    "Applied as default filters when opening any menu.",
+    "notifications":  "Notifications",
+    "notifyReady":    "Order ready",
+    "notifyReadyDesc":"When your order is at the table",
+    "notifyPromos":   "Offers & promotions",
+    "notifyPromosDesc":"Discounts and news",
+    "savedPayments":  "Saved payment methods",
+    "noPayments":     "No saved methods.",
+    "orderHistory":   "Order history",
+    "loginCta":       "Log in / Sign up",
+    "loginDesc":      "Sign in to view your profile, order history and manage your account.",
+    "orders": {
+      "title":   "Order history",
+      "empty":   "No orders yet",
+      "emptyDesc":"Your orders will appear here.",
+      "repeat":  "↺ Repeat order",
+      "added":   "✓ Added",
+      "detail":  "View detail"
+    },
+    "dietary": {
+      "vegetarian": "Vegetarian",
+      "vegan":      "Vegan",
+      "glutenFree": "Gluten-free",
+      "dairyFree":  "Dairy-free",
+      "spicy":      "I like spicy food"
+    }
+  },
+  "loyalty": {
+    "title":           "My points",
+    "currentLevel":    "Current level",
+    "pointsAvailable": "points available",
+    "pointsToNext":    "{{points}} points to {{level}}",
+    "maxLevel":        "Maximum level reached!",
+    "currentBenefits": "Your level benefits",
+    "history":         "Points history",
+    "noHistory":       "No activity yet",
+    "nextLevel":       "Next level — {{level}}",
+    "loginDesc":       "Earn points on every order and redeem them for discounts. Sign in to see your balance.",
+    "loginCta":        "Log in / Sign up",
+    "levels": {
+      "bronze":   "Bronze",
+      "silver":   "Silver",
+      "gold":     "Gold",
+      "platinum": "Platinum"
+    },
+    "points": {
+      "available": "You have {{n}} points",
+      "maxRedeem": "Max redeemable: {{amount}} €",
+      "none":      "Not redeeming",
+      "useAll":    "Use all available points",
+      "remove":    "Don't redeem points"
+    }
+  },
+  "pwa": {
+    "installTitle": "Add to your home screen",
+    "installDesc":  "Access Rush Order faster without opening a browser.",
+    "install":      "Install",
+    "later":        "Not now"
+  },
+  "offline": {
+    "title":   "No connection",
+    "desc":    "No network available. Showing the last saved menu.",
+    "noCache": "No cached content to show.",
+    "retry":   "Retry"
+  },
+  "rating": {
+    "title":     "How was your experience?",
+    "subtitle":  "Takes just 10 seconds",
+    "food":      "Food",
+    "speed":     "Speed",
+    "service":   "Service",
+    "comment":   "Optional comment…",
+    "submit":    "Submit review",
+    "skip":      "Skip",
+    "thanks":    "Thank you for your review!",
+    "thanksDesc":"Your feedback helps us improve."
+  },
+  "push": {
+    "title":    "Enable notifications",
+    "desc":     "We'll notify you when your order is ready, even if you close this page.",
+    "activate": "Enable",
+    "noThanks": "No thanks"
+  }
+}

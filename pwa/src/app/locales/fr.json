@@ -1,0 +1,217 @@
+{
+  "app": "Rush Order",
+  "action": {
+    "save":   "Enregistrer",
+    "cancel": "Annuler",
+    "close":  "Fermer",
+    "back":   "Retour",
+    "submit": "Envoyer",
+    "skip":   "Passer",
+    "retry":  "Réessayer",
+    "delete": "Supprimer",
+    "add":    "Ajouter"
+  },
+  "common": {
+    "loading": "Chargement…",
+    "error":   "Erreur",
+    "noData":  "Aucune donnée",
+    "euro":    "€",
+    "minutes": "{{n}} min",
+    "points":  "{{n}} points"
+  },
+  "nav": {
+    "menu":    "Menu",
+    "cart":    "Panier",
+    "profile": "Profil",
+    "loyalty": "Mes points"
+  },
+  "skipLink": "Aller au contenu principal",
+  "cart": {
+    "title":           "Votre commande",
+    "empty":           "Le panier est vide",
+    "clear":           "Vider le panier",
+    "notes":           "Notes de commande",
+    "notesPlaceholder":"Allergies, préférences générales…",
+    "checkout":        "Confirmer la commande",
+    "continueBrowsing":"Continuer à parcourir le menu",
+    "round":           "Tour {{n}}",
+    "unavailable":     "n'est plus disponible",
+    "unavailableMany": "ne sont plus disponibles",
+    "attention":       "Attention"
+  },
+  "guestCount": {
+    "title":    "Combien êtes-vous ?",
+    "subtitle": "Pour mieux préparer votre service"
+  },
+  "review": {
+    "title": "Vérifiez votre commande"
+  },
+  "payment": {
+    "title":         "Paiement en ligne",
+    "online":        "Payer maintenant",
+    "cash":          "Payer à la fin",
+    "tip":           "Pourboire",
+    "noTip":         "Sans pourboire",
+    "custom":        "Autre",
+    "split":         "Partager l'addition",
+    "processing":    "Traitement…",
+    "pay":           "Payer {{amount}} €",
+    "secure":        "🔒 Paiement sécurisé · Stripe",
+    "error":         "Erreur de paiement",
+    "errorGeneric":  "Une erreur inattendue s'est produite. Veuillez réessayer.",
+    "success":       "Paiement effectué !",
+    "successRedirect":"Redirection vers le suivi de commande…",
+    "canceled":      "Paiement annulé",
+    "canceledDesc":  "Vous avez annulé le paiement. Vous pouvez réessayer quand vous voulez.",
+    "failedDesc":    "Le paiement n'a pas pu être traité. Vérifiez votre carte et réessayez.",
+    "retryBtn":      "Réessayer",
+    "splitTitle":    "Partager l'addition",
+    "splitDesc":     "Chaque personne paie sa part depuis son téléphone",
+    "howMany":       "Combien paient ?",
+    "persons":       "{{n}} personnes",
+    "perPerson":     "Chaque personne paie",
+    "paymentsReceived": "Paiements reçus",
+    "applyDivision": "Appliquer le partage"
+  },
+  "confirmation": {
+    "title":         "Commande confirmée !",
+    "orderNumber":   "Commande #{{number}}",
+    "estimatedTime": "Prêt dans environ {{minutes}} min",
+    "addMore":       "Ajouter d'autres articles",
+    "track":         "Suivre ma commande"
+  },
+  "tracking": {
+    "title": "Suivi de commande",
+    "steps": {
+      "new":       "Commande reçue",
+      "preparing": "En préparation",
+      "ready":     "Prête !",
+      "served":    "Servie"
+    },
+    "ready": {
+      "title":    "Votre commande est prête !",
+      "subtitle": "Le serveur se dirige vers votre table."
+    },
+    "estimatedTime": "Temps estimé",
+    "elapsed":       "Temps écoulé",
+    "calculating":   "Calcul en cours…",
+    "bon":           "Bon appétit !",
+    "delivered":     "Votre commande a été livrée.",
+    "yourOrder":     "Votre commande",
+    "itemStatus": {
+      "new":       "En attente",
+      "preparing": "En préparation",
+      "ready":     "Prêt",
+      "served":    "Servi"
+    }
+  },
+  "auth": {
+    "loginTitle":    "Bon retour",
+    "registerTitle": "Créer un compte",
+    "tabLogin":      "Connexion",
+    "tabRegister":   "S'inscrire",
+    "email":         "E-mail",
+    "password":      "Mot de passe",
+    "name":          "Votre nom",
+    "loginCta":      "Se connecter",
+    "registerCta":   "Créer un compte",
+    "continueGoogle":"Continuer avec Google",
+    "continueGuest": "Continuer en tant qu'invité →",
+    "loginError":    "E-mail ou mot de passe incorrect.",
+    "registerError": "Impossible de créer le compte. Veuillez réessayer.",
+    "guestMode":     "Mode invité",
+    "or":            "ou"
+  },
+  "profile": {
+    "title":          "Mon profil",
+    "logout":         "Se déconnecter",
+    "personalInfo":   "Informations personnelles",
+    "name":           "Nom",
+    "email":          "E-mail",
+    "phone":          "Téléphone",
+    "phoneAdd":       "Ajouter",
+    "dietary":        "Préférences alimentaires",
+    "dietaryDesc":    "Appliquées comme filtres par défaut à l'ouverture du menu.",
+    "notifications":  "Notifications",
+    "notifyReady":    "Commande prête",
+    "notifyReadyDesc":"Quand votre commande est à la table",
+    "notifyPromos":   "Offres et promotions",
+    "notifyPromosDesc":"Réductions et nouveautés",
+    "savedPayments":  "Moyens de paiement enregistrés",
+    "noPayments":     "Aucun moyen enregistré.",
+    "orderHistory":   "Historique des commandes",
+    "loginCta":       "Se connecter / S'inscrire",
+    "loginDesc":      "Connectez-vous pour voir votre profil, l'historique des commandes et gérer votre compte.",
+    "orders": {
+      "title":   "Historique des commandes",
+      "empty":   "Aucune commande pour l'instant",
+      "emptyDesc":"Vos commandes apparaîtront ici.",
+      "repeat":  "↺ Répéter la commande",
+      "added":   "✓ Ajouté",
+      "detail":  "Voir le détail"
+    },
+    "dietary": {
+      "vegetarian": "Végétarien",
+      "vegan":      "Végétalien",
+      "glutenFree": "Sans gluten",
+      "dairyFree":  "Sans lactose",
+      "spicy":      "J'aime le piment"
+    }
+  },
+  "loyalty": {
+    "title":           "Mes points",
+    "currentLevel":    "Niveau actuel",
+    "pointsAvailable": "points disponibles",
+    "pointsToNext":    "{{points}} points pour {{level}}",
+    "maxLevel":        "Niveau maximum atteint !",
+    "currentBenefits": "Avantages de votre niveau",
+    "history":         "Historique des points",
+    "noHistory":       "Aucun mouvement pour l'instant",
+    "nextLevel":       "Niveau suivant — {{level}}",
+    "loginDesc":       "Cumulez des points à chaque commande et échangez-les contre des réductions.",
+    "loginCta":        "Se connecter / S'inscrire",
+    "levels": {
+      "bronze":   "Bronze",
+      "silver":   "Argent",
+      "gold":     "Or",
+      "platinum": "Platine"
+    },
+    "points": {
+      "available": "Vous avez {{n}} points",
+      "maxRedeem": "Échangeable max : {{amount}} €",
+      "none":      "Aucun échange",
+      "useAll":    "Utiliser tous les points disponibles",
+      "remove":    "Ne pas échanger de points"
+    }
+  },
+  "pwa": {
+    "installTitle": "Ajouter à votre écran d'accueil",
+    "installDesc":  "Accédez plus rapidement à Rush Order sans ouvrir le navigateur.",
+    "install":      "Installer",
+    "later":        "Pas maintenant"
+  },
+  "offline": {
+    "title":   "Pas de connexion",
+    "desc":    "Aucun réseau disponible. Affichage du dernier menu enregistré.",
+    "noCache": "Aucun contenu en cache à afficher.",
+    "retry":   "Réessayer"
+  },
+  "rating": {
+    "title":     "Comment s'est passée votre expérience ?",
+    "subtitle":  "Seulement 10 secondes",
+    "food":      "Nourriture",
+    "speed":     "Rapidité",
+    "service":   "Service",
+    "comment":   "Commentaire optionnel…",
+    "submit":    "Envoyer l'avis",
+    "skip":      "Passer",
+    "thanks":    "Merci pour votre avis !",
+    "thanksDesc":"Vos retours nous aident à nous améliorer."
+  },
+  "push": {
+    "title":    "Activer les notifications",
+    "desc":     "Nous vous avertirons quand votre commande est prête.",
+    "activate": "Activer",
+    "noThanks": "Non merci"
+  }
+}
