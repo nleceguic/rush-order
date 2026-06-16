@@ -1,0 +1,293 @@
+using System.Text;
+using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
+using RushOrder.Desktop.Data;
+using RushOrder.Desktop.Models;
+using RushOrder.Desktop.State;
+
+namespace RushOrder.Desktop.Services;
+
+public sealed class OrderService
+{
+    private readonly AppState    _state;
+    private readonly LocalDatabase _db;
+    private readonly SyncService   _sync;
+    private readonly ILogger<OrderService> _logger;
+    private readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(6) };
+
+    // In-memory cache (source of truth for running views)
+    private List<OrderDto> _cache = [];
+
+    public OrderService(AppState state, LocalDatabase db, SyncService sync,
+        ILogger<OrderService> logger)
+    {
+        _state  = state;
+        _db     = db;
+        _sync   = sync;
+        _logger = logger;
+
+        // Keep in-memory cache in sync when a queued CREATE_ORDER completes
+        _sync.OrderIdReplaced += OnOrderIdReplaced;
+    }
+
+    // ── Read ──────────────────────────────────────────────────────────────────
+
+    public async Task<IReadOnlyList<OrderDto>> GetOrdersAsync(CancellationToken ct = default)
+    {
+        if (_state.IsOnline)
+        {
+            try
+            {
+                SetAuth();
+                var rid = _state.CurrentRestaurant?.Id;
+                var res = await _http.GetAsync(
+                    $"http://localhost:5000/api/orders?restaurantId={rid}&statuses=New,Preparing,Ready,Served,Paid&pageSize=200",
+                    ct);
+                if (res.IsSuccessStatusCode)
+                {
+                    var json = await res.Content.ReadAsStringAsync(ct);
+                    _cache = JsonConvert.DeserializeObject<List<OrderDto>>(json) ?? [];
+
+                    // Merge any pending offline orders that haven't synced yet
+                    var offlineInQueue = _db.GetOrders().Where(o => o.IsOffline).ToList();
+                    foreach (var offline in offlineInQueue)
+                    {
+                        if (_cache.All(o => o.Id != offline.Id))
+                            _cache.Insert(0, offline);
+                    }
+
+                    // Snapshot for offline use
+                    foreach (var o in _cache) _db.UpsertOrder(o);
+                    return _cache;
+                }
+            }
+            catch (Exception ex) { _logger.LogWarning(ex, "Could not fetch orders; falling back to local"); }
+        }
+
+        // Offline or API unavailable: load from local DB
+        var local = _db.GetOrders();
+        _cache = local.Count > 0 ? local : BuildMockOrders();
+        return _cache;
+    }
+
+    // ── Write ─────────────────────────────────────────────────────────────────
+
+    public async Task<bool> UpdateStatusAsync(Guid orderId, OrderStatus newStatus, CancellationToken ct = default)
+    {
+        // Optimistic update in memory and local DB
+        var idx = _cache.FindIndex(o => o.Id == orderId);
+        if (idx >= 0) _cache[idx] = _cache[idx] with { Status = newStatus };
+        _db.UpdateOrderStatus(orderId.ToString(), newStatus.ToString());
+
+        if (!_state.IsOnline)
+        {
+            var payload = JsonConvert.SerializeObject(new { status = newStatus.ToString() });
+            _sync.Enqueue("UPDATE_ORDER_STATUS",
+                $"/api/orders/{orderId}/status", "PUT", payload);
+            return true;
+        }
+
+        try
+        {
+            SetAuth();
+            var body = JsonConvert.SerializeObject(new { status = newStatus.ToString() });
+            var res  = await _http.PutAsync(
+                $"http://localhost:5000/api/orders/{orderId}/status",
+                new StringContent(body, Encoding.UTF8, "application/json"), ct);
+            return res.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Status update failed; queuing for sync");
+            var payload = JsonConvert.SerializeObject(new { status = newStatus.ToString() });
+            _sync.Enqueue("UPDATE_ORDER_STATUS",
+                $"/api/orders/{orderId}/status", "PUT", payload);
+            return true;
+        }
+    }
+
+    public async Task<OrderDto?> CreateOrderAsync(CreateOrderRequest request, CancellationToken ct = default)
+    {
+        if (!_state.IsOnline)
+            return CreateOfflineOrder(request);
+
+        try
+        {
+            SetAuth();
+            var body = JsonConvert.SerializeObject(request);
+            var res  = await _http.PostAsync(
+                "http://localhost:5000/api/orders",
+                new StringContent(body, Encoding.UTF8, "application/json"), ct);
+            if (res.IsSuccessStatusCode)
+            {
+                var json  = await res.Content.ReadAsStringAsync(ct);
+                var order = JsonConvert.DeserializeObject<OrderDto>(json)!;
+                _cache.Insert(0, order);
+                _db.UpsertOrder(order);
+                return order;
+            }
+        }
+        catch (Exception ex) { _logger.LogWarning(ex, "Create order failed; creating offline"); }
+
+        return CreateOfflineOrder(request);
+    }
+
+    private OrderDto CreateOfflineOrder(CreateOrderRequest request)
+    {
+        var items = request.Items.Select(i =>
+            new OrderItemDto(Guid.NewGuid(), i.ProductId, i.ProductName, i.Quantity,
+                i.UnitPrice, i.UnitPrice * i.Quantity, i.Notes, [], [])).ToList();
+        var sub = items.Sum(x => x.LineTotal);
+        var tax = Math.Round(sub * 0.10m, 2);
+        var num = $"LOCAL-{DateTime.Now:HHmm}-{Random.Shared.Next(10, 99)}";
+
+        var order = new OrderDto(
+            Guid.NewGuid(), num, request.RestaurantId, request.TableId, request.TableName,
+            request.GuestCount, OrderStatus.New, request.Source, null, items,
+            sub, tax, sub + tax, request.Notes, DateTimeOffset.Now,
+            null, null, null, null, IsOffline: true);
+
+        _cache.Insert(0, order);
+        _db.UpsertOrder(order);
+        _sync.Enqueue("CREATE_ORDER", "/api/orders", "POST",
+            JsonConvert.SerializeObject(request), order.Id.ToString());
+
+        _logger.LogInformation("Created offline order {Num}", order.OrderNumber);
+        return order;
+    }
+
+    public async Task<bool> ProcessPaymentAsync(PaymentRequest request, CancellationToken ct = default)
+    {
+        if (!_state.IsOnline)
+        {
+            await UpdateStatusAsync(request.OrderId, OrderStatus.Paid, ct);
+            _sync.Enqueue("PROCESS_PAYMENT", "/api/payments", "POST",
+                JsonConvert.SerializeObject(request));
+            return true;
+        }
+
+        try
+        {
+            SetAuth();
+            var body = JsonConvert.SerializeObject(request);
+            var res  = await _http.PostAsync(
+                "http://localhost:5000/api/payments",
+                new StringContent(body, Encoding.UTF8, "application/json"), ct);
+            if (res.IsSuccessStatusCode)
+            {
+                await UpdateStatusAsync(request.OrderId, OrderStatus.Paid, ct);
+                return true;
+            }
+        }
+        catch (Exception ex) { _logger.LogWarning(ex, "Payment failed; marking paid locally"); }
+
+        await UpdateStatusAsync(request.OrderId, OrderStatus.Paid, ct);
+        _sync.Enqueue("PROCESS_PAYMENT", "/api/payments", "POST",
+            JsonConvert.SerializeObject(request));
+        return true;
+    }
+
+    public async Task<bool> AssignWaiterAsync(Guid orderId, string waiterName, CancellationToken ct = default)
+    {
+        if (!_state.IsOnline)
+        {
+            _sync.Enqueue("ASSIGN_WAITER", $"/api/orders/{orderId}/waiter", "PUT",
+                JsonConvert.SerializeObject(new { waiterName }));
+            return true;
+        }
+        try
+        {
+            SetAuth();
+            var body = JsonConvert.SerializeObject(new { waiterName });
+            var res  = await _http.PutAsync(
+                $"http://localhost:5000/api/orders/{orderId}/waiter",
+                new StringContent(body, Encoding.UTF8, "application/json"), ct);
+            return res.IsSuccessStatusCode;
+        }
+        catch { return false; }
+    }
+
+    public async Task<bool> CancelOrderAsync(Guid orderId, CancellationToken ct = default)
+    {
+        _cache.RemoveAll(o => o.Id == orderId);
+        _db.UpdateOrderStatus(orderId.ToString(), OrderStatus.Paid.ToString()); // mark closed
+
+        if (!_state.IsOnline)
+        {
+            _sync.Enqueue("CANCEL_ORDER", $"/api/orders/{orderId}", "DELETE", "{}");
+            return true;
+        }
+        try
+        {
+            SetAuth();
+            var res = await _http.DeleteAsync($"http://localhost:5000/api/orders/{orderId}", ct);
+            return res.IsSuccessStatusCode;
+        }
+        catch { return true; }
+    }
+
+    // ── Cache maintenance ─────────────────────────────────────────────────────
+
+    private void OnOrderIdReplaced(string localId, Guid serverId, OrderDto serverOrder)
+    {
+        if (!Guid.TryParse(localId, out var localGuid)) return;
+        var idx = _cache.FindIndex(o => o.Id == localGuid);
+        if (idx >= 0) _cache[idx] = serverOrder with { IsOffline = false };
+    }
+
+    private void SetAuth() =>
+        _http.DefaultRequestHeaders.Authorization = _state.AccessToken is { } t
+            ? new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", t)
+            : null;
+
+    // ── Mock data ─────────────────────────────────────────────────────────────
+
+    private static List<OrderDto> BuildMockOrders()
+    {
+        var now = DateTimeOffset.Now;
+        return
+        [
+            MakeOrder("2024-0041", "Mesa 1", 2, OrderStatus.New, "Ana", now.AddMinutes(-12),
+                [Item("Paella Valencia", 1, 14.50m), Item("Cola Zero", 2, 2.20m), Item("Agua Mineral", 1, 1.50m, ["Sulphites"])]),
+
+            MakeOrder("2024-0042", "Mesa 5", 4, OrderStatus.New, "Carlos", now.AddMinutes(-2),
+                [Item("Menú del día x4", 4, 12.50m), Item("Vino de la casa", 1, 8.00m), Item("Postre variado", 4, 4.00m, ["Gluten", "Dairy", "Eggs"])]),
+
+            MakeOrder("2024-0043", "Mesa 8", 6, OrderStatus.New, "María", now.AddSeconds(-45),
+                [Item("Gazpacho", 6, 5.00m), Item("Cochinillo", 3, 22.00m, ["Sulphites"])]),
+
+            MakeOrder("2024-0039", "Mesa 3", 2, OrderStatus.Preparing, "Ana", now.AddMinutes(-18),
+                [Item("Tortilla española", 1, 9.50m), Item("Cerveza", 2, 2.80m)]),
+
+            MakeOrder("2024-0040", "Mesa 7", 8, OrderStatus.Preparing, "Carlos", now.AddMinutes(-27),
+                [Item("Cocido madrileño x8", 8, 16.00m, ["Gluten", "Nuts"]), Item("Sangría", 2, 12.00m, ["Sulphites"])]),
+
+            MakeOrder("2024-0038", "Mesa 6", 3, OrderStatus.Ready, "María", now.AddMinutes(-35),
+                [Item("Chuletón 400g", 2, 28.00m), Item("Ensalada mixta", 1, 7.50m), Item("Patatas fritas", 2, 4.50m)]),
+
+            MakeOrder("2024-0037", "Mesa 2", 2, OrderStatus.Served, "Ana", now.AddMinutes(-55),
+                [Item("Salmón a la plancha", 2, 18.50m), Item("Agua con gas", 2, 1.80m)]),
+
+            MakeOrder("2024-0036", "Mesa 4", 4, OrderStatus.Served, "Carlos", now.AddMinutes(-80),
+                [Item("Pulpo a la gallega", 1, 18.00m), Item("Merluza al horno", 2, 21.00m), Item("Café", 4, 1.50m)]),
+
+            MakeOrder("2024-0035", "Barra", 1, OrderStatus.Paid, "María", now.AddMinutes(-105),
+                [Item("Pincho de tortilla", 2, 2.50m), Item("Caña", 2, 1.80m)]),
+        ];
+    }
+
+    private static OrderDto MakeOrder(string num, string table, int guests, OrderStatus status,
+        string waiter, DateTimeOffset placed, IReadOnlyList<OrderItemDto> items)
+    {
+        var sub = items.Sum(i => i.LineTotal);
+        var tax = Math.Round(sub * 0.10m, 2);
+        return new OrderDto(
+            Guid.NewGuid(), num, Guid.Empty, Guid.NewGuid(), table, guests, status,
+            "POS", waiter, items, sub, tax, sub + tax, null,
+            placed, null, null, null, null);
+    }
+
+    private static OrderItemDto Item(string name, int qty, decimal price, string[]? allergens = null) =>
+        new(Guid.NewGuid(), Guid.NewGuid(), name, qty, price, price * qty, null,
+            allergens ?? [], []);
+}

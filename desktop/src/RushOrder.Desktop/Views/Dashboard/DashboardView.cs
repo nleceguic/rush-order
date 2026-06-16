@@ -1,0 +1,143 @@
+using RushOrder.Desktop.Models;
+using RushOrder.Desktop.Services;
+using RushOrder.Desktop.Theme;
+using RushOrder.Desktop.Views.Dashboard.Widgets;
+
+namespace RushOrder.Desktop.Views.Dashboard;
+
+public sealed class DashboardView : UserControl
+{
+    private readonly DashboardDataService _data;
+    private readonly RealTimeService      _realTime;
+    private readonly ThemeManager         _theme;
+
+    private RevenueWidget      _wRevenue     = null!;
+    private ActiveOrdersWidget _wOrders      = null!;
+    private TablesWidget       _wTables      = null!;
+    private AvgTicketWidget    _wTicket      = null!;
+    private AlertsWidget       _wAlerts      = null!;
+    private ReservationsWidget _wReservations = null!;
+
+    private readonly System.Windows.Forms.Timer _refreshTimer;
+
+    public DashboardView(DashboardDataService data, RealTimeService realTime, ThemeManager theme)
+    {
+        _data     = data;
+        _realTime = realTime;
+        _theme    = theme;
+
+        Dock           = DockStyle.Fill;
+        BackColor      = theme.Colors.Background;
+        DoubleBuffered = true;
+
+        BuildGrid();
+
+        _refreshTimer = new System.Windows.Forms.Timer { Interval = 30_000 };
+        _refreshTimer.Tick += async (_, _) => await LoadDataAsync();
+
+        Load           += async (_, _) => await OnFirstLoadAsync();
+        VisibleChanged += (_, _) => { if (Visible) _refreshTimer.Start(); else _refreshTimer.Stop(); };
+
+        WireRealTime();
+    }
+
+    private void BuildGrid()
+    {
+        var grid = new TableLayoutPanel
+        {
+            Dock        = DockStyle.Fill,
+            ColumnCount = 3,
+            RowCount    = 2,
+            Padding     = new Padding(10),
+            BackColor   = Color.Transparent,
+        };
+        grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.33f));
+        grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.33f));
+        grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.33f));
+        grid.RowStyles.Add(new RowStyle(SizeType.Percent, 50f));
+        grid.RowStyles.Add(new RowStyle(SizeType.Percent, 50f));
+
+        _wRevenue      = new RevenueWidget(_theme);
+        _wOrders       = new ActiveOrdersWidget(_theme);
+        _wTables       = new TablesWidget(_theme);
+        _wTicket       = new AvgTicketWidget(_theme);
+        _wAlerts       = new AlertsWidget(_theme);
+        _wReservations = new ReservationsWidget(_theme);
+
+        grid.Controls.Add(_wRevenue,      0, 0);
+        grid.Controls.Add(_wOrders,       1, 0);
+        grid.Controls.Add(_wTables,       2, 0);
+        grid.Controls.Add(_wTicket,       0, 1);
+        grid.Controls.Add(_wAlerts,       1, 1);
+        grid.Controls.Add(_wReservations, 2, 1);
+
+        Controls.Add(grid);
+    }
+
+    private void WireRealTime()
+    {
+        _realTime.OrderReceived += payload =>
+        {
+            // Increment active orders
+            return Task.CompletedTask;
+        };
+
+        _realTime.OrderStatusUpdated += async (_, _, _) =>
+        {
+            await Task.Delay(200); // slight debounce
+            await LoadKpiAsync();
+        };
+
+        _realTime.TableStatusChanged += async (_, _) =>
+        {
+            await Task.Delay(200);
+            await LoadKpiAsync();
+        };
+
+        _realTime.KitchenAlert += async (message, severity) =>
+        {
+            await Task.CompletedTask;
+            var alerts = await _data.GetAlertsAsync();
+            _wAlerts.Update(alerts);
+        };
+    }
+
+    private async Task OnFirstLoadAsync()
+    {
+        await LoadDataAsync();
+        _refreshTimer.Start();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        var kpiTask   = _data.GetKpiAsync();
+        var alertTask = _data.GetAlertsAsync();
+        var resTask   = _data.GetUpcomingReservationsAsync();
+        await Task.WhenAll(kpiTask, alertTask, resTask);
+
+        ApplyKpi(kpiTask.Result);
+        _wAlerts.Update(alertTask.Result);
+        _wReservations.Update(resTask.Result);
+    }
+
+    private async Task LoadKpiAsync()
+    {
+        var kpi = await _data.GetKpiAsync();
+        ApplyKpi(kpi);
+    }
+
+    private void ApplyKpi(RushOrder.Desktop.Models.DashboardKpi kpi)
+    {
+        _wRevenue.Update(kpi.RevenueToday, kpi.RevenueYesterday,
+            kpi.RevenueByHour.Select(v => (decimal)v).ToArray());
+        _wOrders.Update(kpi.OrdersWaiting, kpi.OrdersPreparing, kpi.OrdersReady);
+        _wTables.Update(kpi.TablesOccupied, kpi.TablesTotal, kpi.AvgOccupancyMinutes);
+        _wTicket.Update(kpi.AvgTicketToday, kpi.AvgTicketYesterday);
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing) _refreshTimer.Dispose();
+        base.Dispose(disposing);
+    }
+}
