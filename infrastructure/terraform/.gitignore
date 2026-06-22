@@ -1,0 +1,27 @@
+# Local Terraform state (remote backend used — never commit local state)
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+
+# Terraform working directory
+.terraform/
+.terraform.lock.hcl
+
+# Plan files (may contain sensitive values)
+tfplan
+*.tfplan
+
+# Secrets override files — create locally, never commit
+*.auto.tfvars
+secrets.tfvars
+secrets.*.tfvars
+
+# Crash log
+crash.log
+crash.*.log
+
+# Override files (Terraform docs: not for VCS)
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
