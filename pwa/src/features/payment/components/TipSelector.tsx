@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { formatCurrency } from '@shared/utils/format'
 
 type TipMode = 'none' | 5 | 10 | 15 | 'custom'
 
@@ -49,7 +50,7 @@ export function TipSelector({ baseAmountCents, onConfirm }: TipSelectorProps) {
         <p className="text-sm font-semibold text-rush-dark">Propina</p>
         {tipCents > 0 && (
           <span className="text-sm font-bold text-green-600">
-            +{(tipCents / 100).toFixed(2)} €
+            +{formatCurrency(tipCents / 100)}
           </span>
         )}
       </div>
@@ -71,7 +72,7 @@ export function TipSelector({ baseAmountCents, onConfirm }: TipSelectorProps) {
             {opt.label}
             {opt.mode !== 'none' && opt.mode !== 'custom' && (
               <span className="ml-1 text-xs opacity-75">
-                {(Math.round(baseAmountCents * opt.mode / 100) / 100).toFixed(2)} €
+                {formatCurrency(Math.round(baseAmountCents * opt.mode / 100) / 100)}
               </span>
             )}
           </button>

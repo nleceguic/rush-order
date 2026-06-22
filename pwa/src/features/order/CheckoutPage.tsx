@@ -5,6 +5,7 @@ import { usePost } from '@shared/hooks/useApi'
 import { ENDPOINTS } from '@shared/api/endpoints'
 import { Button } from '@shared/components/Button'
 import { toast } from '@shared/components/Toast'
+import { formatCurrency } from '@shared/utils/format'
 
 interface OrderItemPayload {
   productId: string
@@ -69,12 +70,12 @@ export default function CheckoutPage() {
           {items.map((i) => (
             <div key={i.key} className="flex justify-between text-sm py-1">
               <span className="text-gray-600">{i.quantity}× {i.name}</span>
-              <span className="font-medium">{(i.price * i.quantity).toFixed(2)} €</span>
+              <span className="font-medium">{formatCurrency(i.price * i.quantity)}</span>
             </div>
           ))}
           <div className="border-t mt-3 pt-3 flex justify-between font-semibold">
             <span>Total</span>
-            <span className="text-rush-red">{total().toFixed(2)} €</span>
+            <span className="text-rush-red">{formatCurrency(total())}</span>
           </div>
         </div>
 

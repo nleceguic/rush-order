@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import type { CompletedOrder } from '@shared/types'
+import { formatCurrency } from '@shared/utils/format'
 
 interface ConfirmationStepProps {
   order:      CompletedOrder
@@ -32,7 +33,7 @@ export function ConfirmationStep({ order, onNewRound }: ConfirmationStepProps) {
 
       <p className="text-xs text-gray-400 mb-8">
         {totalItems} {totalItems === 1 ? 'artículo' : 'artículos'} ·{' '}
-        <span className="font-medium">{order.total.toFixed(2)} €</span>
+        <span className="font-medium">{formatCurrency(order.total)}</span>
       </p>
 
       <div className="w-full space-y-3">

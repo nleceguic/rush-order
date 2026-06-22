@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { useCartStore } from '@shared/store/cartStore'
 import { CartItem } from './components/CartItem'
 import { Button } from '@shared/components/Button'
+import { formatCurrency } from '@shared/utils/format'
 
 export default function CartPage() {
   const navigate = useNavigate()
@@ -56,7 +57,7 @@ export default function CartPage() {
       <div className="sticky bottom-0 bg-white border-t p-4 space-y-3">
         <div className="flex justify-between text-base font-semibold">
           <span>Total</span>
-          <span className="text-rush-red">{total().toFixed(2)} €</span>
+          <span className="text-rush-red">{formatCurrency(total())}</span>
         </div>
         <Button className="w-full" size="lg" onClick={() => navigate('/checkout')}>
           Confirmar pedido

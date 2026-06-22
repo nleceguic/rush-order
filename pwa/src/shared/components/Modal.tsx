@@ -1,4 +1,5 @@
-import { useEffect, type ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
+import { useFocusTrap } from '@shared/hooks/useFocusTrap'
 
 interface ModalProps {
   open:       boolean
@@ -9,6 +10,9 @@ interface ModalProps {
 }
 
 export function Modal({ open, onClose, title, children, className = '' }: ModalProps) {
+  const dialogRef = useRef<HTMLDivElement>(null)
+  useFocusTrap(dialogRef, open)
+
   useEffect(() => {
     if (!open) return
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
@@ -29,7 +33,7 @@ export function Modal({ open, onClose, title, children, className = '' }: ModalP
         onClick={onClose}
         aria-hidden="true"
       />
-      <div className={`relative w-full max-w-md rounded-2xl bg-white shadow-xl ${className}`}>
+      <div ref={dialogRef} className={`relative w-full max-w-md rounded-2xl bg-white shadow-xl ${className}`}>
         {title !== undefined && (
           <div className="flex items-center justify-between border-b px-6 py-4">
             <h2 className="text-lg font-semibold text-rush-dark">{title}</h2>

@@ -1,4 +1,5 @@
 import type { ChangeEvent } from 'react'
+import { formatCurrency } from '@shared/utils/format'
 
 interface SplitBillSheetProps {
   open:           boolean
@@ -15,7 +16,7 @@ export function SplitBillSheet({
   if (!open) return null
 
   const perPersonCents = Math.ceil(totalCents / splits)
-  const perPersonEuros = (perPersonCents / 100).toFixed(2)
+  const perPersonEuros = formatCurrency(perPersonCents / 100)
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     const val = parseInt(e.target.value, 10)
@@ -66,7 +67,7 @@ export function SplitBillSheet({
         {/* Per person amount */}
         <div className="mt-5 rounded-2xl bg-rush-red/5 border border-rush-red/20 p-4 text-center">
           <p className="text-xs text-gray-500 mb-0.5">Cada persona paga</p>
-          <p className="text-2xl font-black text-rush-red">{perPersonEuros} €</p>
+          <p className="text-2xl font-black text-rush-red">{perPersonEuros}</p>
         </div>
 
         {/* Paid count (real-time) */}

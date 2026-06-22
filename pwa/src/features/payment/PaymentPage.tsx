@@ -13,6 +13,7 @@ import { TipSelector } from './components/TipSelector'
 import { SplitBillSheet } from './components/SplitBillSheet'
 import { usePaymentIntent } from './hooks/usePaymentIntent'
 import { usePaymentEvents } from './hooks/usePaymentEvents'
+import { formatCurrency } from '@shared/utils/format'
 
 const stripeKey = String(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY ?? '')
 const stripePromise = stripeKey.length > 0 ? loadStripe(stripeKey) : Promise.resolve(null)
@@ -96,12 +97,12 @@ export default function PaymentPage() {
           </div>
           <div className="text-right">
             <p className="text-xs text-gray-400">Total</p>
-            <p className="font-bold text-rush-red">{(totalWithTip / 100).toFixed(2)} €</p>
+            <p className="font-bold text-rush-red">{formatCurrency(totalWithTip / 100)}</p>
           </div>
           {splits > 1 && (
             <div className="text-right">
               <p className="text-xs text-gray-400">Tu parte ({splits} personas)</p>
-              <p className="font-bold text-rush-dark">{(perPersonCents / 100).toFixed(2)} €</p>
+              <p className="font-bold text-rush-dark">{formatCurrency(perPersonCents / 100)}</p>
             </div>
           )}
         </div>
@@ -121,7 +122,7 @@ export default function PaymentPage() {
           <span className="flex items-center gap-2 font-medium text-gray-700">
             <span>💳</span>
             {splits > 1
-              ? `Dividida: ${splits} personas · ${(perPersonCents / 100).toFixed(2)} € c/u`
+              ? `Dividida: ${splits} personas · ${formatCurrency(perPersonCents / 100)} c/u`
               : 'Dividir la cuenta'}
           </span>
           <svg className="h-4 w-4 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
@@ -236,7 +237,7 @@ function PaymentForm({ orderId, amountCents }: PaymentFormProps) {
               Procesando…
             </>
           ) : (
-            `Pagar ${(amountCents / 100).toFixed(2)} €`
+            `Pagar ${formatCurrency(amountCents / 100)}`
           )}
         </button>
       )}

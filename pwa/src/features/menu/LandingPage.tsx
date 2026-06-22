@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useQRMenu } from './hooks/useQRMenu'
 import { useMenu } from './hooks/useMenu'
@@ -45,6 +45,23 @@ export default function LandingPage() {
   const availableProductIds = menuData !== undefined
     ? new Set(allCategories.flatMap((c) => c.products.filter((p) => p.isAvailable).map((p) => p.id)))
     : undefined
+
+  // Prefetch menu API and JS chunk as soon as restaurant ID is known
+  useEffect(() => {
+    if (qrData?.restaurantId === undefined) return
+
+    const link = document.createElement('link')
+    link.rel  = 'prefetch'
+    link.href = `/api/v1/menu/public/${qrData.restaurantId}`
+    link.as   = 'fetch'
+    link.crossOrigin = 'anonymous'
+    document.head.appendChild(link)
+
+    // Eagerly load the MenuPage JS chunk
+    void import('@features/menu/MenuPage')
+
+    return () => { document.head.removeChild(link) }
+  }, [qrData?.restaurantId])
 
   const handleQRWarning = useCallback(() => {
     toast.warning('Tu sesión expirará en 5 minutos por inactividad.')

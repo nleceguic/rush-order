@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { CompletedOrder } from '@shared/types'
+import { formatCurrency } from '@shared/utils/format'
 
 interface PastOrdersPanelProps {
   orders: CompletedOrder[]
@@ -27,7 +28,7 @@ export function PastOrdersPanel({ orders }: PastOrdersPanelProps) {
           <span>Mis pedidos anteriores ({orders.length})</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-gray-400 text-xs tabular-nums">{totalSpent.toFixed(2)} €</span>
+          <span className="text-gray-400 text-xs tabular-nums">{formatCurrency(totalSpent)}</span>
           <svg
             className={`h-4 w-4 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`}
             viewBox="0 0 20 20" fill="currentColor"
@@ -46,7 +47,7 @@ export function PastOrdersPanel({ orders }: PastOrdersPanelProps) {
                   {order.number} · Ronda {order.round}
                 </span>
                 <span className="text-xs font-bold text-rush-red tabular-nums">
-                  {order.total.toFixed(2)} €
+                  {formatCurrency(order.total)}
                 </span>
               </div>
               <ul className="space-y-0.5">
@@ -54,7 +55,7 @@ export function PastOrdersPanel({ orders }: PastOrdersPanelProps) {
                   <li key={i} className="text-xs text-gray-500 flex justify-between gap-2">
                     <span className="truncate">{item.quantity}× {item.name}</span>
                     <span className="flex-shrink-0 tabular-nums">
-                      {(item.price * item.quantity).toFixed(2)} €
+                      {formatCurrency(item.price * item.quantity)}
                     </span>
                   </li>
                 ))}

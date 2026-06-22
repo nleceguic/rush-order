@@ -1,5 +1,6 @@
 import type { CartItem } from '@shared/types'
 import { useCartStore } from '@shared/store/cartStore'
+import { formatCurrency } from '@shared/utils/format'
 
 interface CartItemRowProps {
   item:      CartItem
@@ -16,7 +17,7 @@ export function CartItemRow({ item, readOnly = false }: CartItemRowProps) {
         <div className="flex items-start justify-between gap-2">
           <p className="font-medium text-rush-dark text-sm leading-snug">{item.name}</p>
           <p className="font-semibold text-sm text-rush-dark flex-shrink-0 tabular-nums ml-1">
-            {(item.price * item.quantity).toFixed(2)} €
+            {formatCurrency(item.price * item.quantity)}
           </p>
         </div>
 
@@ -24,7 +25,7 @@ export function CartItemRow({ item, readOnly = false }: CartItemRowProps) {
           <div className="mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5">
             {item.modifiers.map((m, idx) => (
               <span key={idx} className="text-[11px] text-gray-400">
-                {m.value}{m.price !== 0 ? ` (+${m.price.toFixed(2)} €)` : ''}
+                {m.value}{m.price !== 0 ? ` (+${formatCurrency(m.price)})` : ''}
               </span>
             ))}
           </div>

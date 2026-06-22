@@ -1,9 +1,10 @@
 import { useAuthStore } from '@shared/store/authStore'
+import { formatCurrency } from '@shared/utils/format'
 
-const POINTS_PER_EURO = 100 // 100 points = 1 €
+const POINTS_PER_EURO = 100
 
 interface PointsRedemptionProps {
-  cartTotal:      number // euros
+  cartTotal:      number
   redeemedPoints: number
   onChange:       (points: number) => void
 }
@@ -13,9 +14,9 @@ export function PointsRedemption({ cartTotal, redeemedPoints, onChange }: Points
 
   if (user === null || user.loyaltyPoints === 0) return null
 
-  const maxByPolicy    = Math.floor(cartTotal * 0.20 * POINTS_PER_EURO) // 20% of total
-  const maxRedeemable  = Math.min(user.loyaltyPoints, maxByPolicy)
-  const redeemEuros    = redeemedPoints / POINTS_PER_EURO
+  const maxByPolicy   = Math.floor(cartTotal * 0.20 * POINTS_PER_EURO)
+  const maxRedeemable = Math.min(user.loyaltyPoints, maxByPolicy)
+  const redeemEuros   = redeemedPoints / POINTS_PER_EURO
 
   if (maxRedeemable <= 0) return null
 
@@ -26,27 +27,26 @@ export function PointsRedemption({ cartTotal, redeemedPoints, onChange }: Points
           <span className="text-lg">⭐</span>
           <div>
             <p className="text-sm font-semibold text-rush-dark">
-              Tienes {user.loyaltyPoints.toLocaleString('es')} puntos
+              Tienes {user.loyaltyPoints.toLocaleString(navigator.language)} puntos
             </p>
             <p className="text-xs text-gray-500">
-              Valor máximo canjeable: {(maxRedeemable / POINTS_PER_EURO).toFixed(2)} €
+              Valor máximo canjeable: {formatCurrency(maxRedeemable / POINTS_PER_EURO)}
             </p>
           </div>
         </div>
         {redeemedPoints > 0 && (
           <span className="text-sm font-bold text-green-600">
-            -{redeemEuros.toFixed(2)} €
+            -{formatCurrency(redeemEuros)}
           </span>
         )}
       </div>
 
-      {/* Slider */}
       <div className="space-y-1.5">
         <div className="flex justify-between text-xs text-gray-500">
           <span>0 pts</span>
           <span className="font-medium text-rush-dark">
             {redeemedPoints > 0
-              ? `${redeemedPoints} pts = ${redeemEuros.toFixed(2)} €`
+              ? `${redeemedPoints} pts = ${formatCurrency(redeemEuros)}`
               : 'Sin canjear'}
           </span>
           <span>{maxRedeemable} pts</span>

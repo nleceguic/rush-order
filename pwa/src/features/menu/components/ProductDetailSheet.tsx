@@ -4,6 +4,8 @@ import type { CartModifier } from '@shared/types'
 import { AllergenIcons } from './AllergenIcons'
 import { BlurImage } from './BlurImage'
 import { useCartStore } from '@shared/store/cartStore'
+import { useFocusTrap } from '@shared/hooks/useFocusTrap'
+import { formatCurrency } from '@shared/utils/format'
 
 interface ProductDetailSheetProps {
   product: MenuProduct | null
@@ -55,7 +57,9 @@ export function ProductDetailSheet({ product, onClose }: ProductDetailSheetProps
   const addItem     = useCartStore((s) => s.addItem)
   const [opts, setOpts] = useState<SelectedOptions>(INITIAL_OPTS)
   const [dragY, setDragY] = useState(0)
-  const startY = useRef(0)
+  const startY  = useRef(0)
+  const sheetRef = useRef<HTMLDivElement>(null)
+  useFocusTrap(sheetRef, product !== null)
 
   // Reset state on new product
   useEffect(() => {
@@ -129,6 +133,7 @@ export function ProductDetailSheet({ product, onClose }: ProductDetailSheetProps
 
       {/* Sheet */}
       <div
+        ref={sheetRef}
         role="dialog"
         aria-modal="true"
         aria-label={product.name}
@@ -152,7 +157,7 @@ export function ProductDetailSheet({ product, onClose }: ProductDetailSheetProps
           {product.imageUrl !== undefined && (
             <BlurImage
               src={product.imageUrl}
-              alt={product.name}
+              alt={`Foto de ${product.name}`}
               placeholder={product.imagePlaceholder}
               className="h-56 w-full"
               sizes="100vw"
@@ -271,7 +276,7 @@ export function ProductDetailSheet({ product, onClose }: ProductDetailSheetProps
             disabled={!product.isAvailable}
             className="w-full rounded-2xl bg-rush-red py-4 font-bold text-white text-base hover:bg-rush-red-hover disabled:opacity-50 transition-colors"
           >
-            Añadir al pedido — {total.toFixed(2)} €
+            Añadir al pedido — {formatCurrency(total)}
           </button>
         </div>
       </div>
@@ -323,7 +328,7 @@ function VariantSection({
             </div>
             {opt.priceModifier !== 0 && (
               <span className="text-sm text-gray-500 flex-shrink-0">
-                {opt.priceModifier > 0 ? '+' : ''}{opt.priceModifier.toFixed(2)} €
+                {opt.priceModifier > 0 ? '+' : ''}{formatCurrency(opt.priceModifier)}
               </span>
             )}
           </label>
@@ -366,7 +371,7 @@ function ExtraSection({
                 <span className="text-sm">{opt.name}</span>
               </div>
               {opt.price > 0 && (
-                <span className="text-sm text-gray-500 flex-shrink-0">+{opt.price.toFixed(2)} €</span>
+                <span className="text-sm text-gray-500 flex-shrink-0">+{formatCurrency(opt.price)}</span>
               )}
             </label>
           )

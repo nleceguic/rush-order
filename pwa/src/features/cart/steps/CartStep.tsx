@@ -2,6 +2,7 @@ import { useCartStore } from '@shared/store/cartStore'
 import { CartItemRow } from '../components/CartItemRow'
 import { PriceSummary } from '../components/PriceSummary'
 import { PointsRedemption } from '../components/PointsRedemption'
+import { formatCurrency } from '@shared/utils/format'
 
 interface CartStepProps {
   generalNotes:          string
@@ -116,7 +117,7 @@ export function CartStep({
           disabled={items.length === 0 || unavailable.length > 0}
           className="w-full rounded-2xl bg-rush-red py-4 font-bold text-white text-base hover:bg-rush-red-hover disabled:opacity-40 transition-colors"
         >
-          Confirmar pedido · {(total - discountEuros).toFixed(2)} €
+          Confirmar pedido · {formatCurrency(total - discountEuros)}
         </button>
         <button
           onClick={onClose}

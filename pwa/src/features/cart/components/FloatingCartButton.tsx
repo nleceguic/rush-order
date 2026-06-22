@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useCartStore } from '@shared/store/cartStore'
+import { formatCurrency } from '@shared/utils/format'
 
 interface FloatingCartButtonProps {
   hidden:  boolean
@@ -52,7 +53,7 @@ export function FloatingCartButton({ hidden, onClick }: FloatingCartButtonProps)
         )}
 
         <span className="bg-white/25 rounded-full px-2 py-0.5 text-sm font-bold tabular-nums">
-          {itemCount} · {total.toFixed(2)} €
+          {itemCount} · {formatCurrency(total)}
         </span>
       </button>
     </div>

@@ -5,6 +5,7 @@ import { apiClient } from '@shared/api/axios'
 import { ENDPOINTS } from '@shared/api/endpoints'
 import { useCartStore } from '@shared/store/cartStore'
 import { Spinner } from '@shared/components/Spinner'
+import { formatCurrency, formatDate } from '@shared/utils/format'
 
 interface HistoryOrderItem {
   productId: string
@@ -116,14 +117,11 @@ export default function OrderHistoryPage() {
                   </div>
                   <p className="text-xs text-gray-500 mt-0.5">{order.restaurantName}</p>
                   <p className="text-xs text-gray-400">
-                    {new Date(order.createdAt).toLocaleDateString('es', {
-                      day: 'numeric', month: 'short', year: 'numeric',
-                      hour: '2-digit', minute: '2-digit',
-                    })}
+                    {formatDate(order.createdAt, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                   </p>
                 </div>
                 <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                  <span className="font-bold text-rush-red">{order.totalAmount.toFixed(2)} €</span>
+                  <span className="font-bold text-rush-red">{formatCurrency(order.totalAmount)}</span>
                   <svg
                     className={`h-4 w-4 text-gray-400 transition-transform ${expanded === order.id ? 'rotate-180' : ''}`}
                     viewBox="0 0 20 20" fill="currentColor"
@@ -146,7 +144,7 @@ export default function OrderHistoryPage() {
                   <div key={`${item.productId}-${idx}`} className="flex justify-between text-sm">
                     <span className="text-gray-700">{item.quantity}× {item.name}</span>
                     <span className="text-gray-500 tabular-nums">
-                      {(item.unitPrice * item.quantity).toFixed(2)} €
+                      {formatCurrency(item.unitPrice * item.quantity)}
                     </span>
                   </div>
                 ))}

@@ -2,6 +2,7 @@ import type { MenuProduct, ProductTag } from '../types'
 import { BlurImage } from './BlurImage'
 import { AllergenIcons } from './AllergenIcons'
 import { useCartStore } from '@shared/store/cartStore'
+import { formatCurrency } from '@shared/utils/format'
 
 const TAG_CONFIG: Record<ProductTag, { label: string; cls: string }> = {
   new:        { label: 'Nuevo',        cls: 'bg-blue-100 text-blue-700' },
@@ -40,7 +41,7 @@ export function ProductCard({ product, onViewDetails }: ProductCardProps) {
         <div className="relative flex-shrink-0">
           <BlurImage
             src={product.imageUrl}
-            alt={product.name}
+            alt={`Foto de ${product.name}`}
             placeholder={product.imagePlaceholder}
             className="h-24 w-24 rounded-lg"
             sizes="96px"
@@ -86,7 +87,7 @@ export function ProductCard({ product, onViewDetails }: ProductCardProps) {
 
         {/* Price + Add */}
         <div className="flex items-center justify-between mt-auto pt-2">
-          <span className="font-bold text-green-600 text-sm">{product.price.toFixed(2)} €</span>
+          <span className="font-bold text-green-600 text-sm">{formatCurrency(product.price)}</span>
           <button
             onClick={handleQuickAdd}
             disabled={!product.isAvailable}

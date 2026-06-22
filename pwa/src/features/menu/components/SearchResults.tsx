@@ -1,6 +1,7 @@
 import type { SearchGroup } from '../hooks/useMenuSearch'
 import type { MenuProduct } from '../types'
 import { highlightMatch } from './SearchBar'
+import { formatCurrency } from '@shared/utils/format'
 
 interface SearchResultsProps {
   groups:         SearchGroup[]
@@ -53,7 +54,7 @@ export function SearchResults({ groups, query, onProductClick }: SearchResultsPr
                       {highlightMatch(product.shortDescription, query)}
                     </p>
                   )}
-                  <p className="text-sm font-bold text-green-600 mt-1">{product.price.toFixed(2)} €</p>
+                  <p className="text-sm font-bold text-green-600 mt-1">{formatCurrency(product.price)}</p>
                 </div>
               </button>
             ))}

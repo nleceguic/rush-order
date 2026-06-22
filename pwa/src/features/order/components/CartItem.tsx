@@ -1,5 +1,6 @@
 import { useCartStore } from '@shared/store/cartStore'
 import type { CartItem as CartItemType } from '@shared/types'
+import { formatCurrency } from '@shared/utils/format'
 
 interface CartItemProps {
   item: CartItemType
@@ -13,7 +14,7 @@ export function CartItem({ item }: CartItemProps) {
       <div className="flex-1 min-w-0">
         <p className="font-medium text-rush-dark truncate">{item.name}</p>
         <p className="text-sm text-rush-red font-semibold">
-          {(item.price * item.quantity).toFixed(2)} €
+          {formatCurrency(item.price * item.quantity)}
         </p>
         {item.modifiers.length > 0 && (
           <p className="text-xs text-gray-400 mt-0.5 truncate">

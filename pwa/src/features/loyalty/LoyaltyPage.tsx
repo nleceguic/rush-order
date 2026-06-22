@@ -6,6 +6,7 @@ import { ENDPOINTS } from '@shared/api/endpoints'
 import { Spinner } from '@shared/components/Spinner'
 import { AuthSheet } from '@features/auth/AuthSheet'
 import type { LoyaltyLevel } from '@shared/types'
+import { formatDate } from '@shared/utils/format'
 
 // ── Types ────────────────────────────────────────────────────────
 interface PointHistoryEntry {
@@ -209,7 +210,7 @@ export default function LoyaltyPage() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-rush-dark truncate">{entry.description}</p>
                   <p className="text-xs text-gray-400">
-                    {new Date(entry.date).toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    {formatDate(entry.date)}
                   </p>
                 </div>
                 <span className={[
