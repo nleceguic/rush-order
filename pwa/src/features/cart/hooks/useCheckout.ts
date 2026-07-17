@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useCartStore } from '@shared/store/cartStore'
 import { apiClient } from '@shared/api/axios'
+import { useExperiment, CART_RECOMMENDATIONS_EXPERIMENT_KEY } from '@features/recommendations/hooks/useExperiment'
 import type { CompletedOrder } from '@shared/types'
 
 export type CheckoutStep   = 'cart' | 'guestCount' | 'review' | 'payment' | 'confirmation'
@@ -44,7 +45,9 @@ export function useCheckout(): UseCheckoutReturn {
   const [error,           setError]          = useState<string | null>(null)
   const [confirmedOrder,  setConfirmedOrder] = useState<CompletedOrder | null>(null)
 
-  const nextRound = useCartStore((s) => s.nextRound)
+  const nextRound    = useCartStore((s) => s.nextRound)
+  const restaurantId = useCartStore((s) => s.restaurantId)
+  const { track } = useExperiment(restaurantId ?? undefined, CART_RECOMMENDATIONS_EXPERIMENT_KEY)
 
   const confirmOrder = async (method: PaymentMethod) => {
     setLoading(true)
@@ -84,6 +87,7 @@ export function useCheckout(): UseCheckoutReturn {
       nextRound(completed)
       setConfirmedOrder(completed)
       setStep('confirmation')
+      track('OrderCompleted', { orderId: data.orderId, cartTotal: completed.total })
     } catch {
       setError('No se pudo confirmar el pedido. Inténtalo de nuevo.')
     } finally {

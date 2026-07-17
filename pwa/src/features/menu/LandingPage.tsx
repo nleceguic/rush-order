@@ -175,6 +175,8 @@ export default function LandingPage() {
         vatRate={qrData?.vatRate}
         onlinePayEnabled={qrData?.onlinePaymentEnabled ?? false}
         availableProductIds={availableProductIds}
+        categories={allCategories}
+        upsellingEnabled={qrData?.upsellingEnabled ?? true}
       />
 
       {/* Auth sheet — triggered from header icon */}

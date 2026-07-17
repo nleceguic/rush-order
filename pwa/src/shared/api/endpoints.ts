@@ -33,6 +33,13 @@ export const ENDPOINTS = {
   promotions: {
     active: (restaurantId: string) => `/restaurants/${restaurantId}/promotions`,
   },
+  recommendations: {
+    list: '/v1/recommendations',
+  },
+  experiments: {
+    assignment: (key: string) => `/v1/experiments/${key}/assignment`,
+    events:     '/v1/experiments/events',
+  },
   profile: {
     me:                  '/profile/me',
     avatar:              '/profile/me/avatar',

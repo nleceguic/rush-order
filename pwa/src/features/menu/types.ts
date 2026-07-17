@@ -75,6 +75,7 @@ export interface QRData {
   availableLocales:      string[]
   onlinePaymentEnabled?: boolean
   vatRate?:              number
+  upsellingEnabled?:     boolean
 }
 
 export interface SelectedOptions {

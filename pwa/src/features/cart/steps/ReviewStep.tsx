@@ -1,20 +1,32 @@
 import { useCartStore } from '@shared/store/cartStore'
 import { CartItemRow } from '../components/CartItemRow'
 import { PriceSummary } from '../components/PriceSummary'
+import { getCheckoutUpsellPrompt } from '@features/recommendations/utils/checkoutUpsell'
+import { formatCurrency } from '@shared/utils/format'
+import type { MenuCategory } from '@features/menu/types'
 
 interface ReviewStepProps {
-  guestCount:   number
-  generalNotes: string
-  onConfirm:    () => void
-  onBack:       () => void
-  vatRate?:     number
+  guestCount:        number
+  generalNotes:      string
+  onConfirm:         () => void
+  onBack:            () => void
+  vatRate?:          number
+  categories?:       MenuCategory[]
+  upsellingEnabled?: boolean
 }
 
-export function ReviewStep({ guestCount, generalNotes, onConfirm, onBack, vatRate }: ReviewStepProps) {
-  const items   = useCartStore((s) => s.items)
-  const total   = useCartStore((s) => s.total())
-  const tableId = useCartStore((s) => s.tableId)
-  const round   = useCartStore((s) => s.round)
+export function ReviewStep({
+  guestCount, generalNotes, onConfirm, onBack, vatRate, categories, upsellingEnabled = true,
+}: ReviewStepProps) {
+  const items     = useCartStore((s) => s.items)
+  const total     = useCartStore((s) => s.total())
+  const tableId   = useCartStore((s) => s.tableId)
+  const round     = useCartStore((s) => s.round)
+  const addItem   = useCartStore((s) => s.addItem)
+
+  const upsellPrompt = upsellingEnabled && categories !== undefined
+    ? getCheckoutUpsellPrompt(categories, items, total)
+    : null
 
   return (
     <div className="flex flex-col h-full min-h-0">
@@ -63,6 +75,29 @@ export function ReviewStep({ guestCount, generalNotes, onConfirm, onBack, vatRat
         <div className="px-5 mt-4 pb-4">
           <PriceSummary subtotal={total} vatRate={vatRate} />
         </div>
+
+        {/* Upselling en el checkout: postre / bebida / ticket bajo */}
+        {upsellPrompt !== null && (
+          <div className="mx-5 mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+            <p className="text-sm font-semibold text-amber-900 mb-2">{upsellPrompt.headline}</p>
+            <div className="flex flex-col gap-2">
+              {upsellPrompt.products.map((product) => (
+                <button
+                  key={product.id}
+                  type="button"
+                  onClick={() => addItem({ productId: product.id, name: product.name, price: product.price, quantity: 1 })}
+                  className="flex items-center justify-between rounded-lg bg-white px-3 py-2 text-left hover:bg-amber-100/50 transition-colors"
+                >
+                  <span className="text-sm text-rush-dark truncate">{product.name}</span>
+                  <span className="flex items-center gap-2 flex-shrink-0">
+                    <span className="text-xs font-semibold text-gray-500">{formatCurrency(product.price)}</span>
+                    <span className="h-6 w-6 rounded-full bg-rush-red text-white flex items-center justify-center text-sm leading-none">+</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="flex-shrink-0 border-t bg-white px-5 py-4">

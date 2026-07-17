@@ -1,8 +1,12 @@
+import { useEffect, useRef } from 'react'
 import { useCartStore } from '@shared/store/cartStore'
 import { CartItemRow } from '../components/CartItemRow'
 import { PriceSummary } from '../components/PriceSummary'
 import { PointsRedemption } from '../components/PointsRedemption'
 import { formatCurrency } from '@shared/utils/format'
+import { useRecommendations } from '@features/recommendations/hooks/useRecommendations'
+import { useExperiment, CART_RECOMMENDATIONS_EXPERIMENT_KEY } from '@features/recommendations/hooks/useExperiment'
+import { RecommendationsRail } from '@features/recommendations/components/RecommendationsRail'
 
 interface CartStepProps {
   generalNotes:          string
@@ -23,11 +27,33 @@ export function CartStep({
   const total = useCartStore((s) => s.total())
   const clear = useCartStore((s) => s.clear)
   const round = useCartStore((s) => s.round)
+  const restaurantId = useCartStore((s) => s.restaurantId)
   const discountEuros = redeemedPoints / 100
 
   const unavailable = availableProductIds !== undefined
     ? items.filter((i) => !availableProductIds.has(i.productId))
     : []
+
+  // A/B test "Recomendaciones en el carrito" — variant B sees the rail,
+  // variant A doesn't (see docs on ExperimentBucketing / cd-staging load test
+  // for how buckets/variants work).
+  const { variant, track } = useExperiment(restaurantId ?? undefined, CART_RECOMMENDATIONS_EXPERIMENT_KEY)
+  const cartProductIds = items.map((i) => i.productId)
+  const { data: allRecommendations = [] } = useRecommendations(
+    variant === 'B' ? (restaurantId ?? undefined) : undefined,
+    cartProductIds,
+  )
+  const suggestions = allRecommendations.slice(0, 3)
+
+  const exposureTracked = useRef(false)
+  useEffect(() => {
+    if (variant === 'B' && suggestions.length > 0 && !exposureTracked.current) {
+      exposureTracked.current = true
+      track('Exposure')
+    }
+  }, [variant, suggestions.length, track])
+
+  const handleSuggestionAdded = () => track('SuggestionAdded')
 
   return (
     <div className="flex flex-col h-full min-h-0">
@@ -108,6 +134,17 @@ export function CartStep({
             discount={discountEuros > 0 ? discountEuros : undefined}
           />
         </div>
+
+        {/* ¿Añadirías algo más? — top 3, sólo variante B del experimento */}
+        {variant === 'B' && suggestions.length > 0 && (
+          <div className="pb-4">
+            <RecommendationsRail
+              title="¿Añadirías algo más?"
+              recommendations={suggestions}
+              onAdd={handleSuggestionAdded}
+            />
+          </div>
+        )}
       </div>
 
       {/* Footer */}

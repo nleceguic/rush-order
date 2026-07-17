@@ -5,6 +5,7 @@ import { GuestCountStep } from './steps/GuestCountStep'
 import { ReviewStep } from './steps/ReviewStep'
 import { PaymentStep } from './steps/PaymentStep'
 import { ConfirmationStep } from './steps/ConfirmationStep'
+import type { MenuCategory } from '@features/menu/types'
 
 interface CartFlowProps {
   open:                 boolean
@@ -13,10 +14,13 @@ interface CartFlowProps {
   vatRate?:             number
   onlinePayEnabled?:    boolean
   availableProductIds?: Set<string>
+  categories?:          MenuCategory[]
+  upsellingEnabled?:    boolean
 }
 
 export function CartFlow({
-  open, onClose, onNewRound, vatRate, onlinePayEnabled = false, availableProductIds,
+  open, onClose, onNewRound, vatRate, onlinePayEnabled = false, availableProductIds, categories,
+  upsellingEnabled = true,
 }: CartFlowProps) {
   const {
     step, guestCount, generalNotes, redeemedPoints, isLoading, error, confirmedOrder,
@@ -101,6 +105,8 @@ export function CartFlow({
               onConfirm={() => goTo('payment')}
               onBack={() => goTo('guestCount')}
               vatRate={vatRate}
+              categories={categories}
+              upsellingEnabled={upsellingEnabled}
             />
           )}
 

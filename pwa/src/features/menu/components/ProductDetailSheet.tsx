@@ -6,6 +6,8 @@ import { BlurImage } from './BlurImage'
 import { useCartStore } from '@shared/store/cartStore'
 import { useFocusTrap } from '@shared/hooks/useFocusTrap'
 import { formatCurrency } from '@shared/utils/format'
+import { useRecommendations } from '@features/recommendations/hooks/useRecommendations'
+import { RecommendationsRail } from '@features/recommendations/components/RecommendationsRail'
 
 interface ProductDetailSheetProps {
   product: MenuProduct | null
@@ -54,8 +56,21 @@ function buildModifiers(product: MenuProduct, opts: SelectedOptions): CartModifi
 const INITIAL_OPTS: SelectedOptions = { variants: {}, extras: {}, quantity: 1 }
 
 export function ProductDetailSheet({ product, onClose }: ProductDetailSheetProps) {
-  const addItem     = useCartStore((s) => s.addItem)
+  const addItem      = useCartStore((s) => s.addItem)
+  const cartItems     = useCartStore((s) => s.items)
+  const restaurantId  = useCartStore((s) => s.restaurantId)
   const [opts, setOpts] = useState<SelectedOptions>(INITIAL_OPTS)
+
+  // The product being viewed counts as part of "tu selección" for the
+  // recommendation signal (manual pairing rules / co-occurrence), even
+  // before it's actually added to the cart.
+  const cartProductIds = product !== null
+    ? Array.from(new Set([...cartItems.map((i) => i.productId), product.id]))
+    : []
+  const { data: recommendations = [] } = useRecommendations(
+    product !== null ? (restaurantId ?? undefined) : undefined,
+    cartProductIds,
+  )
   const [dragY, setDragY] = useState(0)
   const startY  = useRef(0)
   const sheetRef = useRef<HTMLDivElement>(null)
@@ -265,8 +280,16 @@ export function ProductDetailSheet({ product, onClose }: ProductDetailSheetProps
               </div>
             </div>
 
-            <div className="h-2" aria-hidden />
           </div>
+
+          {/* También te puede gustar */}
+          {recommendations.length > 0 && (
+            <div className="mt-2 mb-2">
+              <RecommendationsRail title="También te puede gustar" recommendations={recommendations} />
+            </div>
+          )}
+
+          <div className="h-2 px-5" aria-hidden />
         </div>
 
         {/* Sticky add button */}
