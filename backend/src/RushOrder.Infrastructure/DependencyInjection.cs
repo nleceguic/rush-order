@@ -1,5 +1,6 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using Azure.Messaging.ServiceBus.Administration;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -13,6 +14,7 @@ using RushOrder.Infrastructure.Persistence;
 using RushOrder.Infrastructure.Persistence.Repositories;
 using RushOrder.Infrastructure.Services;
 using RushOrder.Infrastructure.Settings;
+using StackExchange.Redis;
 using Stripe;
 
 namespace RushOrder.Infrastructure;
@@ -70,8 +72,16 @@ public static class DependencyInjection
 
         var redisConnectionString = configuration["Redis:ConnectionString"] ?? "localhost:6379";
         services.AddStackExchangeRedisCache(options => options.Configuration = redisConnectionString);
+        // Register IConnectionMultiplexer so health checks and OTel Redis instrumentation can use it
+        services.AddSingleton<IConnectionMultiplexer>(
+            _ => ConnectionMultiplexer.Connect(redisConnectionString));
         services.AddScoped<IMenuCacheService, RedisMenuCacheService>();
         services.AddSingleton<IQrCodeImageService, QrCodeImageService>();
+
+        // ── Service Bus admin client (for health checks + pending-messages count) ──
+        var sbConnStr = configuration["ServiceBus:ConnectionString"];
+        if (!string.IsNullOrWhiteSpace(sbConnStr))
+            services.AddSingleton(new ServiceBusAdministrationClient(sbConnStr));
 
         // ── Analytics ─────────────────────────────────────────────────────────
         services.AddSingleton<IExcelExportService, ExcelExportService>();

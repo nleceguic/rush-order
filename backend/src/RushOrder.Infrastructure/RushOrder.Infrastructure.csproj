@@ -5,6 +5,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Azure.Messaging.ServiceBus" Version="7.*" />
     <PackageReference Include="ClosedXML" Version="0.104.*" />
     <PackageReference Include="Dapper" Version="2.*" />
     <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />

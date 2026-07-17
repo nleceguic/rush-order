@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using RushOrder.API;                           // ObservabilityExtensions
 using RushOrder.API.Filters;
 using RushOrder.API.Middleware;
 using RushOrder.API.Options;
@@ -32,9 +33,12 @@ try
         cfg.ReadFrom.Configuration(ctx.Configuration)
            .ReadFrom.Services(services)
            .Enrich.FromLogContext()
-           .Enrich.WithProperty("Application", "RushOrder.API")
+           .Enrich.WithProperty("Application",   "RushOrder.API")
+           .Enrich.WithProperty("Environment",   ctx.HostingEnvironment.EnvironmentName)
+           .Enrich.WithProperty("Version",
+               System.Reflection.Assembly.GetEntryAssembly()?.GetName().Version?.ToString() ?? "0.0.0")
            .WriteTo.Console(
-               outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {SourceContext} {Message:lj}{NewLine}{Exception}");
+               outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {SourceContext} {CorrelationId} {Message:lj}{NewLine}{Exception}");
 
         if (!ctx.HostingEnvironment.IsDevelopment())
         {
@@ -42,8 +46,13 @@ try
                 path: "logs/rushorder-.log",
                 rollingInterval: Serilog.RollingInterval.Day,
                 retainedFileCountLimit: 30,
-                outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {SourceContext} {Message:lj}{NewLine}{Exception}");
+                outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {SourceContext} CorrelationId={CorrelationId} TenantId={tenant_id} {Message:lj}{NewLine}{Exception}");
         }
+
+        // Serilog → Application Insights sink (Warning+ in prod, Info+ in staging)
+        var aiConnStr = ctx.Configuration["ApplicationInsights:ConnectionString"];
+        if (!string.IsNullOrWhiteSpace(aiConnStr))
+            cfg.AddApplicationInsightsSink(aiConnStr, ctx.HostingEnvironment);
     });
 
     // ── 2. OPCIONES FUERTEMENTE TIPADAS (validadas al arranque) ───────────────
@@ -143,6 +152,9 @@ try
     // ── 7. INFRASTRUCTURE (EF Core, repositories, tenant service) ───────────
     builder.Services.AddInfrastructure(builder.Configuration);
 
+    // ── 7b. OBSERVABILITY (OTel + Azure Monitor + Business Metrics) ──────────
+    builder.Services.AddObservability(builder.Configuration, builder.Environment);
+
     // ── 8. MEDIATR ────────────────────────────────────────────────────────────
     builder.Services.AddMediatR(cfg =>
         cfg.RegisterServicesFromAssemblies(
@@ -239,23 +251,28 @@ try
 
     app.UseExceptionHandler();           // 1. Captura excepciones no controladas
     app.UseHttpsRedirection();           // 2. Redirige HTTP → HTTPS
-    app.UseResponseCompression();        // 3. Comprime respuestas (Brotli/Gzip)
-    app.UseRateLimiter();                // 4. Rate limiting global
-    app.UseCors();                       // 5. CORS
+    app.UseMiddleware<RushOrder.API.Middleware.SecurityHeadersMiddleware>(); // 3. Security headers (OWASP)
+    app.UseResponseCompression();        // 4. Comprime respuestas (Brotli/Gzip)
+    app.UseRateLimiter();                // 5. Rate limiting global
+    app.UseCors();                       // 6. CORS
 
-    app.UseSerilogRequestLogging(opts => // 6. Log estructurado de requests
+    app.UseMiddleware<RushOrder.API.Middleware.CorrelationIdMiddleware>(); // 7. X-Correlation-ID
+
+    app.UseSerilogRequestLogging(opts => // 8. Log estructurado de requests
     {
         opts.EnrichDiagnosticContext = (diag, http) =>
         {
-            diag.Set("UserId", http.User.FindFirst("sub")?.Value ?? "anonymous");
-            diag.Set("RequestHost", http.Request.Host.Value);
-            diag.Set("UserAgent", http.Request.Headers.UserAgent.ToString());
+            diag.Set("UserId",        http.User.FindFirst("sub")?.Value ?? "anonymous");
+            diag.Set("RequestHost",   http.Request.Host.Value);
+            diag.Set("UserAgent",     http.Request.Headers.UserAgent.ToString());
+            diag.Set("CorrelationId", http.Items["CorrelationId"]?.ToString() ?? "-");
+            diag.Set("TenantId",      http.User.FindFirst("tenant_id")?.Value ?? "-");
         };
     });
 
-    app.UseAuthentication();             // 7. Autenticación
-    app.UseAuthorization();              // 8. Autorización
-    app.UseMiddleware<RushOrder.API.Middleware.PlanLimitsMiddleware>(); // 9. Plan limits
+    app.UseAuthentication();             // 9. Autenticación
+    app.UseAuthorization();              // 10. Autorización
+    app.UseMiddleware<RushOrder.API.Middleware.PlanLimitsMiddleware>(); // 11. Plan limits
 
     if (app.Environment.IsDevelopment() || app.Environment.EnvironmentName == "Staging")
     {

@@ -9,6 +9,11 @@
   <ItemGroup>
     <PackageReference Include="AspNetCore.HealthChecks.NpgSql" Version="9.0.0" />
     <PackageReference Include="AspNetCore.HealthChecks.Redis" Version="9.0.0" />
+    <PackageReference Include="AspNetCore.HealthChecks.Uris" Version="8.*" />
+    <!-- OpenTelemetry + Azure Monitor (includes AspNetCore, HttpClient, SqlClient instrumentation) -->
+    <PackageReference Include="Azure.Monitor.OpenTelemetry.AspNetCore" Version="1.*" />
+    <!-- Serilog → Application Insights sink (uses classic AI SDK under the hood) -->
+    <PackageReference Include="Serilog.Sinks.ApplicationInsights" Version="4.*" />
     <PackageReference Include="FluentValidation.AspNetCore" Version="11.3.1" />
     <PackageReference Include="MediatR" Version="14.1.0" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.*" />
