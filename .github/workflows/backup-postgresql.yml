@@ -1,0 +1,61 @@
+name: PostgreSQL Backup
+
+on:
+  # Nightly at 02:00 UTC
+  schedule:
+    - cron: '0 2 * * *'
+  # Manual trigger — select environment
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        type: choice
+        options: [production, staging]
+        default: production
+
+permissions:
+  id-token: write   # OIDC for Azure login
+  contents: read
+
+jobs:
+  backup:
+    name: pg_dump → Blob Storage
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'production' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id:       ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id:       ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y postgresql-client
+
+      - name: Run backup script
+        env:
+          ENVIRONMENT:            ${{ github.event.inputs.environment || 'production' }}
+          PGHOST:                 ${{ secrets.PGHOST }}
+          PGPORT:                 ${{ secrets.PGPORT || '5432' }}
+          PGUSER:                 ${{ secrets.PGUSER }}
+          PGPASSWORD:             ${{ secrets.PGPASSWORD }}
+          PGDATABASE:             ${{ secrets.PGDATABASE }}
+          AZURE_STORAGE_ACCOUNT:  ${{ secrets.BACKUP_STORAGE_ACCOUNT }}
+          AZURE_STORAGE_CONTAINER: backups
+        run: |
+          chmod +x scripts/backup-postgresql.sh
+          ./scripts/backup-postgresql.sh
+
+      - name: Notify on failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            core.setFailed(`PostgreSQL backup FAILED for environment: ${process.env.ENVIRONMENT}`);

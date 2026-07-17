@@ -1,0 +1,45 @@
+# OWASP ZAP baseline rules configuration
+# Format: <alertId>\t<action>
+# Actions: IGNORE, WARN, FAIL
+#
+# Reference: https://www.zaproxy.org/docs/alerts/
+
+# ── False positives / acceptable for SaaS API ───────────────────────────────
+# Absence of Anti-CSRF tokens — API uses JWT Bearer, no forms
+10202	IGNORE
+# X-Content-Type-Options not set — set by Azure CDN/Front Door at the edge
+10021	IGNORE
+# Cookie without SameSite — handled by Azure App Service auth cookies
+10054	IGNORE
+# Cache-Control for HTTPS — static assets are intentionally cached
+10015	IGNORE
+# User Controllable HTML element attribute — false positive in React SPA
+10029	IGNORE
+
+# ── Warnings (investigate but don't block) ──────────────────────────────────
+# Content Security Policy header not set — in progress
+10038	WARN
+# Strict-Transport-Security header not set — set at Front Door level
+10035	WARN
+# X-Frame-Options not set — mitigated by CSP frame-ancestors
+10020	WARN
+# Information disclosure via HTTP headers
+10036	WARN
+
+# ── Must fail (block CI) ────────────────────────────────────────────────────
+# SQL Injection
+40018	FAIL
+# Remote OS Command Injection
+90020	FAIL
+# Path Traversal
+6	FAIL
+# Server-side code injection
+90019	FAIL
+# Cross-site scripting (reflected)
+40012	FAIL
+# Cross-site scripting (persistent)
+40014	FAIL
+# External redirect
+20019	FAIL
+# HTTPS content available via HTTP
+10032	FAIL
