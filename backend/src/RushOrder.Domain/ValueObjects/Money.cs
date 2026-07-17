@@ -4,6 +4,7 @@ public sealed record Money
 {
     public decimal Amount { get; }
     public string Currency { get; }
+    public bool IsZero => Amount == 0m;
 
     private Money() => (Amount, Currency) = (0, "EUR"); // EF Core
 

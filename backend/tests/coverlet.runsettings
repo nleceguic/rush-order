@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat Code Coverage">
+        <Configuration>
+          <Format>cobertura</Format>
+          <Include>[RushOrder.Domain]*,[RushOrder.Application]*</Include>
+          <Exclude>
+            [RushOrder.Infrastructure]*Migrations*,
+            [RushOrder.API]*Program*,
+            [RushOrder.API]*DependencyInjection*,
+            [*.Tests]*
+          </Exclude>
+          <ExcludeByAttribute>ExcludeFromCodeCoverage,GeneratedCodeAttribute</ExcludeByAttribute>
+          <ExcludeByFile>**/*.Designer.cs</ExcludeByFile>
+          <SingleHit>false</SingleHit>
+          <IncludeTestAssembly>false</IncludeTestAssembly>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>

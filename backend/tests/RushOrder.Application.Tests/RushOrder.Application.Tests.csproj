@@ -24,6 +24,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\RushOrder.Application\RushOrder.Application.csproj" />
     <ProjectReference Include="..\..\src\RushOrder.Domain\RushOrder.Domain.csproj" />
+    <ProjectReference Include="..\RushOrder.Tests.Common\RushOrder.Tests.Common.csproj" />
   </ItemGroup>
 
 </Project>
