@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using QuestPDF.Infrastructure;
 using RushOrder.Application.Common.Interfaces;
+using RushOrder.Application.Forecasting;
 using RushOrder.Infrastructure.Identity;
 using RushOrder.Infrastructure.Interceptors;
 using RushOrder.Infrastructure.Persistence;
@@ -61,6 +62,29 @@ public static class DependencyInjection
         services.AddScoped<IRecommendationService, RushOrder.Infrastructure.Services.RecommendationService>();
         services.AddScoped<IPairingRuleRepository, PairingRuleRepository>();
         services.AddScoped<IExperimentRepository, ExperimentRepository>();
+        services.AddScoped<IOrderRatingRepository, OrderRatingRepository>();
+
+        // ── Demand forecasting ────────────────────────────────────────────────
+        services.AddScoped<IDemandForecastRepository, DemandForecastRepository>();
+        services.AddScoped<DemandForecastEngine>();
+        services.AddHttpClient<IHolidayProvider, NagerDateHolidayProvider>(client =>
+        {
+            client.BaseAddress = new Uri("https://date.nager.at/");
+            client.Timeout = TimeSpan.FromSeconds(10);
+        });
+        services.AddHostedService<DemandForecastJob>();
+
+        // ── Kitchen ETA prediction ───────────────────────────────────────────
+        services.AddScoped<IPrepTimeRepository, PrepTimeRepository>();
+        services.AddScoped<IPrepTimeService, PrepTimeService>();
+        services.AddHostedService<KitchenLoadMonitorService>();
+
+        // ── Weekly insights email (SendGrid) ─────────────────────────────────
+        services.Configure<SendGridSettings>(configuration.GetSection("SendGrid"));
+        services.AddScoped<IEmailSender, SendGridEmailService>();
+        services.AddScoped<IWeeklyInsightsRepository, WeeklyInsightsRepository>();
+        services.AddHostedService<WeeklyInsightsJob>();
+        services.AddHostedService<MiseEnPlaceJob>();
 
         services.AddScoped<IPlanRepository, PlanRepository>();
         services.AddScoped<ISubscriptionRepository, SubscriptionRepository>();

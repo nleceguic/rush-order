@@ -18,6 +18,7 @@ public sealed class CreateOrderCommandHandlerTests
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly Mock<ICurrentTenantService> _tenantService = new();
     private readonly Mock<IOrderVerificationService> _verificationService = new();
+    private readonly Mock<IPrepTimeService> _prepTimeService = new();
 
     private readonly CreateOrderCommandHandler _handler;
 
@@ -33,6 +34,10 @@ public sealed class CreateOrderCommandHandlerTests
             .Setup(s => s.GenerateToken(It.IsAny<Guid>()))
             .Returns("test-tracking-token");
 
+        _prepTimeService
+            .Setup(s => s.GetEtaMinutesAsync(It.IsAny<Guid>(), It.IsAny<IReadOnlyList<PrepTimeItem>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(15);
+
         _handler = new CreateOrderCommandHandler(
             _orderRepo.Object,
             _productRepo.Object,
@@ -40,7 +45,8 @@ public sealed class CreateOrderCommandHandlerTests
             _restaurantRepo.Object,
             _unitOfWork.Object,
             _tenantService.Object,
-            _verificationService.Object);
+            _verificationService.Object,
+            _prepTimeService.Object);
     }
 
     // --- helpers ---

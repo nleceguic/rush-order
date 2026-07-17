@@ -123,6 +123,19 @@ public sealed class OrdersController : ApiController
             return NoContent();
         });
 
+    // POST /api/v1/orders/{id}/rating
+    [HttpPost("{id:guid}/rating")]
+    [AllowAnonymous]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status422UnprocessableEntity)]
+    public Task<IActionResult> RateOrder(Guid id, [FromBody] RateOrderRequest req, CancellationToken ct) =>
+        ExecuteAsync(async () =>
+        {
+            await Mediator.Send(new RateOrderCommand(id, req.Food, req.Speed, req.Service, req.Comment), ct);
+            return NoContent();
+        });
+
     // ── Request DTOs ─────────────────────────────────────────────────────────
 
     public sealed record OrderItemRequest(
@@ -141,4 +154,5 @@ public sealed class OrdersController : ApiController
     public sealed record UpdateStatusRequest(OrderStatus Status, string? Note);
     public sealed record AddItemRequest(Guid ProductId, int Quantity, string? Notes);
     public sealed record CancelOrderRequest(string Reason);
+    public sealed record RateOrderRequest(int Food, int Speed, int Service, string? Comment);
 }

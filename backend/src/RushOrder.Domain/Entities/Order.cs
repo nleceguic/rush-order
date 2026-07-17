@@ -77,7 +77,7 @@ public sealed class Order : TenantEntity
         {
             Notes = notes?.Trim()
         };
-        order.RaiseDomainEvent(new OrderPlacedEvent(order.Id, tableId, restaurantId, orderNumber));
+        order.RaiseDomainEvent(new OrderPlacedEvent(order.Id, tenantId, tableId, restaurantId, orderNumber));
         return order;
     }
 
@@ -165,6 +165,14 @@ public sealed class Order : TenantEntity
         UpdatedAt = DateTimeOffset.UtcNow;
     }
 
+    // Initial kitchen ETA prediction, set right after the order is created —
+    // distinct from MarkReady's estimatedAt, which is a status transition.
+    public void SetEstimatedReadyAt(DateTimeOffset estimatedAt)
+    {
+        EstimatedReadyAt = estimatedAt;
+        UpdatedAt = DateTimeOffset.UtcNow;
+    }
+
     public void SetTip(Money tip)
     {
         ArgumentNullException.ThrowIfNull(tip);
@@ -198,7 +206,7 @@ public sealed class Order : TenantEntity
         var previous = Status;
         Status = newStatus;
         UpdatedAt = DateTimeOffset.UtcNow;
-        RaiseDomainEvent(new OrderStatusChangedEvent(Id, RestaurantId, previous, newStatus));
+        RaiseDomainEvent(new OrderStatusChangedEvent(Id, TenantId, RestaurantId, previous, newStatus));
     }
 
     private void EnsureStatus(OrderStatus expected)

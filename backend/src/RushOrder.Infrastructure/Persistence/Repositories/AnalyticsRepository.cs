@@ -459,6 +459,85 @@ public sealed class AnalyticsRepository : IAnalyticsRepository
             $"Mesa {l.TableName} ocupada hace {(int)l.Minutes} min",
             "info")));
 
+        // ── Anomaly detection (IA) ──────────────────────────────────────────
+
+        const string negativeRatingsBurstQuery = """
+            WITH low_rated_orders AS (
+                SELECT o."Id"
+                FROM order_ratings r
+                JOIN orders o ON o."Id" = r."OrderId"
+                WHERE r."TenantId" = @tenantId AND r."RestaurantId" = @restaurantId
+                  AND r."FoodRating" < 2
+                  AND r."CreatedAt" >= NOW() - INTERVAL '1 hour'
+            )
+            SELECT item->>'Name' AS ProductName, COUNT(*) AS Occurrences
+            FROM orders o, jsonb_array_elements(o.items) AS item
+            WHERE o."Id" IN (SELECT "Id" FROM low_rated_orders)
+            GROUP BY item->>'Name'
+            HAVING COUNT(*) >= 3
+            """;
+        var negativeBursts = await conn.QueryAsync<(string ProductName, int Occurrences)>(
+            new CommandDefinition(negativeRatingsBurstQuery, new { tenantId, restaurantId }, cancellationToken: ct));
+
+        alerts.AddRange(negativeBursts.Select(b => new ActiveAlertDto(
+            "negative_ratings_burst",
+            $"{b.ProductName}: {b.Occurrences} valoraciones de comida < 2★ en la última hora",
+            "critical")));
+
+        const string salesDropQuery = """
+            WITH this_week AS (
+                SELECT item->>'Name' AS name, SUM((item->>'Quantity')::int) AS qty
+                FROM orders o, jsonb_array_elements(o.items) AS item
+                WHERE o."TenantId" = @tenantId AND o."RestaurantId" = @restaurantId AND o."Status" <> 'Cancelled'
+                  AND o."CreatedAt" >= NOW() - INTERVAL '7 days' AND o.items IS NOT NULL
+                GROUP BY item->>'Name'
+            ),
+            last_week AS (
+                SELECT item->>'Name' AS name, SUM((item->>'Quantity')::int) AS qty
+                FROM orders o, jsonb_array_elements(o.items) AS item
+                WHERE o."TenantId" = @tenantId AND o."RestaurantId" = @restaurantId AND o."Status" <> 'Cancelled'
+                  AND o."CreatedAt" >= NOW() - INTERVAL '14 days' AND o."CreatedAt" < NOW() - INTERVAL '7 days'
+                  AND o.items IS NOT NULL
+                GROUP BY item->>'Name'
+            )
+            SELECT tw.name AS ProductName,
+                   ROUND((lw.qty - tw.qty)::numeric / lw.qty * 100, 1) AS DropPercent
+            FROM this_week tw
+            JOIN last_week lw ON lw.name = tw.name
+            WHERE lw.qty >= 5 -- ignore near-zero baselines, too noisy to be meaningful
+              AND (lw.qty - tw.qty)::numeric / lw.qty > 0.40
+            """;
+        var salesDrops = await conn.QueryAsync<(string ProductName, decimal DropPercent)>(
+            new CommandDefinition(salesDropQuery, new { tenantId, restaurantId }, cancellationToken: ct));
+
+        alerts.AddRange(salesDrops.Select(s => new ActiveAlertDto(
+            "sales_drop",
+            $"¿Problema con este plato? {s.ProductName} cayó {s.DropPercent}% frente a la semana pasada",
+            "warning")));
+
+        const string avgTicketDropQuery = """
+            SELECT
+                COALESCE(AVG(total_amount) FILTER (WHERE "CreatedAt"::date = CURRENT_DATE), 0)                  AS Today,
+                COALESCE(AVG(total_amount) FILTER (WHERE "CreatedAt"::date = CURRENT_DATE - INTERVAL '7 days'), 0) AS SameDayLastWeek
+            FROM orders
+            WHERE "TenantId" = @tenantId AND "RestaurantId" = @restaurantId AND "Status" <> 'Cancelled'
+              AND "CreatedAt"::date IN (CURRENT_DATE, CURRENT_DATE - INTERVAL '7 days')
+            """;
+        var ticket = await conn.QuerySingleAsync<(decimal Today, decimal SameDayLastWeek)>(
+            new CommandDefinition(avgTicketDropQuery, new { tenantId, restaurantId }, cancellationToken: ct));
+
+        if (ticket.SameDayLastWeek > 0)
+        {
+            var ticketDropPercent = Math.Round((ticket.SameDayLastWeek - ticket.Today) / ticket.SameDayLastWeek * 100, 1);
+            if (ticketDropPercent > 20)
+            {
+                alerts.Add(new ActiveAlertDto(
+                    "avg_ticket_drop",
+                    $"El ticket medio de hoy cayó {ticketDropPercent}% frente al mismo día de la semana pasada",
+                    "warning"));
+            }
+        }
+
         return alerts.AsReadOnly();
     }
 

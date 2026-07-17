@@ -38,6 +38,9 @@ public sealed class AppDbContext : DbContext, IUnitOfWork
     public DbSet<ProductPairingRule> ProductPairingRules => Set<ProductPairingRule>();
     public DbSet<Experiment> Experiments => Set<Experiment>();
     public DbSet<ExperimentResult> ExperimentResults => Set<ExperimentResult>();
+    public DbSet<OrderStatusHistory> OrderStatusHistories => Set<OrderStatusHistory>();
+    public DbSet<OrderRating> OrderRatings => Set<OrderRating>();
+    public DbSet<DemandForecast> DemandForecasts => Set<DemandForecast>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -56,6 +59,9 @@ public sealed class AppDbContext : DbContext, IUnitOfWork
         modelBuilder.Entity<ProductPairingRule>().HasQueryFilter(e => e.TenantId == _currentTenant.TenantId);
         modelBuilder.Entity<Experiment>().HasQueryFilter(e => e.TenantId == _currentTenant.TenantId);
         modelBuilder.Entity<ExperimentResult>().HasQueryFilter(e => e.TenantId == _currentTenant.TenantId);
+        modelBuilder.Entity<OrderStatusHistory>().HasQueryFilter(e => e.TenantId == _currentTenant.TenantId);
+        modelBuilder.Entity<OrderRating>().HasQueryFilter(e => e.TenantId == _currentTenant.TenantId);
+        modelBuilder.Entity<DemandForecast>().HasQueryFilter(e => e.TenantId == _currentTenant.TenantId);
     }
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

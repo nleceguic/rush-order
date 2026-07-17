@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Mvc;
 using RushOrder.API.Common;
 using RushOrder.Application.Analytics.DTOs;
 using RushOrder.Application.Analytics.Queries;
+using RushOrder.Application.Forecasting.DTOs;
+using RushOrder.Application.Forecasting.Queries;
 
 namespace RushOrder.API.Controllers;
 
@@ -82,6 +84,30 @@ public sealed class AnalyticsController : ApiController
         ExecuteAsync(async () =>
         {
             var result = await Mediator.Send(new GetWaiterPerformanceQuery(restaurantId, from, to), ct);
+            return OkData(result);
+        });
+
+    // GET /api/v1/analytics/demand-forecast?restaurantId=...&date=2026-07-24&productId=...
+    [HttpGet("demand-forecast")]
+    [ProducesResponseType(typeof(ApiResponse<DemandForecastResultDto>), StatusCodes.Status200OK)]
+    public Task<IActionResult> GetDemandForecast(
+        [FromQuery] Guid restaurantId,
+        [FromQuery] DateOnly date,
+        [FromQuery] Guid? productId,
+        CancellationToken ct = default) =>
+        ExecuteAsync(async () =>
+        {
+            var result = await Mediator.Send(new GetDemandForecastQuery(restaurantId, date, productId), ct);
+            return OkData(result);
+        });
+
+    // GET /api/v1/analytics/kitchen-eta?restaurantId=...
+    [HttpGet("kitchen-eta")]
+    [ProducesResponseType(typeof(ApiResponse<KitchenEtaDto>), StatusCodes.Status200OK)]
+    public Task<IActionResult> GetKitchenEta([FromQuery] Guid restaurantId, CancellationToken ct = default) =>
+        ExecuteAsync(async () =>
+        {
+            var result = await Mediator.Send(new GetKitchenEtaQuery(restaurantId), ct);
             return OkData(result);
         });
 

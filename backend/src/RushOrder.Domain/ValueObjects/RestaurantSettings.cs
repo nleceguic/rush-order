@@ -18,5 +18,9 @@ public sealed record RestaurantSettings
     // rails in the product sheet / cart drawer are considered core UX and always on.
     public bool UpsellingEnabled { get; init; } = true;
 
+    // How many orders the kitchen can realistically prepare in parallel —
+    // used as the denominator in the kitchen_load_factor for ETA prediction.
+    public int KitchenCapacity { get; init; } = 8;
+
     public static RestaurantSettings Default => new();
 }

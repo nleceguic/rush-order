@@ -58,6 +58,7 @@ public sealed class CreateOrderCommandHandler : IRequestHandler<CreateOrderComma
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentTenantService _tenantService;
     private readonly IOrderVerificationService _verificationService;
+    private readonly IPrepTimeService _prepTimeService;
 
     public CreateOrderCommandHandler(
         IOrderRepository orderRepository,
@@ -66,7 +67,8 @@ public sealed class CreateOrderCommandHandler : IRequestHandler<CreateOrderComma
         IRestaurantRepository restaurantRepository,
         IUnitOfWork unitOfWork,
         ICurrentTenantService tenantService,
-        IOrderVerificationService verificationService)
+        IOrderVerificationService verificationService,
+        IPrepTimeService prepTimeService)
     {
         _orderRepository = orderRepository;
         _productRepository = productRepository;
@@ -75,6 +77,7 @@ public sealed class CreateOrderCommandHandler : IRequestHandler<CreateOrderComma
         _unitOfWork = unitOfWork;
         _tenantService = tenantService;
         _verificationService = verificationService;
+        _prepTimeService = prepTimeService;
     }
 
     public async Task<CreateOrderResult> Handle(CreateOrderCommand request, CancellationToken cancellationToken)
@@ -104,6 +107,8 @@ public sealed class CreateOrderCommandHandler : IRequestHandler<CreateOrderComma
             request.CustomerId,
             notes: request.Notes);
 
+        var prepTimeItems = new List<PrepTimeItem>();
+
         foreach (var itemInput in request.Items)
         {
             var product = await _productRepository.GetByIdAsync(itemInput.ProductId, cancellationToken)
@@ -119,7 +124,12 @@ public sealed class CreateOrderCommandHandler : IRequestHandler<CreateOrderComma
                 itemInput.Quantity,
                 itemInput.Notes,
                 itemInput.Modifiers);
+
+            prepTimeItems.Add(new PrepTimeItem(product.Id, product.PreparationMinutes, itemInput.Quantity));
         }
+
+        var etaMinutes = await _prepTimeService.GetEtaMinutesAsync(restaurant.Id, prepTimeItems, cancellationToken);
+        order.SetEstimatedReadyAt(DateTimeOffset.UtcNow.AddMinutes(etaMinutes));
 
         await _orderRepository.AddAsync(order, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
