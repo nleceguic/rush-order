@@ -1,0 +1,328 @@
+name: CD — Production
+
+on:
+  release:
+    types: [published]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository_owner }}/rush-order-api
+  # prod App Service — staging slot used for blue/green swap
+  PROD_APP:  ${{ vars.PROD_WEBAPP_NAME }}
+  PROD_RG:   ${{ vars.PROD_RESOURCE_GROUP }}
+  PROD_SLOT: staging
+
+jobs:
+  # ─── JOB 1: Validate staging + manual approval ─────────────────────────────
+  validate-staging:
+    name: Validate Staging
+    runs-on: ubuntu-latest
+    # ⚠️  Configure 'production' environment in GitHub Settings:
+    #     - Required reviewers: 2
+    #     - Wait timer: 5 minutes
+    #     - Deployment branches: tag pattern vX.Y.Z
+    environment: production
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id:       ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id:       ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Health check on staging
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            "${{ vars.STAGING_API_URL }}/health" --max-time 10)
+          echo "Staging health: HTTP $STATUS"
+          if [ "$STATUS" != "200" ]; then
+            echo "::error::Staging is not healthy (HTTP $STATUS). Aborting production deploy."
+            exit 1
+          fi
+          echo "Staging is healthy — proceeding."
+
+      - name: Verify release image exists in GHCR
+        run: |
+          TAG="sha-$(git rev-parse --short HEAD)"
+          echo "Checking image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${TAG}"
+          docker manifest inspect "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${TAG}" || {
+            echo "::error::Release image not found in GHCR. Ensure CI ran for this commit."
+            exit 1
+          }
+
+  # ─── JOB 2: Deploy to production (blue/green slot swap) ────────────────────
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: validate-staging
+    permissions:
+      id-token: write
+      contents: read
+    outputs:
+      deploy-time: ${{ steps.stamp.outputs.time }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id:       ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id:       ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Resolve image tag for this release
+        id: tag
+        run: |
+          SHORT=$(git rev-parse --short HEAD)
+          echo "ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${SHORT}" >> "$GITHUB_OUTPUT"
+
+      # ── Push new image to the staging slot ───────────────────────────────
+      - name: Deploy image to staging slot
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name:  ${{ env.PROD_APP }}
+          slot-name: ${{ env.PROD_SLOT }}
+          images:    ${{ steps.tag.outputs.ref }}
+
+      # ── Run migrations before swap (no rebuild) ───────────────────────────
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Install EF Core tools
+        run: dotnet tool install -g dotnet-ef
+
+      - name: Run database migrations (idempotent)
+        run: |
+          dotnet ef database update \
+            --project backend/src/RushOrder.Infrastructure \
+            --startup-project backend/src/RushOrder.API \
+            --connection "${{ secrets.PROD_DB_CONNECTION_STRING }}" \
+            --no-build
+        env:
+          ASPNETCORE_ENVIRONMENT: Production
+
+      # ── Warmup: send requests to staging slot before swap ─────────────────
+      - name: Warmup slot
+        run: |
+          SLOT_URL="https://${{ env.PROD_APP }}-${{ env.PROD_SLOT }}.azurewebsites.net"
+          echo "Warming up ${SLOT_URL}…"
+          for i in {1..5}; do
+            curl -sf "${SLOT_URL}/health" -o /dev/null && echo "Warmup $i OK" || echo "Warmup $i pending"
+            sleep 5
+          done
+
+      # ── Blue/green swap ───────────────────────────────────────────────────
+      - name: Swap staging slot → production
+        run: |
+          az webapp deployment slot swap \
+            --name "${{ env.PROD_APP }}" \
+            --resource-group "${{ env.PROD_RG }}" \
+            --slot "${{ env.PROD_SLOT }}" \
+            --target-slot production
+
+      - name: Record deploy timestamp
+        id: stamp
+        run: echo "time=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+
+  # ─── JOB 3: Post-deploy verification + auto rollback ───────────────────────
+  post-deploy-verification:
+    name: Post-Deploy Verification
+    runs-on: ubuntu-latest
+    needs: [deploy-production]
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Wait for swap propagation
+        run: sleep 30
+
+      # ── Production health checks ──────────────────────────────────────────
+      - name: Health check — production
+        id: health
+        run: |
+          for i in {1..10}; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+              "${{ vars.PROD_API_URL }}/health" --max-time 10)
+            echo "Attempt $i: HTTP $STATUS"
+            if [ "$STATUS" = "200" ]; then
+              echo "result=pass" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "result=fail" >> "$GITHUB_OUTPUT"
+          exit 1
+        continue-on-error: true
+
+      # ── Critical smoke tests ──────────────────────────────────────────────
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: pwa/package-lock.json
+
+      - name: Install Playwright
+        working-directory: pwa
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Production smoke tests (critical path only)
+        id: playwright
+        working-directory: pwa
+        run: npx playwright test tests/e2e/smoke.spec.ts --grep @critical --reporter=html
+        env:
+          BASE_URL:            ${{ vars.PROD_APP_URL }}
+          E2E_TEST_EMAIL:      ${{ secrets.E2E_TEST_EMAIL }}
+          E2E_TEST_PASSWORD:   ${{ secrets.E2E_TEST_PASSWORD }}
+          E2E_RESTAURANT_ID:   ${{ vars.E2E_RESTAURANT_ID }}
+        continue-on-error: true
+        timeout-minutes: 5
+
+      - name: Upload Playwright report (prod)
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report-prod-${{ github.sha }}
+          path: pwa/playwright-report/
+          retention-days: 30
+
+      # ── PWA deployment verification ───────────────────────────────────────
+      - name: Verify PWA deployment (prod — cache, security headers, SPA routing)
+        id: pwa-verify
+        run: |
+          chmod +x scripts/verify-pwa-deploy.sh
+          ./scripts/verify-pwa-deploy.sh "${{ vars.PROD_APP_URL }}"
+        continue-on-error: true
+
+      - name: Lighthouse CI against production PWA (score > 90)
+        id: lighthouse-prod
+        working-directory: pwa
+        run: |
+          npm ci --prefer-offline
+          npx lhci autorun \
+            --collect.url="${{ vars.PROD_APP_URL }}/" \
+            --collect.numberOfRuns=1 \
+            --assert.preset=lighthouse:no-pwa \
+            --assert.assertions."categories:performance"='["error",{"minScore":0.9}]' \
+            --assert.assertions."categories:accessibility"='["error",{"minScore":0.9}]' \
+            --upload.target=temporary-public-storage
+        continue-on-error: true
+
+      # ── Auto rollback if verification fails within 5 min ──────────────────
+      - name: Azure Login (for rollback)
+        if: steps.health.outcome == 'failure' || steps.playwright.outcome == 'failure'
+        uses: azure/login@v2
+        with:
+          client-id:       ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id:       ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: AUTO ROLLBACK — swap back to previous version
+        if: steps.health.outcome == 'failure' || steps.playwright.outcome == 'failure'
+        run: |
+          echo "::error::Post-deploy checks failed — executing automatic rollback"
+          az webapp deployment slot swap \
+            --name "${{ env.PROD_APP }}" \
+            --resource-group "${{ env.PROD_RG }}" \
+            --slot "${{ env.PROD_SLOT }}" \
+            --target-slot production
+          echo "Rollback complete — previous version is live again"
+
+      - name: Fail job after rollback
+        if: steps.health.outcome == 'failure' || steps.playwright.outcome == 'failure'
+        run: exit 1
+
+  # ─── JOB 4: Release notes + Slack notification ─────────────────────────────
+  release-notification:
+    name: Release Notification
+    runs-on: ubuntu-latest
+    needs: [deploy-production, post-deploy-verification]
+    if: always()
+    permissions:
+      contents: write  # for release notes edit
+      pull-requests: read
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history for conventional commits
+
+      - name: Generate release notes from conventional commits
+        id: notes
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: release } = await github.rest.repos.getReleaseByTag({
+              owner: context.repo.owner,
+              repo:  context.repo.repo,
+              tag:   context.ref.replace('refs/tags/', ''),
+            });
+
+            // Generate changelog via GitHub's auto-generate API
+            const { data: generated } = await github.rest.repos.generateReleaseNotes({
+              owner:    context.repo.owner,
+              repo:     context.repo.repo,
+              tag_name: context.ref.replace('refs/tags/', ''),
+            });
+
+            // Append deploy info
+            const body = [
+              generated.body,
+              '',
+              '---',
+              `**Deployed:** ${new Date().toISOString()}`,
+              `**Status:** ${{ needs.post-deploy-verification.result == 'success' && '✅ Production live' || '❌ Rollback executed' }}`,
+            ].join('\n');
+
+            await github.rest.repos.updateRelease({
+              owner:      context.repo.owner,
+              repo:       context.repo.repo,
+              release_id: release.id,
+              body,
+            });
+
+            core.setOutput('tag', context.ref.replace('refs/tags/', ''));
+            core.setOutput('url', release.html_url);
+
+      - name: Slack — #deployments notification
+        uses: slackapi/slack-github-action@v1.27.0
+        with:
+          payload: |
+            {
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "${{ needs.post-deploy-verification.result == 'success' && '✅ Production deploy exitoso' || '❌ Production deploy con rollback' }}"
+                  }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    { "type": "mrkdwn", "text": "*Versión:*\n`${{ steps.notes.outputs.tag }}`" },
+                    { "type": "mrkdwn", "text": "*App:*\n${{ vars.PROD_APP_URL }}" },
+                    { "type": "mrkdwn", "text": "*Release notes:*\n${{ steps.notes.outputs.url }}" },
+                    { "type": "mrkdwn", "text": "*Por:*\n@${{ github.actor }}" }
+                  ]
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+        continue-on-error: true

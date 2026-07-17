@@ -196,8 +196,26 @@ resource "azurerm_monitor_metric_alert" "error_rate" {
   tags = local.tags
 }
 
-output "app_service_url" { value = module.app_service.app_service_url }
-output "postgresql_fqdn" { value = module.postgresql.server_fqdn }
-output "redis_hostname"  { value = module.redis.redis_hostname }
-output "cdn_url"         { value = module.storage.cdn_endpoint_url }
-output "key_vault_uri"   { value = module.key_vault.key_vault_uri }
+# ── Azure Static Web Apps — PWA (preview envs for each PR, auto SSL) ──────────
+module "static_web_app" {
+  source              = "../../modules/static-web-app"
+  environment         = local.env
+  resource_group_name = module.shared.resource_group_name
+  location            = "westeurope"   # SWA has limited region availability
+  sku_tier            = "Standard"     # Standard: preview environments per PR
+  custom_hostname     = ""             # staging uses the default azurestaticapps.net URL
+  tags                = local.tags
+}
+
+output "app_service_url"  { value = module.app_service.app_service_url }
+output "pwa_url"          { value = module.static_web_app.app_url }
+output "postgresql_fqdn"  { value = module.postgresql.server_fqdn }
+output "redis_hostname"   { value = module.redis.redis_hostname }
+output "cdn_url"          { value = module.storage.cdn_endpoint_url }
+output "key_vault_uri"    { value = module.key_vault.key_vault_uri }
+
+output "swa_api_key" {
+  sensitive   = true
+  description = "Store as GitHub secret AZURE_STATIC_WEB_APPS_API_TOKEN_STAGING"
+  value       = module.static_web_app.api_key
+}

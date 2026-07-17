@@ -10,5 +10,8 @@ output "instrumentation_key" {
   value     = azurerm_application_insights.this.instrumentation_key
 }
 
-output "log_analytics_workspace_id" { value = azurerm_log_analytics_workspace.this.id }
-output "action_group_id"            { value = azurerm_monitor_action_group.critical.id }
+output "log_analytics_workspace_id"  { value = azurerm_log_analytics_workspace.this.id }
+output "log_analytics_workspace_name" { value = azurerm_log_analytics_workspace.this.name }
+output "action_group_id"             { value = azurerm_monitor_action_group.critical.id }
+output "warning_action_group_id"     { value = azurerm_monitor_action_group.warning.id }
+output "workbook_id"                 { value = azurerm_application_insights_workbook.dashboard.id }

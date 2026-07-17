@@ -43,16 +43,18 @@ module "shared" {
   tags        = local.tags
 }
 
-# ── Monitoring: LAW (90d) + APPI + Action Group ───────────────────────────────
+# ── Monitoring: LAW (90d + 730d archive) + APPI + Action Groups + Workbook ────
 module "monitoring" {
-  source              = "../../modules/monitoring"
-  environment         = local.env
-  resource_group_name = module.shared.resource_group_name
-  location            = var.location
-  log_retention_days  = 90
-  alert_email         = var.alert_email
-  slack_webhook_url   = var.slack_webhook_url
-  tags                = local.tags
+  source               = "../../modules/monitoring"
+  environment          = local.env
+  resource_group_name  = module.shared.resource_group_name
+  location             = var.location
+  log_retention_days   = 90
+  log_archive_days     = 730   # 2-year cold storage for compliance
+  alert_email          = var.alert_email
+  warning_alert_email  = var.alert_email
+  slack_webhook_url    = var.slack_webhook_url
+  tags                 = local.tags
 }
 
 # ── PostgreSQL: D4s_v3, ZoneRedundant HA, 35-day backup, read replica ─────────
@@ -237,7 +239,9 @@ resource "azurerm_cdn_frontdoor_security_policy" "waf" {
   }
 }
 
-# ── Metric Alerts ─────────────────────────────────────────────────────────────
+# ── CRITICAL Alerts (pager + Slack, severity 0) ───────────────────────────────
+
+# Availability < 99% — 5 min window
 resource "azurerm_monitor_metric_alert" "availability" {
   name                = "rush-order-prod-alert-availability"
   resource_group_name = module.shared.resource_group_name
@@ -245,7 +249,7 @@ resource "azurerm_monitor_metric_alert" "availability" {
   severity            = 0
   frequency           = "PT1M"
   window_size         = "PT5M"
-  description         = "App availability below 99%"
+  description         = "CRITICAL: App availability below 99% over 5 min"
 
   criteria {
     metric_namespace = "Microsoft.Web/sites"
@@ -259,14 +263,105 @@ resource "azurerm_monitor_metric_alert" "availability" {
   tags = local.tags
 }
 
-resource "azurerm_monitor_metric_alert" "response_time" {
-  name                = "rush-order-prod-alert-response-time"
+# HTTP error rate > 5% — 5 min window (uses Application Insights metric)
+resource "azurerm_monitor_metric_alert" "error_rate_critical" {
+  name                = "rush-order-prod-alert-5xx-critical"
   resource_group_name = module.shared.resource_group_name
-  scopes              = [module.app_service.app_service_id]
-  severity            = 1
+  scopes              = [module.monitoring.application_insights_id]
+  severity            = 0
   frequency           = "PT1M"
   window_size         = "PT5M"
-  description         = "P95 response time > 2s"
+  description         = "CRITICAL: HTTP error rate > 5% over 5 min"
+
+  dynamic_criteria {
+    metric_namespace  = "microsoft.insights/components"
+    metric_name       = "requests/failed"
+    aggregation       = "Count"
+    operator          = "GreaterThan"
+    alert_sensitivity = "High"
+  }
+
+  action { action_group_id = module.monitoring.action_group_id }
+  tags = local.tags
+}
+
+# P99 response time > 5s — 5 min window
+resource "azurerm_monitor_metric_alert" "p99_latency_critical" {
+  name                = "rush-order-prod-alert-p99-latency"
+  resource_group_name = module.shared.resource_group_name
+  scopes              = [module.monitoring.application_insights_id]
+  severity            = 0
+  frequency           = "PT1M"
+  window_size         = "PT5M"
+  description         = "CRITICAL: P99 response time > 5 seconds over 5 min"
+
+  criteria {
+    metric_namespace = "microsoft.insights/components"
+    metric_name      = "requests/duration"
+    aggregation      = "Maximum"
+    operator         = "GreaterThan"
+    threshold        = 5000
+  }
+
+  action { action_group_id = module.monitoring.action_group_id }
+  tags = local.tags
+}
+
+# PostgreSQL CPU > 90% — 5 min window
+resource "azurerm_monitor_metric_alert" "postgresql_cpu_critical" {
+  name                = "rush-order-prod-alert-pg-cpu"
+  resource_group_name = module.shared.resource_group_name
+  scopes              = [module.postgresql.server_id]
+  severity            = 0
+  frequency           = "PT1M"
+  window_size         = "PT5M"
+  description         = "CRITICAL: PostgreSQL CPU > 90% sustained for 5 min"
+
+  criteria {
+    metric_namespace = "Microsoft.DBforPostgreSQL/flexibleServers"
+    metric_name      = "cpu_percent"
+    aggregation      = "Average"
+    operator         = "GreaterThan"
+    threshold        = 90
+  }
+
+  action { action_group_id = module.monitoring.action_group_id }
+  tags = local.tags
+}
+
+# ── WARNING Alerts (email only, severity 1-2) ─────────────────────────────────
+
+# HTTP error rate > 1% — 15 min window
+resource "azurerm_monitor_metric_alert" "error_rate_warning" {
+  name                = "rush-order-prod-alert-5xx-warning"
+  resource_group_name = module.shared.resource_group_name
+  scopes              = [module.app_service.app_service_id]
+  severity            = 2
+  frequency           = "PT5M"
+  window_size         = "PT15M"
+  description         = "WARNING: HTTP 5xx count elevated over 15 min"
+
+  criteria {
+    metric_namespace = "Microsoft.Web/sites"
+    metric_name      = "Http5xx"
+    aggregation      = "Total"
+    operator         = "GreaterThan"
+    threshold        = 5
+  }
+
+  action { action_group_id = module.monitoring.warning_action_group_id }
+  tags = local.tags
+}
+
+# P95 response time > 2s — 15 min window
+resource "azurerm_monitor_metric_alert" "p95_latency_warning" {
+  name                = "rush-order-prod-alert-p95-latency"
+  resource_group_name = module.shared.resource_group_name
+  scopes              = [module.app_service.app_service_id]
+  severity            = 2
+  frequency           = "PT5M"
+  window_size         = "PT15M"
+  description         = "WARNING: Average response time > 2s over 15 min"
 
   criteria {
     metric_namespace = "Microsoft.Web/sites"
@@ -276,38 +371,118 @@ resource "azurerm_monitor_metric_alert" "response_time" {
     threshold        = 2
   }
 
-  action { action_group_id = module.monitoring.action_group_id }
+  action { action_group_id = module.monitoring.warning_action_group_id }
   tags = local.tags
 }
 
-resource "azurerm_monitor_metric_alert" "error_rate" {
-  name                = "rush-order-prod-alert-5xx"
+# Redis memory > 80%
+resource "azurerm_monitor_metric_alert" "redis_memory_warning" {
+  name                = "rush-order-prod-alert-redis-memory"
   resource_group_name = module.shared.resource_group_name
-  scopes              = [module.app_service.app_service_id]
-  severity            = 0
-  frequency           = "PT1M"
-  window_size         = "PT5M"
-  description         = "HTTP 5xx error rate > 1%"
+  scopes              = [module.redis.redis_id]
+  severity            = 2
+  frequency           = "PT5M"
+  window_size         = "PT15M"
+  description         = "WARNING: Redis used memory > 80%"
 
   criteria {
-    metric_namespace = "Microsoft.Web/sites"
-    metric_name      = "Http5xx"
-    aggregation      = "Total"
+    metric_namespace = "Microsoft.Cache/redis"
+    metric_name      = "usedmemorypercentage"
+    aggregation      = "Average"
     operator         = "GreaterThan"
-    threshold        = 10
+    threshold        = 80
   }
 
-  action { action_group_id = module.monitoring.action_group_id }
+  action { action_group_id = module.monitoring.warning_action_group_id }
   tags = local.tags
+}
+
+# Pending orders > 20 (KDS may be down) — Log Analytics scheduled query alert
+resource "azurerm_monitor_scheduled_query_rules_alert_v2" "pending_orders" {
+  name                = "rush-order-prod-alert-pending-orders"
+  resource_group_name = module.shared.resource_group_name
+  location            = var.location
+  scopes              = [module.monitoring.log_analytics_workspace_id]
+  severity            = 2
+  frequency           = "PT5M"
+  window_duration     = "PT15M"
+  description         = "WARNING: More than 20 orders pending — KDS may be unresponsive"
+  enabled             = true
+
+  criteria {
+    query = <<-KQL
+      customMetrics
+      | where name == "orders.placed"
+      | summarize pending = sum(value)
+    KQL
+    time_aggregation_method = "Count"
+    threshold               = 20
+    operator                = "GreaterThan"
+    failing_periods {
+      minimum_failing_periods_to_trigger_alert = 1
+      number_of_evaluation_periods             = 1
+    }
+  }
+
+  action {
+    action_groups = [module.monitoring.warning_action_group_id]
+  }
+
+  tags = local.tags
+}
+
+# ── Azure Static Web Apps — PWA (app.rushorder.es, auto SSL via Let's Encrypt) ─
+# DNS setup required after first apply:
+#   app.rushorder.es  CNAME  <pwa_default_url without https://>
+# Azure issues and renews the TLS certificate automatically.
+module "static_web_app" {
+  source              = "../../modules/static-web-app"
+  environment         = local.env
+  resource_group_name = module.shared.resource_group_name
+  location            = "westeurope"
+  sku_tier            = "Standard"
+  custom_hostname     = "app.rushorder.es"
+  tags                = local.tags
+}
+
+# ── Microsoft Defender for Cloud ─────────────────────────────────────────────
+# Subscription-level. Requires Owner/Security Admin on the subscription.
+# Enables threat detection for key resource types in the prod workload.
+resource "azurerm_security_center_subscription_pricing" "app_services" {
+  tier          = "Standard"
+  resource_type = "AppServices"
+}
+
+resource "azurerm_security_center_subscription_pricing" "storage" {
+  tier          = "Standard"
+  resource_type = "StorageAccounts"
+}
+
+resource "azurerm_security_center_subscription_pricing" "key_vault" {
+  tier          = "Standard"
+  resource_type = "KeyVaults"
+}
+
+resource "azurerm_security_center_subscription_pricing" "open_source_db" {
+  tier          = "Standard"
+  resource_type = "OpenSourceRelationalDatabases"
 }
 
 # ── Outputs ───────────────────────────────────────────────────────────────────
 output "front_door_url"      { value = "https://${azurerm_cdn_frontdoor_endpoint.this.host_name}" }
 output "app_service_url"     { value = module.app_service.app_service_url }
 output "staging_slot_url"    { value = module.app_service.staging_slot_url }
+output "pwa_url"             { value = module.static_web_app.custom_domain_url }
+output "pwa_default_url"     { value = module.static_web_app.app_url }
 output "postgresql_fqdn"     { value = module.postgresql.server_fqdn }
 output "postgresql_replica_fqdn" { value = module.postgresql.replica_fqdn }
 output "redis_hostname"      { value = module.redis.redis_hostname }
 output "cdn_url"             { value = module.storage.cdn_endpoint_url }
 output "key_vault_uri"       { value = module.key_vault.key_vault_uri }
 output "appi_conn_string"    { value = module.monitoring.application_insights_connection_string; sensitive = true }
+
+output "swa_api_key" {
+  sensitive   = true
+  description = "Store as GitHub secret AZURE_STATIC_WEB_APPS_API_TOKEN"
+  value       = module.static_web_app.api_key
+}

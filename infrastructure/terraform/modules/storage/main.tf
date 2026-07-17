@@ -26,9 +26,70 @@ resource "azurerm_storage_account" "this" {
       exposed_headers    = ["*"]
       max_age_in_seconds = 3600
     }
+
+    # Soft delete — 30 day retention window for accidental deletes
+    delete_retention_policy {
+      days = 30
+    }
+
+    versioning_enabled = true
   }
 
   tags = var.tags
+}
+
+# ── Backup storage account — GRS for geographic redundancy ────────────────────
+# Separate account so backup replication (GRS) doesn't force GRS cost on
+# the primary account (product images, receipts) which only needs LRS.
+resource "azurerm_storage_account" "backups" {
+  name                            = "rushorder${var.environment}bkp"
+  resource_group_name             = var.resource_group_name
+  location                        = var.location
+  account_tier                    = "Standard"
+  account_replication_type        = "GRS"
+  min_tls_version                 = "TLS1_2"
+  allow_nested_items_to_be_public = false
+
+  blob_properties {
+    delete_retention_policy {
+      days = 30
+    }
+    versioning_enabled  = true
+    change_feed_enabled = true   # required for point-in-time restore
+  }
+
+  tags = var.tags
+}
+
+# postgresql dumps container
+resource "azurerm_storage_container" "postgresql" {
+  name                  = "postgresql"
+  storage_account_name  = azurerm_storage_account.backups.name
+  container_access_type = "private"
+}
+
+# Lifecycle: delete backup blobs older than 6 months
+resource "azurerm_storage_management_policy" "backup_retention" {
+  storage_account_id = azurerm_storage_account.backups.id
+
+  rule {
+    name    = "delete-after-6-months"
+    enabled = true
+
+    filters {
+      blob_types = ["blockBlob"]
+    }
+
+    actions {
+      base_blob {
+        delete_after_days_since_modification_greater_than = 180
+      }
+      # Also clean up soft-deleted versions after 30 days
+      snapshot {
+        delete_after_days_since_creation_greater_than = 30
+      }
+    }
+  }
 }
 
 # product-images — public blob read (served via CDN)
