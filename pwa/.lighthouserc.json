@@ -17,27 +17,35 @@
           "width": 390,
           "height": 844,
           "deviceScaleFactor": 3
+        },
+        "extraHeaders": {
+          "Accept-Encoding": "gzip, br"
         }
       }
     },
     "assert": {
       "preset": "lighthouse:no-pwa",
       "assertions": {
-        "categories:performance":     ["error", { "minScore": 0.9 }],
-        "categories:accessibility":   ["error", { "minScore": 0.9 }],
-        "categories:best-practices":  ["error", { "minScore": 0.9 }],
-        "categories:seo":             ["warn",  { "minScore": 0.9 }],
-        "first-contentful-paint":     ["warn",  { "maxNumericValue": 2000 }],
-        "largest-contentful-paint":   ["error", { "maxNumericValue": 2500 }],
-        "total-blocking-time":        ["error", { "maxNumericValue": 200 }],
-        "cumulative-layout-shift":    ["error", { "maxNumericValue": 0.1 }],
-        "speed-index":                ["warn",  { "maxNumericValue": 3400 }],
-        "interactive":                ["warn",  { "maxNumericValue": 3800 }],
-        "uses-optimized-images":      ["warn",  {}],
-        "uses-webp-images":           ["warn",  {}],
-        "render-blocking-resources":  ["warn",  {}],
-        "unused-javascript":          ["warn",  { "maxNumericValue": 0 }],
-        "unused-css-rules":           ["warn",  {}]
+        "categories:performance":    ["error", { "minScore": 0.9 }],
+        "categories:accessibility":  ["error", { "minScore": 0.9 }],
+        "categories:best-practices": ["error", { "minScore": 0.9 }],
+        "categories:seo":            ["warn",  { "minScore": 0.9 }],
+
+        "first-contentful-paint":    ["warn",  { "maxNumericValue": 2000 }],
+        "largest-contentful-paint":  ["error", { "maxNumericValue": 2500 }],
+        "total-blocking-time":       ["error", { "maxNumericValue": 200 }],
+        "cumulative-layout-shift":   ["error", { "maxNumericValue": 0.1 }],
+        "speed-index":               ["warn",  { "maxNumericValue": 3400 }],
+        "interactive":               ["warn",  { "maxNumericValue": 3800 }],
+
+        "uses-optimized-images":     ["warn", {}],
+        "uses-webp-images":          ["warn", {}],
+        "render-blocking-resources": ["warn", {}],
+        "unused-javascript":         ["warn", { "maxNumericValue": 0 }],
+        "unused-css-rules":          ["warn", {}],
+
+        "uses-long-cache-ttl":       ["warn", {}],
+        "efficient-animated-content": ["warn", {}]
       }
     },
     "upload": {

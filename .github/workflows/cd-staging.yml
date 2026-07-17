@@ -6,85 +6,350 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}/api
+  IMAGE_NAME: ${{ github.repository_owner }}/rush-order-api
 
 jobs:
-  # ─── JOB 1: Build & push Docker image ─────────────────────────────────────
+  # ─── JOB 1: Build API Docker + PWA ─────────────────────────────────────────
   build-and-push:
-    name: Build & Push Docker Image
+    name: Build & Push
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
     outputs:
-      image-tag: ${{ steps.meta.outputs.version }}
-      image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
+      image-tag:     ${{ steps.meta.outputs.version }}
+      image-ref:     ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${{ steps.sha.outputs.short }}
+      previous-image: ${{ steps.prev.outputs.image }}
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Log in to GitHub Container Registry
+      # ── Docker ────────────────────────────────────────────────────────────
+      - name: Short SHA
+        id: sha
+        run: echo "short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract image metadata
+      - name: Capture current (previous) image tag
+        id: prev
+        run: |
+          PREV=$(az webapp config container show \
+            --name "${{ vars.STAGING_WEBAPP_NAME }}" \
+            --resource-group "${{ vars.STAGING_RESOURCE_GROUP }}" \
+            --query "DOCKER_CUSTOM_IMAGE_NAME" -o tsv 2>/dev/null || echo "")
+          echo "image=${PREV}" >> "$GITHUB_OUTPUT"
+        continue-on-error: true
+
+      - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=ref,event=branch
             type=sha,prefix=sha-,format=short
+            type=raw,value=staging-latest
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build and push
+      - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
-          context: backend
-          file: backend/Dockerfile
-          target: final
+          context: .
+          file: Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # ─── JOB 2: Deploy to Azure App Service (staging) ─────────────────────────
+      # ── Trivy scan on pushed image ────────────────────────────────────────
+      - name: Trivy vulnerability scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:staging-latest
+          format: table
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL'
+
+      # ── PWA build ─────────────────────────────────────────────────────────
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: pwa/package-lock.json
+
+      - name: Install PWA dependencies
+        working-directory: pwa
+        run: npm ci
+
+      - name: Build PWA
+        working-directory: pwa
+        run: npm run build
+        env:
+          VITE_API_BASE_URL: ${{ vars.STAGING_API_URL }}
+          VITE_STRIPE_PUBLISHABLE_KEY: ${{ secrets.STRIPE_PUBLISHABLE_KEY_STAGING }}
+
+      - name: Upload PWA dist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pwa-dist-${{ steps.sha.outputs.short }}
+          path: pwa/dist/
+          retention-days: 7
+
+  # ─── JOB 2: Deploy to Azure (staging) ──────────────────────────────────────
   deploy-staging:
     name: Deploy to Staging
     runs-on: ubuntu-latest
     needs: build-and-push
     environment:
       name: staging
-      url: https://${{ vars.AZURE_WEBAPP_NAME }}.azurewebsites.net
+      url: ${{ vars.STAGING_API_URL }}
+    permissions:
+      id-token: write   # federated credentials (OIDC) — no client secret
+      contents: read
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Deploy to Azure App Service
+      - name: Azure Login (OIDC — no secrets)
+        uses: azure/login@v2
+        with:
+          client-id:       ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id:       ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # ── API: deploy Docker image to App Service ───────────────────────────
+      - name: Deploy API image to App Service (staging)
         uses: azure/webapps-deploy@v3
         with:
-          app-name: ${{ vars.AZURE_WEBAPP_NAME }}
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          images: ${{ needs.build-and-push.outputs.image-ref }}
+          app-name:  ${{ vars.STAGING_WEBAPP_NAME }}
+          images:    ${{ needs.build-and-push.outputs.image-ref }}
 
-      - name: Comment deploy on commit
-        uses: peter-evans/commit-comment@v3
+      # ── PWA: deploy to Azure Static Web Apps ─────────────────────────────
+      - name: Download PWA artifact
+        uses: actions/download-artifact@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          body: |
-            ## Deployed to Staging
+          name: pwa-dist-${{ needs.build-and-push.outputs.image-tag }}
+          path: pwa/dist
 
-            | Campo       | Valor |
-            |-------------|-------|
-            | Entorno     | `staging` |
-            | Imagen      | `${{ needs.build-and-push.outputs.image-ref }}` |
-            | URL         | https://${{ vars.AZURE_WEBAPP_NAME }}.azurewebsites.net |
-            | Commit      | `${{ github.sha }}` |
-            | Desplegado por | @${{ github.actor }} |
-            | Fecha       | ${{ github.event.head_commit.timestamp }} |
+      - name: Deploy PWA to Azure Static Web Apps
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          repo_token:  ${{ secrets.GITHUB_TOKEN }}
+          action:      upload
+          app_location: pwa/dist
+          skip_app_build: true
+
+      # ── Database migrations ───────────────────────────────────────────────
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Install EF Core tools
+        run: dotnet tool install -g dotnet-ef
+
+      - name: Run database migrations
+        run: |
+          dotnet ef database update \
+            --project backend/src/RushOrder.Infrastructure \
+            --startup-project backend/src/RushOrder.API \
+            --connection "${{ secrets.STAGING_DB_CONNECTION_STRING }}" \
+            --no-build
+        env:
+          ASPNETCORE_ENVIRONMENT: Staging
+
+  # ─── JOB 3: Smoke tests ────────────────────────────────────────────────────
+  smoke-tests:
+    name: Smoke Tests
+    runs-on: ubuntu-latest
+    needs: [build-and-push, deploy-staging]
+    if: needs.deploy-staging.result == 'success'
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ── Basic health check ────────────────────────────────────────────────
+      - name: Wait for App Service warm-up
+        run: sleep 30
+
+      - name: Health check
+        id: health
+        run: |
+          for i in {1..12}; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+              "${{ vars.STAGING_API_URL }}/health" --max-time 10)
+            echo "Attempt $i: HTTP $STATUS"
+            if [ "$STATUS" = "200" ]; then
+              echo "healthy=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "healthy=false" >> "$GITHUB_OUTPUT"
+          echo "::error::Health check failed after 12 attempts"
+          exit 1
+
+      # ── Playwright E2E smoke tests ────────────────────────────────────────
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: pwa/package-lock.json
+
+      - name: Install Playwright
+        working-directory: pwa
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Run smoke tests
+        id: playwright
+        working-directory: pwa
+        run: npx playwright test tests/e2e/smoke.spec.ts --reporter=html
+        env:
+          BASE_URL:            ${{ vars.STAGING_APP_URL }}
+          E2E_TEST_EMAIL:      ${{ secrets.E2E_TEST_EMAIL }}
+          E2E_TEST_PASSWORD:   ${{ secrets.E2E_TEST_PASSWORD }}
+          E2E_RESTAURANT_ID:   ${{ vars.E2E_RESTAURANT_ID }}
+        continue-on-error: true
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report-staging
+          path: pwa/playwright-report/
+          retention-days: 7
+
+      # ── PWA deployment verification ───────────────────────────────────────
+      - name: Verify PWA deployment (headers, cache, security)
+        id: pwa-verify
+        run: |
+          chmod +x scripts/verify-pwa-deploy.sh
+          ./scripts/verify-pwa-deploy.sh "${{ vars.STAGING_APP_URL }}"
+        continue-on-error: true
+
+      - name: Lighthouse CI against staging PWA
+        if: vars.STAGING_APP_URL != ''
+        working-directory: pwa
+        run: |
+          npx lhci autorun \
+            --collect.url="${{ vars.STAGING_APP_URL }}/" \
+            --collect.url="${{ vars.STAGING_APP_URL }}/menu/demo-token" \
+            --collect.numberOfRuns=1 \
+            --assert.preset=lighthouse:no-pwa \
+            --assert.assertions."categories:performance"='["warn",{"minScore":0.9}]' \
+            --assert.assertions."categories:accessibility"='["warn",{"minScore":0.9}]' \
+            --upload.target=temporary-public-storage || true
+        continue-on-error: true
+
+      # ── Rollback if smoke tests failed ────────────────────────────────────
+      - name: Azure Login (for rollback)
+        if: steps.playwright.outcome == 'failure'
+        uses: azure/login@v2
+        with:
+          client-id:       ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id:       ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Rollback to previous image
+        if: steps.playwright.outcome == 'failure' && needs.build-and-push.outputs.previous-image != ''
+        run: |
+          echo "::warning::Smoke tests failed — rolling back to ${{ needs.build-and-push.outputs.previous-image }}"
+          az webapp config container set \
+            --name "${{ vars.STAGING_WEBAPP_NAME }}" \
+            --resource-group "${{ vars.STAGING_RESOURCE_GROUP }}" \
+            --docker-custom-image-name "${{ needs.build-and-push.outputs.previous-image }}"
+          az webapp restart --name "${{ vars.STAGING_WEBAPP_NAME }}" \
+            --resource-group "${{ vars.STAGING_RESOURCE_GROUP }}"
+
+      - name: Fail job if smoke tests failed
+        if: steps.playwright.outcome == 'failure'
+        run: exit 1
+
+  # ─── JOB 4: Notify ─────────────────────────────────────────────────────────
+  notify:
+    name: Notify
+    runs-on: ubuntu-latest
+    needs: [build-and-push, deploy-staging, smoke-tests]
+    if: always()
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Find associated PR
+        id: find-pr
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prs = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              head: `${context.repo.owner}:develop`,
+            });
+            const pr = prs.data[0];
+            return pr ? pr.number : null;
+          result-encoding: string
+
+      - name: Comment on PR
+        if: steps.find-pr.outputs.result != 'null'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const deployOk  = '${{ needs.deploy-staging.result }}' === 'success';
+            const smokeOk   = '${{ needs.smoke-tests.result }}'   === 'success';
+            const allOk     = deployOk && smokeOk;
+            const icon      = allOk ? '✅' : '❌';
+            const status    = allOk ? 'Exitoso' : 'Fallido';
+
+            const body = [
+              `## ${icon} Deploy a Staging — ${status}`,
+              '',
+              '| Campo | Valor |',
+              '|---|---|',
+              `| Imagen | \`${{ needs.build-and-push.outputs.image-ref }}\` |`,
+              `| API URL | ${{ vars.STAGING_API_URL }} |`,
+              `| PWA URL | ${{ vars.STAGING_APP_URL }} |`,
+              `| Deploy | ${{ needs.deploy-staging.result }} |`,
+              `| Smoke tests | ${{ needs.smoke-tests.result }} |`,
+              `| Commit | \`${{ github.sha }}\` |`,
+              `| Actor | @${{ github.actor }} |`,
+            ].join('\n');
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo:  context.repo.repo,
+              issue_number: parseInt('${{ steps.find-pr.outputs.result }}'),
+              body,
+            });
+
+      - name: Slack notification
+        if: always()
+        uses: slackapi/slack-github-action@v1.27.0
+        with:
+          payload: |
+            {
+              "text": "${{ needs.smoke-tests.result == 'success' && '✅' || '❌' }} *Staging deploy* `${{ github.sha }}` — ${{ needs.smoke-tests.result }}\n${{ vars.STAGING_API_URL }}"
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+        continue-on-error: true
