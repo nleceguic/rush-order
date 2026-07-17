@@ -35,6 +35,9 @@ public sealed class AppDbContext : DbContext, IUnitOfWork
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<Reservation> Reservations => Set<Reservation>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<ProductPairingRule> ProductPairingRules => Set<ProductPairingRule>();
+    public DbSet<Experiment> Experiments => Set<Experiment>();
+    public DbSet<ExperimentResult> ExperimentResults => Set<ExperimentResult>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -50,6 +53,9 @@ public sealed class AppDbContext : DbContext, IUnitOfWork
         modelBuilder.Entity<Category>().HasQueryFilter(e => e.TenantId == _currentTenant.TenantId && !e.IsDeleted);
         modelBuilder.Entity<Payment>().HasQueryFilter(e => e.TenantId == _currentTenant.TenantId);
         modelBuilder.Entity<Reservation>().HasQueryFilter(e => e.TenantId == _currentTenant.TenantId);
+        modelBuilder.Entity<ProductPairingRule>().HasQueryFilter(e => e.TenantId == _currentTenant.TenantId);
+        modelBuilder.Entity<Experiment>().HasQueryFilter(e => e.TenantId == _currentTenant.TenantId);
+        modelBuilder.Entity<ExperimentResult>().HasQueryFilter(e => e.TenantId == _currentTenant.TenantId);
     }
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

@@ -14,5 +14,9 @@ public sealed record RestaurantSettings
     public bool KitchenDisplayEnabled { get; init; } = false;
     public int OrderAlertAfterMinutes { get; init; } = 15;
 
+    // Checkout-time upselling nudges ("¿Olvidaste el postre?", etc.) — recommendation
+    // rails in the product sheet / cart drawer are considered core UX and always on.
+    public bool UpsellingEnabled { get; init; } = true;
+
     public static RestaurantSettings Default => new();
 }

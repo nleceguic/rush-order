@@ -56,6 +56,12 @@ public static class DependencyInjection
         services.AddScoped<IPaymentRepository, PaymentRepository>();
         services.AddScoped<IAnalyticsRepository, AnalyticsRepository>();
 
+        // ── Recommendations & A/B experiments ────────────────────────────────
+        services.AddScoped<IRecommendationRepository, RecommendationRepository>();
+        services.AddScoped<IRecommendationService, RushOrder.Infrastructure.Services.RecommendationService>();
+        services.AddScoped<IPairingRuleRepository, PairingRuleRepository>();
+        services.AddScoped<IExperimentRepository, ExperimentRepository>();
+
         services.AddScoped<IPlanRepository, PlanRepository>();
         services.AddScoped<ISubscriptionRepository, SubscriptionRepository>();
         services.AddScoped<ITenantRepository, TenantRepository>();

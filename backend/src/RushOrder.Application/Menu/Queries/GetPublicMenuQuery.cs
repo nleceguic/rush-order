@@ -69,7 +69,7 @@ public sealed class GetPublicMenuQueryHandler : IRequestHandler<GetPublicMenuQue
 
         var menu = new PublicMenuDto(
             restaurant.Id,
-            new RestaurantInfoDto(restaurant.Name, restaurant.LogoUrl, restaurant.CoverUrl, null),
+            new RestaurantInfoDto(restaurant.Name, restaurant.LogoUrl, restaurant.CoverUrl, null, restaurant.Settings.UpsellingEnabled),
             menuCategories,
             []);
 

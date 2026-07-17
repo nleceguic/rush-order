@@ -4,7 +4,8 @@ public record RestaurantInfoDto(
     string Name,
     string? Logo,
     string? CoverImage,
-    string? WelcomeMessage);
+    string? WelcomeMessage,
+    bool UpsellingEnabled = true);
 
 public record PublicMenuProductDto(
     Guid Id,
