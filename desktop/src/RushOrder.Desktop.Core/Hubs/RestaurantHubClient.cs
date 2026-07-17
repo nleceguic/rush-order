@@ -19,6 +19,7 @@ public sealed class RestaurantHubClient : IAsyncDisposable
     public event Func<string, bool, Task>? OnProductAvailabilityChanged;
     public event Func<string, string, Task>? OnKitchenAlert;
     public event Func<string, string, int, Task>? OnLowStockAlert;
+    public event Func<string, Task>? OnMiseEnPlaceAlert;
 
     public HubConnectionState State => _connection.State;
 
@@ -85,6 +86,11 @@ public sealed class RestaurantHubClient : IAsyncDisposable
 
         _connection.On<string, string, int>("LowStockAlert", (productId, productName, remainingStock) =>
             OnLowStockAlert?.Invoke(productId, productName, remainingStock) ?? Task.CompletedTask);
+
+        // Daily 08:00 mise en place summary, built from today's demand forecast
+        // (see MiseEnPlaceJob on the backend).
+        _connection.On<string>("MiseEnPlaceAlert", message =>
+            OnMiseEnPlaceAlert?.Invoke(message) ?? Task.CompletedTask);
     }
 
     private void RegisterLifecycleEvents()

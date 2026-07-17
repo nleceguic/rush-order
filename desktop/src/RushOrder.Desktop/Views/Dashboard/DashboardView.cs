@@ -100,6 +100,17 @@ public sealed class DashboardView : UserControl
             var alerts = await _data.GetAlertsAsync();
             _wAlerts.Update(alerts);
         };
+
+        // Daily mise en place summary (08:00) — not a persisted alert on the
+        // backend, so it's prepended to whatever's currently showing rather
+        // than fetched.
+        _realTime.MiseEnPlaceAlert += async message =>
+        {
+            var miseEnPlace = new Models.AlertDto(
+                Guid.NewGuid(), message, Models.AlertSeverity.Info, null, "mise_en_place", DateTimeOffset.Now);
+            var current = await _data.GetAlertsAsync();
+            _wAlerts.Update([miseEnPlace, .. current]);
+        };
     }
 
     private async Task OnFirstLoadAsync()

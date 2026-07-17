@@ -67,6 +67,7 @@ static class Program
                     // Print & statistics
                     services.AddSingleton<PrintService>();
                     services.AddSingleton<StatisticsDataService>();
+                    services.AddSingleton<ForecastDataService>();
 
                     // Auto-update
                     services.AddSingleton<UpdateService>();
@@ -88,6 +89,8 @@ static class Program
                     services.AddTransient<KitchenDisplayForm>();
                     services.AddTransient<MenuManagementControl>();
                     services.AddTransient<StatisticsView>();
+                    services.AddTransient<Views.Forecast.DemandForecastControl>();
+                    services.AddTransient<Views.AiDashboard.AiDashboardView>();
                 })
                 .Build();
 

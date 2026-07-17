@@ -18,6 +18,7 @@ public sealed class RealTimeService : IAsyncDisposable
     public event Func<string, string, Task>?             TableStatusChanged;
     public event Func<string, string, DateTimeOffset, Task>? OrderStatusUpdated;
     public event Func<string, string, Task>?             KitchenAlert;
+    public event Func<string, Task>?                     MiseEnPlaceAlert;
     public event Action<bool>?                           ConnectionChanged;
 
     public RealTimeService(AppState state, ILogger<RealTimeService> logger)
@@ -91,6 +92,9 @@ public sealed class RealTimeService : IAsyncDisposable
 
         _client!.OnKitchenAlert += (msg, severity) =>
             KitchenAlert?.Invoke(msg, severity) ?? Task.CompletedTask;
+
+        _client!.OnMiseEnPlaceAlert += msg =>
+            MiseEnPlaceAlert?.Invoke(msg) ?? Task.CompletedTask;
     }
 
     public async ValueTask DisposeAsync()
