@@ -1,0 +1,178 @@
+name: Dependency Update Check
+
+on:
+  schedule:
+    - cron: '0 9 * * 1'  # Monday 09:00 UTC
+  workflow_dispatch:       # allow manual run
+
+jobs:
+  # ─── Check .NET outdated packages ──────────────────────────────────────────
+  check-dotnet:
+    name: .NET Outdated Packages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: Restore
+        run: dotnet restore rush-order.sln
+
+      - name: List outdated NuGet packages
+        id: dotnet-outdated
+        run: |
+          dotnet list package --outdated 2>&1 | tee dotnet-outdated.txt
+          echo "---"
+          echo "Vulnerable packages:"
+          dotnet list package --vulnerable --include-transitive 2>&1 | tee dotnet-vulnerable.txt
+          HAS_VULN=0
+          grep -qi "has the following vulnerable packages" dotnet-vulnerable.txt && HAS_VULN=1
+          echo "has_vulnerable=${HAS_VULN}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload outdated report
+        uses: actions/upload-artifact@v4
+        with:
+          name: dotnet-dependency-report
+          path: |
+            dotnet-outdated.txt
+            dotnet-vulnerable.txt
+          retention-days: 7
+
+      - name: Open issue if vulnerable packages found
+        if: steps.dotnet-outdated.outputs.has_vulnerable == '1'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('dotnet-vulnerable.txt', 'utf8');
+            const today  = new Date().toISOString().slice(0, 10);
+
+            // Close any existing open issue for this
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo:  context.repo.repo,
+              labels: 'security,dependencies',
+              state: 'open',
+            });
+            for (const issue of issues.data) {
+              if (issue.title.includes('Vulnerable NuGet')) {
+                await github.rest.issues.update({
+                  owner: context.repo.owner, repo: context.repo.repo,
+                  issue_number: issue.number, state: 'closed',
+                });
+              }
+            }
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo:  context.repo.repo,
+              title: `🔴 Vulnerable NuGet packages detected (${today})`,
+              body: [
+                '## Vulnerable NuGet Packages',
+                '',
+                'Detected by weekly dependency scan:',
+                '',
+                '```',
+                report.slice(0, 4000),
+                '```',
+                '',
+                '**Action required:** Update affected packages and re-run CI.',
+              ].join('\n'),
+              labels: ['security', 'dependencies'],
+            });
+
+  # ─── Check npm outdated packages ───────────────────────────────────────────
+  check-npm:
+    name: npm Outdated Packages
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: pwa
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: pwa/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: List outdated npm packages
+        run: npm outdated || true  # non-zero exit if any outdated — don't fail
+
+      - name: Security audit
+        id: npm-audit
+        run: |
+          npm audit --json 2>/dev/null | tee npm-audit.json || true
+          HIGH=$(cat npm-audit.json | python3 -c "
+          import json, sys
+          d = json.load(sys.stdin)
+          meta = d.get('metadata', {}).get('vulnerabilities', {})
+          print(meta.get('high', 0) + meta.get('critical', 0))
+          " 2>/dev/null || echo 0)
+          echo "high_vulns=${HIGH}" >> "$GITHUB_OUTPUT"
+          npm audit --audit-level=moderate 2>&1 | tee npm-audit.txt || true
+
+      - name: Upload npm audit report
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-dependency-report
+          path: pwa/npm-audit.txt
+          retention-days: 7
+
+      - name: Open issue if high/critical npm vulnerabilities
+        if: steps.npm-audit.outputs.high_vulns != '0'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('pwa/npm-audit.txt', 'utf8');
+            const today  = new Date().toISOString().slice(0, 10);
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo:  context.repo.repo,
+              title: `🔴 High/Critical npm vulnerabilities detected (${today})`,
+              body: [
+                '## npm Security Audit',
+                '',
+                'Detected by weekly dependency scan:',
+                '',
+                '```',
+                report.slice(0, 4000),
+                '```',
+                '',
+                '**Fix:** Run `npm audit fix` or update affected packages manually.',
+              ].join('\n'),
+              labels: ['security', 'dependencies'],
+            });
+
+  # ─── Dependabot reminder ────────────────────────────────────────────────────
+  dependabot-status:
+    name: Dependabot Summary
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Confirm Dependabot config is present
+        run: |
+          if [ -f .github/dependabot.yml ]; then
+            echo "✅ Dependabot config found — automated PRs are active."
+            cat .github/dependabot.yml
+          else
+            echo "::warning::Dependabot config not found. Add .github/dependabot.yml to enable automated PRs."
+          fi
