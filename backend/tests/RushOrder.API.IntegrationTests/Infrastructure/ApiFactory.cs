@@ -8,12 +8,13 @@ using Respawn;
 using RushOrder.Application.Common.Interfaces;
 using RushOrder.Infrastructure.Persistence;
 using RushOrder.Infrastructure.Persistence.Seeders;
+using RushOrder.Infrastructure.Services;
 using Testcontainers.PostgreSql;
 using Testcontainers.Redis;
 
 namespace RushOrder.API.IntegrationTests.Infrastructure;
 
-public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
+public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder()
         .WithImage("postgres:16-alpine")
@@ -30,33 +31,28 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
     public string PostgresConnectionString => _postgres.GetConnectionString();
 
+    public NotificationCapture NotificationCapture => Services.GetRequiredService<NotificationCapture>();
+
     public async Task InitializeAsync()
     {
         await Task.WhenAll(_postgres.StartAsync(), _redis.StartAsync());
 
-        // Trigger host build now that containers are ready.
-        // ConfigureWebHost overrides (test connection strings, DisableRateLimit, etc.) are applied
-        // here. DatabaseInitializer is removed below so the host starts without auto-migration.
         _ = CreateClient();
 
-        // Run migrations via EF Core
         using var scope = Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         await db.Database.MigrateAsync();
 
-        // Seed development data (plans + demo tenant + admin)
         var seeder = new DatabaseSeeder();
         await seeder.SeedDevelopmentDataAsync(db, CancellationToken.None);
 
-        // Initialise Respawn after migrations so schema is known
         await using var conn = new NpgsqlConnection(PostgresConnectionString);
         await conn.OpenAsync();
         _respawner = await Respawner.CreateAsync(conn, new RespawnerOptions
         {
-            DbAdapter = DbAdapter.Postgres,
-            SchemasToInclude = ["public"],
-            // Keep plan rows between resets — they are seeded once and never mutated by tests
-            TablesToIgnore = [new Respawn.Graph.Table("plans")]
+            DbAdapter         = DbAdapter.Postgres,
+            SchemasToInclude  = ["public"],
+            TablesToIgnore    = [new Respawn.Graph.Table("plans")]
         });
     }
 
@@ -71,7 +67,6 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
                 ["Database:ConnectionString"] = _postgres.GetConnectionString(),
                 ["Redis:ConnectionString"]    = _redis.GetConnectionString(),
                 ["DisableRateLimit"]          = "true",
-                // Dummy Stripe keys so StripeOptions validation passes
                 ["Stripe:SecretKey"]          = "sk_test_dummy",
                 ["Stripe:PublishableKey"]     = "pk_test_dummy",
                 ["Stripe:WebhookSecret"]      = TestConstants.StripeWebhookSecret,
@@ -80,24 +75,33 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
         builder.ConfigureServices(services =>
         {
-            // Remove DatabaseInitializer — migrations run manually in InitializeAsync after
-            // containers are confirmed ready, so the host can start cleanly without it.
+            // Remove DatabaseInitializer — migrations run manually in InitializeAsync
             foreach (var sd in services.Where(d => d.ImplementationType == typeof(DatabaseInitializer)).ToList())
                 services.Remove(sd);
 
-            // Replace real SMTP with a no-op implementation
+            // Remove AlertMonitoringService — polls Postgres every 5 min, not needed in tests
+            foreach (var sd in services.Where(d => d.ImplementationType == typeof(AlertMonitoringService)).ToList())
+                services.Remove(sd);
+
+            // Replace real notifications with a capturing implementation
+            services.AddSingleton<NotificationCapture>();
             var notifDescriptor = services.Single(d => d.ServiceType == typeof(INotificationService));
             services.Remove(notifDescriptor);
-            services.AddScoped<INotificationService, NullNotificationService>();
+            services.AddScoped<INotificationService, CapturingNotificationService>();
 
             // Replace real Stripe gateway with an in-memory fake
             var stripeDescriptor = services.Single(d => d.ServiceType == typeof(IStripeGateway));
             services.Remove(stripeDescriptor);
             services.AddScoped<IStripeGateway, FakeStripeGateway>();
+
+            // Replace real TOTP service with a fixed-code fake for deterministic MFA tests
+            var totpDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(ITotpService));
+            if (totpDescriptor is not null) services.Remove(totpDescriptor);
+            services.AddScoped<ITotpService, FixedCodeTotpService>();
         });
     }
 
-    /// <summary>Resets the DB to a clean post-migration state and re-seeds.</summary>
+    /// <summary>Resets the DB to a clean post-migration state, re-seeds, and clears notification counters.</summary>
     public async Task ResetAsync()
     {
         await using var conn = new NpgsqlConnection(PostgresConnectionString);
@@ -108,6 +112,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var seeder = new DatabaseSeeder();
         await seeder.SeedDevelopmentDataAsync(db, CancellationToken.None);
+
+        NotificationCapture.Reset();
     }
 
     public new async Task DisposeAsync()
