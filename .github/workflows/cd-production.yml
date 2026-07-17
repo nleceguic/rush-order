@@ -25,6 +25,7 @@ jobs:
     permissions:
       id-token: write
       contents: read
+      actions: read   # to read the latest cd-staging.yml run's job conclusions
 
     steps:
       - uses: actions/checkout@v4
@@ -35,6 +36,48 @@ jobs:
           client-id:       ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id:       ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # Blocks production deploy if the staging load test (k6, Escenario 1
+      # — see load-testing/) didn't pass its SLO thresholds on the latest
+      # staging deploy. cd-staging.yml and cd-production.yml are separate
+      # workflows (different triggers), so this checks the last completed
+      # cd-staging.yml run via the API instead of a `needs:` dependency.
+      - name: Verify staging load test passed
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: runsData } = await github.rest.actions.listWorkflowRuns({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'cd-staging.yml',
+              branch: 'develop',
+              status: 'completed',
+              per_page: 1,
+            });
+
+            const latestRun = runsData.workflow_runs[0];
+            if (!latestRun) {
+              core.setFailed('No completed cd-staging.yml runs found — cannot verify the load test before deploying to production.');
+              return;
+            }
+
+            const { data: jobsData } = await github.rest.actions.listJobsForWorkflowRun({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: latestRun.id,
+            });
+
+            const loadTestJob = jobsData.jobs.find((j) => j.name === 'Load Test (k6)');
+            if (!loadTestJob) {
+              core.setFailed(`Could not find the "Load Test (k6)" job in cd-staging.yml run #${latestRun.run_number}. Aborting production deploy.`);
+              return;
+            }
+            if (loadTestJob.conclusion !== 'success') {
+              core.setFailed(`Staging load test did not pass (conclusion: ${loadTestJob.conclusion}, run #${latestRun.run_number}). Aborting production deploy.`);
+              return;
+            }
+
+            core.info(`Staging load test passed (cd-staging.yml run #${latestRun.run_number}) — proceeding.`);
 
       - name: Health check on staging
         run: |
