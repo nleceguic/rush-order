@@ -20,7 +20,7 @@ jobs:
     name: Backend CI (.NET)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup .NET 8
         uses: actions/setup-dotnet@v4
@@ -99,7 +99,7 @@ jobs:
       run:
         working-directory: pwa
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup Node 20
         uses: actions/setup-node@v4
@@ -139,7 +139,7 @@ jobs:
       run:
         working-directory: pwa
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup Node 20
         uses: actions/setup-node@v4
@@ -179,7 +179,7 @@ jobs:
       security-events: write  # for SARIF upload
       packages: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -246,7 +246,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request' && github.base_ref == 'main'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: ZAP Baseline Scan against staging
         uses: zaproxy/action-baseline@v0.12.0
@@ -269,7 +269,7 @@ jobs:
     name: Dependency Vulnerability Check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup .NET 8
         uses: actions/setup-dotnet@v4

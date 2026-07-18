@@ -28,7 +28,7 @@ jobs:
       actions: read   # to read the latest cd-staging.yml run's job conclusions
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Azure Login (OIDC)
         uses: azure/login@v2
@@ -111,7 +111,7 @@ jobs:
       deploy-time: ${{ steps.stamp.outputs.time }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Azure Login (OIDC)
         uses: azure/login@v2
@@ -186,7 +186,7 @@ jobs:
       contents: read
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Wait for swap propagation
         run: sleep 30
@@ -300,7 +300,7 @@ jobs:
       pull-requests: read
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0  # full history for conventional commits
 

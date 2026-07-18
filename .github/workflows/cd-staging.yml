@@ -22,7 +22,7 @@ jobs:
       previous-image: ${{ steps.prev.outputs.image }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # ── Docker ────────────────────────────────────────────────────────────
       - name: Short SHA
@@ -119,7 +119,7 @@ jobs:
       contents: read
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Azure Login (OIDC — no secrets)
         uses: azure/login@v2
@@ -181,7 +181,7 @@ jobs:
       contents: read
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # ── Basic health check ────────────────────────────────────────────────
       - name: Wait for App Service warm-up
@@ -298,7 +298,7 @@ jobs:
       contents: read
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Azure Login (OIDC)
         uses: azure/login@v2
