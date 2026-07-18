@@ -36,7 +36,7 @@ public sealed class GetPublicMenuQueryHandler : IRequestHandler<GetPublicMenuQue
         var table = await _tableRepository.GetByQrCodeAsync(request.QrToken, cancellationToken);
         if (table is null) return null;
 
-        var restaurant = await _restaurantRepository.GetByIdAsync(table.RestaurantId, cancellationToken);
+        var restaurant = await _restaurantRepository.GetByIdPublicAsync(table.RestaurantId, cancellationToken);
         if (restaurant is null || !restaurant.IsActive) return null;
 
         var categories = await _categoryRepository.GetByRestaurantPublicAsync(restaurant.Id, cancellationToken);
@@ -59,7 +59,7 @@ public sealed class GetPublicMenuQueryHandler : IRequestHandler<GetPublicMenuQue
                     p.Price.Amount, p.Price.Currency,
                     p.ImageUrl,
                     p.Allergens,
-                    p.Tags.Select(t => t.ToString()).ToList().AsReadOnly(),
+                    p.Tags.Select(t => ToCamelCase(t.ToString())).ToList().AsReadOnly(),
                     p.IsAvailable,
                     p.PreparationMinutes))
                 .ToList()
@@ -77,4 +77,9 @@ public sealed class GetPublicMenuQueryHandler : IRequestHandler<GetPublicMenuQue
 
         return menu;
     }
+
+    // Frontend ProductTag union is camelCase ("glutenFree"); the domain enum is
+    // PascalCase ("GlutenFree", from ProductTag.ToString()).
+    private static string ToCamelCase(string value) =>
+        value.Length == 0 ? value : char.ToLowerInvariant(value[0]) + value[1..];
 }

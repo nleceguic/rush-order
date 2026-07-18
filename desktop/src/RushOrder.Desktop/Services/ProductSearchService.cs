@@ -13,6 +13,11 @@ public sealed class ProductSearchService
 
     private static readonly IReadOnlyList<ProductDto> _mockCatalog = BuildMockCatalog();
 
+    // Populated lazily from the real backend and reused across searches — there's no
+    // /search endpoint on the backend at all, so this filters client-side over the
+    // full product list instead (see FetchLiveCatalogAsync).
+    private List<ProductDto>? _liveCatalog;
+
     public ProductSearchService(AppState state, ILogger<ProductSearchService> logger)
     {
         _state  = state;
@@ -21,24 +26,12 @@ public sealed class ProductSearchService
 
     public async Task<IReadOnlyList<ProductDto>> SearchAsync(string query, CancellationToken ct = default)
     {
-        if (string.IsNullOrWhiteSpace(query)) return _mockCatalog.Take(10).ToList();
+        var catalog = await GetCatalogAsync(ct);
+
+        if (string.IsNullOrWhiteSpace(query)) return catalog.Take(10).ToList();
         query = query.ToLowerInvariant();
 
-        try
-        {
-            SetAuth();
-            var id  = _state.CurrentRestaurant?.Id;
-            var res = await _http.GetAsync(
-                $"http://localhost:5000/api/products/search?restaurantId={id}&q={Uri.EscapeDataString(query)}&pageSize=20", ct);
-            if (res.IsSuccessStatusCode)
-            {
-                var json = await res.Content.ReadAsStringAsync(ct);
-                return JsonConvert.DeserializeObject<List<ProductDto>>(json)!;
-            }
-        }
-        catch (Exception ex) { _logger.LogDebug(ex, "Product search offline; using local catalog"); }
-
-        return _mockCatalog
+        return catalog
             .Where(p => p.Name.Contains(query, StringComparison.OrdinalIgnoreCase)
                      || p.Category.Contains(query, StringComparison.OrdinalIgnoreCase))
             .Take(15)
@@ -47,10 +40,59 @@ public sealed class ProductSearchService
 
     public async Task<IReadOnlyList<ProductDto>> GetByCategoryAsync(string category, CancellationToken ct = default)
     {
-        await Task.CompletedTask;
-        return _mockCatalog
+        var catalog = await GetCatalogAsync(ct);
+        return catalog
             .Where(p => p.Category.Equals(category, StringComparison.OrdinalIgnoreCase) && p.IsAvailable)
             .ToList();
+    }
+
+    private async Task<IReadOnlyList<ProductDto>> GetCatalogAsync(CancellationToken ct)
+    {
+        if (_liveCatalog is not null) return _liveCatalog;
+
+        try
+        {
+            var live = await FetchLiveCatalogAsync(ct);
+            if (live.Count > 0) { _liveCatalog = live; return _liveCatalog; }
+        }
+        catch (Exception ex) { _logger.LogDebug(ex, "Product catalog offline; using local mock"); }
+
+        return _mockCatalog;
+    }
+
+    private async Task<List<ProductDto>> FetchLiveCatalogAsync(CancellationToken ct)
+    {
+        SetAuth();
+        var rid = _state.CurrentRestaurant?.Id;
+
+        var catRes = await _http.GetAsync($"http://localhost:5143/api/v1/menu/categories?restaurantId={rid}", ct);
+        var catNames = new Dictionary<Guid, string>();
+        if (catRes.IsSuccessStatusCode)
+        {
+            var catJson = await catRes.Content.ReadAsStringAsync(ct);
+            var cats = JsonConvert.DeserializeObject<ApiEnvelope<List<BackendCategoryDto>>>(catJson)?.Data ?? [];
+            catNames = cats.ToDictionary(c => c.Id, c => c.Name);
+        }
+
+        var products = new List<ProductDto>();
+        var page = 1;
+        while (true)
+        {
+            var res = await _http.GetAsync(
+                $"http://localhost:5143/api/v1/menu/products?restaurantId={rid}&page={page}&pageSize=100", ct);
+            if (!res.IsSuccessStatusCode) break;
+
+            var json = await res.Content.ReadAsStringAsync(ct);
+            var batch = JsonConvert.DeserializeObject<ApiEnvelope<List<BackendProductSummaryDto>>>(json)?.Data ?? [];
+            if (batch.Count == 0) break;
+
+            products.AddRange(batch.Select(p => new ProductDto(
+                p.Id, p.Name, catNames.GetValueOrDefault(p.CategoryId, ""), p.Price, p.IsAvailable, [])));
+
+            if (batch.Count < 100) break;
+            page++;
+        }
+        return products;
     }
 
     private void SetAuth() =>

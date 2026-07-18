@@ -72,6 +72,14 @@ services:
       Cors__AllowedOrigins__0: "http://localhost:5173"
     volumes:
       - ../../backend/src:/app/src
+      - /app/src/RushOrder.API/obj
+      - /app/src/RushOrder.API/bin
+      - /app/src/RushOrder.Application/obj
+      - /app/src/RushOrder.Application/bin
+      - /app/src/RushOrder.Domain/obj
+      - /app/src/RushOrder.Domain/bin
+      - /app/src/RushOrder.Infrastructure/obj
+      - /app/src/RushOrder.Infrastructure/bin
     depends_on:
       postgres:
         condition: service_healthy

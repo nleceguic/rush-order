@@ -18,7 +18,7 @@ export default {
         'rush-blue':  '#457B9D',
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['Poppins', 'system-ui', 'sans-serif'],
       },
       screens: {
         sm: '640px',

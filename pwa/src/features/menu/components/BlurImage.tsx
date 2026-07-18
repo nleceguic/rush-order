@@ -3,7 +3,7 @@ import { useState } from 'react'
 interface BlurImageProps {
   src:          string
   alt:          string
-  placeholder?: string
+  placeholder?: string | undefined
   className?:   string
   sizes?:       string
 }

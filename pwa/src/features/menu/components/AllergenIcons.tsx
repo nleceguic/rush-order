@@ -29,7 +29,8 @@ export function AllergenIcons({ allergens, showLabels = false, size = 'sm' }: Al
   return (
     <div className="flex flex-wrap gap-1">
       {allergens.map((key) => {
-        const info = ALLERGEN_MAP[key]
+        const info: { emoji: string; label: string } | undefined = ALLERGEN_MAP[key]
+        if (info === undefined) return null
         return (
           <span
             key={key}

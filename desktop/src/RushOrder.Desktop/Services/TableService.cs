@@ -7,6 +7,8 @@ namespace RushOrder.Desktop.Services;
 
 public sealed class TableService
 {
+    private const string BaseUrl = "http://localhost:5143/api/v1/tables";
+
     private readonly AppState _state;
     private readonly ILogger<TableService> _logger;
     private readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(5) };
@@ -23,17 +25,44 @@ public sealed class TableService
         {
             SetAuth();
             var id  = _state.CurrentRestaurant?.Id;
-            var res = await _http.GetAsync($"http://localhost:5000/api/tables?restaurantId={id}", ct);
+            // /floorplan (not the plain list) is the endpoint that returns position +
+            // active-order info; the backend still has no Width/Height/ShapeType/
+            // OccupiedSince/CurrentWaiter storage at all, so those are defaulted below.
+            var res = await _http.GetAsync($"{BaseUrl}/floorplan?restaurantId={id}", ct);
             if (res.IsSuccessStatusCode)
             {
                 var json = await res.Content.ReadAsStringAsync(ct);
-                return JsonConvert.DeserializeObject<List<TableDto>>(json)!;
+                var rows = JsonConvert.DeserializeObject<ApiEnvelope<List<TableFloorPlanDto>>>(json)?.Data;
+                if (rows is not null)
+                    return rows.Select((t, i) => MapFloorPlan(t, i)).ToList();
             }
         }
         catch (Exception ex) { _logger.LogWarning(ex, "Could not fetch tables; using mock"); }
         return MockTables();
     }
 
+    private static TableDto MapFloorPlan(TableFloorPlanDto t, int index)
+    {
+        var state = Enum.TryParse<TableState>(t.Status, out var s) ? s : TableState.Free;
+        // Fallback grid position for tables the backend never got a saved layout for.
+        var x = (float)(t.PositionX ?? (index % 4) * 140);
+        var y = (float)(t.PositionY ?? (index / 4) * 150);
+
+        return new TableDto(
+            t.Id, ParseTableNumber(t.Name), t.Capacity, state, TableShapeType.Circular,
+            x, y, 80, 80, t.ActiveOrderCount > 0, null, null);
+    }
+
+    // Backend tables are named "Mesa N" (see DatabaseSeeder); desktop models the
+    // number, not the name. Falls back to 0 for non-numeric names ("Barra", etc.).
+    private static int ParseTableNumber(string name)
+    {
+        var digits = new string(name.Where(char.IsDigit).ToArray());
+        return int.TryParse(digits, out var n) ? n : 0;
+    }
+
+    // NOTE: OrdersController has no tableId filter — this always falls back to mock.
+    // Would need a new backend query capability to work for real.
     public async Task<IReadOnlyList<ActiveOrderSummary>> GetTableOrdersAsync(
         Guid tableId, CancellationToken ct = default)
     {
@@ -41,7 +70,7 @@ public sealed class TableService
         {
             SetAuth();
             var res = await _http.GetAsync(
-                $"http://localhost:5000/api/orders?tableId={tableId}&status=active", ct);
+                $"http://localhost:5143/api/v1/orders?tableId={tableId}&status=active", ct);
             if (res.IsSuccessStatusCode)
             {
                 var json = await res.Content.ReadAsStringAsync(ct);
@@ -59,15 +88,22 @@ public sealed class TableService
             SetAuth();
             foreach (var req in positions)
             {
-                var body = JsonConvert.SerializeObject(new { req.X, req.Y });
+                // Backend's PUT {id} is a general table-update endpoint (Name/Capacity/
+                // Zone/PositionX/PositionY, all optional) — no dedicated /position route.
+                var body = JsonConvert.SerializeObject(new { positionX = (double)req.X, positionY = (double)req.Y });
                 await _http.PutAsync(
-                    $"http://localhost:5000/api/tables/{req.Id}/position",
+                    $"{BaseUrl}/{req.Id}",
                     new System.Net.Http.StringContent(body, System.Text.Encoding.UTF8, "application/json"), ct);
             }
         }
         catch (Exception ex) { _logger.LogWarning(ex, "Could not save table positions"); }
     }
 
+    // NOTE: backend's UpdateTableRequest has no status/state field at all — table
+    // occupancy state isn't independently settable via this controller today. This
+    // call will always no-op against the real API (204 from a body that changes
+    // nothing bound, or a bad-request depending on model binding). Needs a new
+    // backend capability (or deriving state from active orders) to work for real.
     public async Task UpdateTableStateAsync(Guid tableId, TableState state, CancellationToken ct = default)
     {
         try
@@ -75,7 +111,7 @@ public sealed class TableService
             SetAuth();
             var body = JsonConvert.SerializeObject(new { state = state.ToString() });
             await _http.PutAsync(
-                $"http://localhost:5000/api/tables/{tableId}/state",
+                $"{BaseUrl}/{tableId}",
                 new System.Net.Http.StringContent(body, System.Text.Encoding.UTF8, "application/json"), ct);
         }
         catch (Exception ex) { _logger.LogWarning(ex, "Could not update table state"); }
@@ -115,3 +151,15 @@ public sealed class TableService
         new(Guid.NewGuid(), "A-042", 2, 28.00m,  "Ready",     DateTimeOffset.Now.AddMinutes(-5)),
     ];
 }
+
+// Matches backend's TableFloorPlanDto (Tables/DTOs/TableFloorPlanDto.cs).
+internal sealed record TableFloorPlanDto(
+    Guid   Id,
+    string Name,
+    int    Capacity,
+    string? Zone,
+    string Status,
+    double? PositionX,
+    double? PositionY,
+    int    ActiveOrderCount,
+    string? CurrentOrderNumber);

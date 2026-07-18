@@ -1,51 +1,48 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useRef, useState } from 'react'
 import { useMenu } from './hooks/useMenu'
+import { useQRMenu } from './hooks/useQRMenu'
 import { CategoryList } from './components/CategoryList'
 import { ProductCard } from './components/ProductCard'
+import { ProductDetailSheet } from './components/ProductDetailSheet'
 import { Spinner } from '@shared/components/Spinner'
 import { useCartStore } from '@shared/store/cartStore'
+import { useWindowEdgeBounceY } from '@shared/hooks/useEdgeBounce'
+import { formatCurrency } from '@shared/utils/format'
+import { CartFlow } from '@features/cart/CartFlow'
+import type { MenuProduct } from './types'
 
 const RESTAURANT_ID = import.meta.env.VITE_RESTAURANT_ID ?? 'demo'
 
 export default function MenuPage() {
-  const navigate = useNavigate()
+  // RESTAURANT_ID is really a table QR token (see pwa/.env) — useQRMenu resolves
+  // it into the table/restaurant settings CartFlow needs (VAT, online payment,
+  // upselling) and also sets the cart's tableId/restaurantId, required to
+  // submit an order at all.
+  const { data: qrData } = useQRMenu(RESTAURANT_ID)
   const { data, isLoading, isError } = useMenu(RESTAURANT_ID)
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [selectedProduct, setSelectedProduct] = useState<MenuProduct | null>(null)
+  const [cartOpen, setCartOpen] = useState(false)
   const itemCount = useCartStore((s) => s.items.reduce((n, i) => n + i.quantity, 0))
+  const subtotal  = useCartStore((s) => s.total())
+  const productsRef = useRef<HTMLDivElement>(null)
+  useWindowEdgeBounceY(productsRef)
 
   const categories   = data?.categories ?? []
   const firstCatId   = categories[0]?.id ?? null
   const activeId     = selectedCategory ?? firstCatId
 
-  const products = (data?.products ?? []).filter(
-    (p) => activeId === null || p.categoryId === activeId,
-  )
+  const products = categories.find((c) => c.id === activeId)?.products ?? []
+
+  const availableProductIds = data !== undefined
+    ? new Set(categories.flatMap((c) => c.products.filter((p) => p.isAvailable).map((p) => p.id)))
+    : undefined
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Header */}
-      <header className="sticky top-0 z-30 bg-white border-b px-4 py-3 flex items-center justify-between shadow-sm">
+      <header className="sticky top-0 z-30 bg-white border-b px-4 py-3 flex items-center shadow-sm">
         <h1 className="text-xl font-bold text-rush-red">Rush Order</h1>
-        <button
-          onClick={() => navigate('/cart')}
-          className="relative p-2"
-          aria-label={`Ver carrito, ${itemCount} ítems`}
-        >
-          <svg className="h-6 w-6 text-rush-dark" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
-            />
-          </svg>
-          {itemCount > 0 && (
-            <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-rush-red text-[10px] font-bold text-white">
-              {itemCount}
-            </span>
-          )}
-        </button>
       </header>
 
       {/* Content */}
@@ -71,9 +68,9 @@ export default function MenuPage() {
                 onSelect={setSelectedCategory}
               />
             )}
-            <div className="grid grid-cols-1 gap-3">
+            <div ref={productsRef} className="grid grid-cols-1 gap-3">
               {products.map((product) => (
-                <ProductCard key={product.id} product={product} />
+                <ProductCard key={product.id} product={product} onViewDetails={setSelectedProduct} />
               ))}
               {products.length === 0 && (
                 <p className="text-center text-gray-400 py-10 text-sm">
@@ -86,16 +83,41 @@ export default function MenuPage() {
       </main>
 
       {/* Sticky CTA */}
-      {itemCount > 0 && (
-        <div className="sticky bottom-0 p-4 bg-white border-t shadow-up">
-          <button
-            onClick={() => navigate('/cart')}
-            className="w-full rounded-xl bg-rush-red py-3 text-center font-semibold text-white hover:bg-rush-red-hover transition-colors"
-          >
-            Ver pedido · {itemCount} {itemCount === 1 ? 'ítem' : 'ítems'}
-          </button>
-        </div>
-      )}
+      <div
+        className={`sticky bottom-0 p-4 transition-all duration-300 ease-out ${
+          itemCount > 0 ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0 pointer-events-none'
+        }`}
+        aria-hidden={itemCount === 0}
+      >
+        <button
+          onClick={() => setCartOpen(true)}
+          tabIndex={itemCount > 0 ? 0 : -1}
+          className="flex w-full items-center justify-between gap-3 rounded-xl bg-rush-red px-5 py-3.5 text-white shadow-lg hover:bg-rush-red-hover transition-colors"
+        >
+          <span className="flex items-baseline gap-1.5">
+            <span className="font-semibold">Ver pedido</span>
+            <span className="text-sm text-white/75">
+              · {itemCount} {itemCount === 1 ? 'ítem' : 'ítems'}
+            </span>
+          </span>
+          <span className="rounded-full bg-white/20 px-3 py-1 text-sm font-bold tabular-nums">
+            {formatCurrency(subtotal)}
+          </span>
+        </button>
+      </div>
+
+      <ProductDetailSheet product={selectedProduct} onClose={() => setSelectedProduct(null)} />
+
+      <CartFlow
+        open={cartOpen}
+        onClose={() => setCartOpen(false)}
+        onNewRound={() => setCartOpen(false)}
+        vatRate={qrData?.vatRate}
+        onlinePayEnabled={qrData?.onlinePaymentEnabled ?? false}
+        availableProductIds={availableProductIds}
+        categories={categories}
+        upsellingEnabled={qrData?.upsellingEnabled ?? true}
+      />
     </div>
   )
 }

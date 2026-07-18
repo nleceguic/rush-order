@@ -21,9 +21,13 @@ public sealed class MenuService
         try
         {
             Auth();
-            var result = await _http.GetFromJsonAsync<List<CategoryDto>>($"{Base()}/api/v1/categories");
-            if (result is null) throw new();
-            _catCache = result;
+            var rid = _state.CurrentRestaurant?.Id;
+            var env = await _http.GetFromJsonAsync<ApiEnvelope<List<BackendCategoryDto>>>(
+                $"{Base()}/api/v1/menu/categories?restaurantId={rid}");
+            if (env?.Data is null) throw new();
+            // Backend CategoryDto has no IsActive/ProductCount/UnavailableCount — those
+            // are always defaulted here (true/0/0) until the backend grows them.
+            _catCache = env.Data.Select(c => new CategoryDto(c.Id, c.Name, c.SortOrder, true, 0, 0)).ToList();
             return _catCache;
         }
         catch
@@ -41,16 +45,25 @@ public sealed class MenuService
             Auth();
             if (req.Id is null)
             {
-                var resp = await _http.PostAsJsonAsync($"{Base()}/api/v1/categories", req);
-                var created = await resp.Content.ReadFromJsonAsync<CategoryDto>();
-                if (created is not null) { _catCache.Add(created); return created; }
+                // POST returns just the new Guid (ApiResponse<Guid>), not a full DTO.
+                var resp = await _http.PostAsJsonAsync($"{Base()}/api/v1/menu/categories",
+                    new { restaurantId = _state.CurrentRestaurant?.Id, name = req.Name, description = (string?)null, imageUrl = (string?)null, sortOrder = req.SortOrder });
+                if (resp.IsSuccessStatusCode)
+                {
+                    var env = await resp.Content.ReadFromJsonAsync<ApiEnvelope<Guid>>();
+                    var created = new CategoryDto(env?.Data ?? Guid.NewGuid(), req.Name, req.SortOrder, req.IsActive, 0, 0);
+                    _catCache.Add(created);
+                    return created;
+                }
             }
             else
             {
-                var resp = await _http.PutAsJsonAsync($"{Base()}/api/v1/categories/{req.Id}", req);
-                var updated = await resp.Content.ReadFromJsonAsync<CategoryDto>();
-                if (updated is not null)
+                // PUT returns 204 No Content — no body to read back.
+                var resp = await _http.PutAsJsonAsync($"{Base()}/api/v1/menu/categories/{req.Id}",
+                    new { name = req.Name, description = (string?)null, imageUrl = (string?)null, sortOrder = (int?)req.SortOrder });
+                if (resp.IsSuccessStatusCode)
                 {
+                    var updated = new CategoryDto(req.Id.Value, req.Name, req.SortOrder, req.IsActive, 0, 0);
                     var idx = _catCache.FindIndex(c => c.Id == req.Id);
                     if (idx >= 0) _catCache[idx] = updated;
                     return updated;
@@ -68,18 +81,21 @@ public sealed class MenuService
 
     public async Task DeleteCategoryAsync(Guid id)
     {
-        try { Auth(); await _http.DeleteAsync($"{Base()}/api/v1/categories/{id}"); }
+        try { Auth(); await _http.DeleteAsync($"{Base()}/api/v1/menu/categories/{id}"); }
         catch { }
         _catCache.RemoveAll(c => c.Id == id);
         _prodCache.RemoveAll(p => p.CategoryId == id);
     }
 
+    // NOTE: MenuController has no category-reorder endpoint at all — this always
+    // no-ops server-side (silently swallowed by the catch). Only the local cache
+    // order changes, so it won't survive a refresh/restart. Needs a new backend route.
     public async Task ReorderCategoriesAsync(IList<Guid> orderedIds)
     {
         try
         {
             Auth();
-            await _http.PutAsJsonAsync($"{Base()}/api/v1/categories/reorder",
+            await _http.PutAsJsonAsync($"{Base()}/api/v1/menu/categories/reorder",
                 new { OrderedIds = orderedIds });
         }
         catch { }
@@ -94,6 +110,11 @@ public sealed class MenuService
 
     // ── Products ──────────────────────────────────────────────────────────
 
+    // Backend product model has no stock tracking, variants, or modifier groups at
+    // all — those fields only ever live in the local cache/DB, never persisted
+    // server-side. Also note: this fetches ALL pages up front (backend paginates at
+    // 20/page by default) so existing category/search/lowStock client-side filtering
+    // keeps working unchanged.
     public async Task<IReadOnlyList<MenuProductDto>> GetProductsAsync(
         Guid? categoryId = null, string? search = null,
         bool? onlyAvailable = null, bool? lowStock = null)
@@ -101,10 +122,25 @@ public sealed class MenuService
         try
         {
             Auth();
-            var qs   = BuildProductQs(categoryId, search, onlyAvailable, lowStock);
-            var resp = await _http.GetFromJsonAsync<List<MenuProductDto>>($"{Base()}/api/v1/menu/products{qs}");
-            if (resp is null) throw new();
-            _prodCache = resp;
+            var rid = _state.CurrentRestaurant?.Id;
+            var all = new List<BackendProductSummaryDto>();
+            var page = 1;
+            while (true)
+            {
+                var env = await _http.GetFromJsonAsync<ApiEnvelope<List<BackendProductSummaryDto>>>(
+                    $"{Base()}/api/v1/menu/products?restaurantId={rid}&page={page}&pageSize=100");
+                if (env?.Data is null || env.Data.Count == 0) break;
+                all.AddRange(env.Data);
+                if (env.Data.Count < 100) break;
+                page++;
+            }
+            if (all.Count == 0) throw new();
+
+            var catNames = _catCache.ToDictionary(c => c.Id, c => c.Name);
+            _prodCache = all.Select(p => new MenuProductDto(
+                p.Id, p.Name, p.CategoryId, catNames.GetValueOrDefault(p.CategoryId, ""),
+                p.Price, p.IsAvailable, p.ImageUrl, p.Description, p.PreparationMinutes,
+                [], [], false, null, null, [], [], p.SortOrder, null, null)).ToList();
         }
         catch
         {
@@ -119,18 +155,47 @@ public sealed class MenuService
         try
         {
             Auth();
-            HttpResponseMessage resp;
             if (req.Id is null)
-                resp = await _http.PostAsJsonAsync($"{Base()}/api/v1/menu/products", req);
-            else
-                resp = await _http.PutAsJsonAsync($"{Base()}/api/v1/menu/products/{req.Id}", req);
-
-            var saved = await resp.Content.ReadFromJsonAsync<MenuProductDto>();
-            if (saved is not null)
             {
-                var pi = _prodCache.FindIndex(p => p.Id == saved.Id);
-                if (pi >= 0) _prodCache[pi] = saved; else _prodCache.Add(saved);
-                return saved;
+                var resp = await _http.PostAsJsonAsync($"{Base()}/api/v1/menu/products", new
+                {
+                    categoryId = req.CategoryId,
+                    name = req.Name,
+                    description = req.Description,
+                    price = req.Price,
+                    imageUrl = (string?)null,
+                    allergens = req.Allergens,
+                    tags = req.Tags,
+                    preparationMinutes = req.PrepTimeMinutes,
+                });
+                if (resp.IsSuccessStatusCode)
+                {
+                    var env = await resp.Content.ReadFromJsonAsync<ApiEnvelope<Guid>>();
+                    var created = BuildLocalProduct(req) with { Id = env?.Data ?? Guid.NewGuid() };
+                    _prodCache.Add(created);
+                    return created;
+                }
+            }
+            else
+            {
+                var resp = await _http.PutAsJsonAsync($"{Base()}/api/v1/menu/products/{req.Id}", new
+                {
+                    name = req.Name,
+                    description = req.Description,
+                    price = (decimal?)req.Price,
+                    imageUrl = (string?)null,
+                    allergens = req.Allergens,
+                    tags = req.Tags,
+                    preparationMinutes = (int?)req.PrepTimeMinutes,
+                    sortOrder = (int?)req.SortOrder,
+                });
+                if (resp.IsSuccessStatusCode)
+                {
+                    var updated = BuildLocalProduct(req);
+                    var pi = _prodCache.FindIndex(p => p.Id == req.Id);
+                    if (pi >= 0) _prodCache[pi] = updated; else _prodCache.Add(updated);
+                    return updated;
+                }
             }
         }
         catch { }
@@ -148,13 +213,16 @@ public sealed class MenuService
         _prodCache.RemoveAll(p => p.Id == id);
     }
 
+    // NOTE: backend's PATCH .../availability *toggles* the current state — it doesn't
+    // accept a target value. If the desired `available` already matches server state,
+    // this flips it to the WRONG value. Needs the backend command to accept an
+    // explicit target instead of toggling before this is trustworthy.
     public async Task<MenuProductDto> ToggleAvailabilityAsync(Guid id, bool available)
     {
         try
         {
             Auth();
-            await _http.PatchAsync($"{Base()}/api/v1/menu/products/{id}/availability",
-                JsonContent.Create(new { IsAvailable = available }));
+            await _http.PatchAsync($"{Base()}/api/v1/menu/products/{id}/availability", null);
         }
         catch { }
 
@@ -185,7 +253,7 @@ public sealed class MenuService
         _http.DefaultRequestHeaders.Authorization =
             new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _state.AccessToken);
 
-    private string Base() => "http://localhost:5000";
+    private string Base() => "http://localhost:5143";
 
     private static string BuildProductQs(Guid? cat, string? search, bool? avail, bool? low)
     {
@@ -269,3 +337,14 @@ public sealed class MenuService
         ];
     }
 }
+
+// Matches backend's CategoryDto (Categories/DTOs/CategoryDto.cs) — no IsActive or
+// product-count fields exist server-side.
+internal sealed record BackendCategoryDto(
+    Guid Id, Guid RestaurantId, string Name, string? Description, string? ImageUrl, int SortOrder);
+
+// Matches backend's ProductSummaryDto (Products/DTOs/ProductSummaryDto.cs) — no
+// stock/variant/modifier fields exist server-side.
+internal sealed record BackendProductSummaryDto(
+    Guid Id, Guid CategoryId, string Name, string? Description, decimal Price,
+    string Currency, string? ImageUrl, bool IsAvailable, int SortOrder, int PreparationMinutes);

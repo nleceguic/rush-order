@@ -1,4 +1,6 @@
+import { useRef } from 'react'
 import type { DietFilter } from '../types'
+import { useEdgeBounce } from '@shared/hooks/useEdgeBounce'
 
 const FILTERS: Array<{ key: DietFilter; label: string; emoji: string }> = [
   { key: 'vegetarian', label: 'Vegetariano', emoji: '🌿' },
@@ -14,8 +16,12 @@ interface FilterBarProps {
 }
 
 export function FilterBar({ activeFilters, onToggle }: FilterBarProps) {
+  const ref = useRef<HTMLDivElement>(null)
+  useEdgeBounce(ref, 'x')
+
   return (
     <div
+      ref={ref}
       className="flex gap-2 overflow-x-auto scrollbar-hide px-4 py-2"
       role="group"
       aria-label="Filtros de dieta"

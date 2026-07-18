@@ -9,6 +9,8 @@ namespace RushOrder.Desktop.Services;
 
 public sealed class OrderService
 {
+    private const string BaseUrl = "http://localhost:5143/api/v1/orders";
+
     private readonly AppState    _state;
     private readonly LocalDatabase _db;
     private readonly SyncService   _sync;
@@ -40,13 +42,22 @@ public sealed class OrderService
             {
                 SetAuth();
                 var rid = _state.CurrentRestaurant?.Id;
+                // Backend's GetOrders only accepts a single nullable `status` (not a
+                // multi-value list) — omit it and filter Cancelled out client-side below.
                 var res = await _http.GetAsync(
-                    $"http://localhost:5000/api/orders?restaurantId={rid}&statuses=New,Preparing,Ready,Served,Paid&pageSize=200",
+                    $"{BaseUrl}?restaurantId={rid}&pageSize=200",
                     ct);
                 if (res.IsSuccessStatusCode)
                 {
-                    var json = await res.Content.ReadAsStringAsync(ct);
-                    _cache = JsonConvert.DeserializeObject<List<OrderDto>>(json) ?? [];
+                    var json    = await res.Content.ReadAsStringAsync(ct);
+                    var summary = JsonConvert.DeserializeObject<ApiEnvelope<List<OrderSummaryDto>>>(json)?.Data ?? [];
+                    // Summary rows don't include line items (backend list endpoint is
+                    // summary-only); Kanban cards will show 0 items until GetById is
+                    // wired up per-order.
+                    _cache = summary
+                        .Where(s => !string.Equals(s.Status, "Cancelled", StringComparison.OrdinalIgnoreCase))
+                        .Select(MapSummary)
+                        .ToList();
 
                     // Merge any pending offline orders that haven't synced yet
                     var offlineInQueue = _db.GetOrders().Where(o => o.IsOffline).ToList();
@@ -70,6 +81,24 @@ public sealed class OrderService
         return _cache;
     }
 
+    private static OrderDto MapSummary(OrderSummaryDto s) => new(
+        s.Id, s.OrderNumber, Guid.Empty, s.TableId, s.TableName ?? "—", 0,
+        MapStatus(s.Status), s.Source, null, [], s.Total, 0m, s.Total, null,
+        s.CreatedAt, null, null, null, null);
+
+    // Backend's OrderStatus has Pending/Confirmed/Cancelled with no desktop equivalent
+    // (desktop's 5-state Kanban predates those). Pending/Confirmed both fold into New;
+    // Cancelled orders are filtered out before reaching this mapper.
+    private static OrderStatus MapStatus(string status) => status switch
+    {
+        "Pending" or "Confirmed" => OrderStatus.New,
+        "Preparing"              => OrderStatus.Preparing,
+        "Ready"                  => OrderStatus.Ready,
+        "Served"                 => OrderStatus.Served,
+        "Paid"                   => OrderStatus.Paid,
+        _                        => OrderStatus.New,
+    };
+
     // ── Write ─────────────────────────────────────────────────────────────────
 
     public async Task<bool> UpdateStatusAsync(Guid orderId, OrderStatus newStatus, CancellationToken ct = default)
@@ -79,11 +108,14 @@ public sealed class OrderService
         if (idx >= 0) _cache[idx] = _cache[idx] with { Status = newStatus };
         _db.UpdateOrderStatus(orderId.ToString(), newStatus.ToString());
 
+        // Backend's OrderStatus has no "New" member (it's Pending/Confirmed there) —
+        // PATCHing to New would fail server-side enum binding. In practice this only
+        // matters if something re-opens an order to New, which the UI doesn't do today.
         if (!_state.IsOnline)
         {
             var payload = JsonConvert.SerializeObject(new { status = newStatus.ToString() });
             _sync.Enqueue("UPDATE_ORDER_STATUS",
-                $"/api/orders/{orderId}/status", "PUT", payload);
+                $"/api/v1/orders/{orderId}/status", "PATCH", payload);
             return true;
         }
 
@@ -91,8 +123,8 @@ public sealed class OrderService
         {
             SetAuth();
             var body = JsonConvert.SerializeObject(new { status = newStatus.ToString() });
-            var res  = await _http.PutAsync(
-                $"http://localhost:5000/api/orders/{orderId}/status",
+            var res  = await _http.PatchAsync(
+                $"{BaseUrl}/{orderId}/status",
                 new StringContent(body, Encoding.UTF8, "application/json"), ct);
             return res.IsSuccessStatusCode;
         }
@@ -101,7 +133,7 @@ public sealed class OrderService
             _logger.LogWarning(ex, "Status update failed; queuing for sync");
             var payload = JsonConvert.SerializeObject(new { status = newStatus.ToString() });
             _sync.Enqueue("UPDATE_ORDER_STATUS",
-                $"/api/orders/{orderId}/status", "PUT", payload);
+                $"/api/v1/orders/{orderId}/status", "PATCH", payload);
             return true;
         }
     }
@@ -111,20 +143,32 @@ public sealed class OrderService
         if (!_state.IsOnline)
             return CreateOfflineOrder(request);
 
+        // Backend requires a non-null TableId — counter/"Barra" orders with no table
+        // can't be created online today; fall back to the offline queue for those.
+        if (request.TableId is null)
+            return CreateOfflineOrder(request);
+
         try
         {
             SetAuth();
-            var body = JsonConvert.SerializeObject(request);
+            var body = JsonConvert.SerializeObject(ToBackendRequest(request));
             var res  = await _http.PostAsync(
-                "http://localhost:5000/api/orders",
+                BaseUrl,
                 new StringContent(body, Encoding.UTF8, "application/json"), ct);
             if (res.IsSuccessStatusCode)
             {
-                var json  = await res.Content.ReadAsStringAsync(ct);
-                var order = JsonConvert.DeserializeObject<OrderDto>(json)!;
-                _cache.Insert(0, order);
-                _db.UpsertOrder(order);
-                return order;
+                var json   = await res.Content.ReadAsStringAsync(ct);
+                var result = JsonConvert.DeserializeObject<ApiEnvelope<CreateOrderResult>>(json)?.Data;
+                if (result is not null)
+                {
+                    // Response only carries {orderId, orderNumber, estimatedReadyAt,
+                    // trackingToken} — build the display order from what we already
+                    // sent, patched with the server-assigned id/number.
+                    var order = BuildOrderFromRequest(request, result.OrderId, result.OrderNumber, isOffline: false);
+                    _cache.Insert(0, order);
+                    _db.UpsertOrder(order);
+                    return order;
+                }
             }
         }
         catch (Exception ex) { _logger.LogWarning(ex, "Create order failed; creating offline"); }
@@ -134,34 +178,62 @@ public sealed class OrderService
 
     private OrderDto CreateOfflineOrder(CreateOrderRequest request)
     {
-        var items = request.Items.Select(i =>
-            new OrderItemDto(Guid.NewGuid(), i.ProductId, i.ProductName, i.Quantity,
-                i.UnitPrice, i.UnitPrice * i.Quantity, i.Notes, [], [])).ToList();
-        var sub = items.Sum(x => x.LineTotal);
-        var tax = Math.Round(sub * 0.10m, 2);
         var num = $"LOCAL-{DateTime.Now:HHmm}-{Random.Shared.Next(10, 99)}";
-
-        var order = new OrderDto(
-            Guid.NewGuid(), num, request.RestaurantId, request.TableId, request.TableName,
-            request.GuestCount, OrderStatus.New, request.Source, null, items,
-            sub, tax, sub + tax, request.Notes, DateTimeOffset.Now,
-            null, null, null, null, IsOffline: true);
+        var order = BuildOrderFromRequest(request, Guid.NewGuid(), num, isOffline: true);
 
         _cache.Insert(0, order);
         _db.UpsertOrder(order);
-        _sync.Enqueue("CREATE_ORDER", "/api/orders", "POST",
-            JsonConvert.SerializeObject(request), order.Id.ToString());
+        // Enqueue the backend-shaped payload (not the raw desktop request) so the
+        // sync retry actually binds against OrdersController.CreateOrder later.
+        _sync.Enqueue("CREATE_ORDER", "/api/v1/orders", "POST",
+            JsonConvert.SerializeObject(ToBackendRequest(request)), order.Id.ToString());
 
         _logger.LogInformation("Created offline order {Num}", order.OrderNumber);
         return order;
     }
 
+    private static object ToBackendRequest(CreateOrderRequest request) => new
+    {
+        tableId    = request.TableId,
+        customerId = (Guid?)null,
+        items      = request.Items.Select(i => new
+        {
+            productId = i.ProductId,
+            quantity  = i.Quantity,
+            notes     = i.Notes,
+        }),
+        notes  = request.Notes,
+        source = request.Source,
+    };
+
+    private static OrderDto BuildOrderFromRequest(
+        CreateOrderRequest request, Guid orderId, string orderNumber, bool isOffline)
+    {
+        var items = request.Items.Select(i =>
+            new OrderItemDto(Guid.NewGuid(), i.ProductId, i.ProductName, i.Quantity,
+                i.UnitPrice, i.UnitPrice * i.Quantity, i.Notes, [], [])).ToList();
+        var sub = items.Sum(x => x.LineTotal);
+        var tax = Math.Round(sub * 0.10m, 2);
+
+        return new OrderDto(
+            orderId, orderNumber, request.RestaurantId, request.TableId, request.TableName,
+            request.GuestCount, OrderStatus.New, request.Source, null, items,
+            sub, tax, sub + tax, request.Notes, DateTimeOffset.Now,
+            null, null, null, null, IsOffline: isOffline);
+    }
+
+    // NOTE: there is no `POST /api/v1/payments` endpoint on the backend — real routes
+    // are the Stripe-style `/payments/intent` + `/payments/confirm` (or `/split` for
+    // split bills), which need a different request/response flow than this simple
+    // "charge and mark paid" call. This always falls through to the local/offline
+    // path below; the order is marked Paid locally but no real payment record is ever
+    // created server-side. Needs product/design input before it can be wired up.
     public async Task<bool> ProcessPaymentAsync(PaymentRequest request, CancellationToken ct = default)
     {
         if (!_state.IsOnline)
         {
             await UpdateStatusAsync(request.OrderId, OrderStatus.Paid, ct);
-            _sync.Enqueue("PROCESS_PAYMENT", "/api/payments", "POST",
+            _sync.Enqueue("PROCESS_PAYMENT", "/api/v1/payments", "POST",
                 JsonConvert.SerializeObject(request));
             return true;
         }
@@ -171,7 +243,7 @@ public sealed class OrderService
             SetAuth();
             var body = JsonConvert.SerializeObject(request);
             var res  = await _http.PostAsync(
-                "http://localhost:5000/api/payments",
+                "http://localhost:5143/api/v1/payments",
                 new StringContent(body, Encoding.UTF8, "application/json"), ct);
             if (res.IsSuccessStatusCode)
             {
@@ -182,16 +254,19 @@ public sealed class OrderService
         catch (Exception ex) { _logger.LogWarning(ex, "Payment failed; marking paid locally"); }
 
         await UpdateStatusAsync(request.OrderId, OrderStatus.Paid, ct);
-        _sync.Enqueue("PROCESS_PAYMENT", "/api/payments", "POST",
+        _sync.Enqueue("PROCESS_PAYMENT", "/api/v1/payments", "POST",
             JsonConvert.SerializeObject(request));
         return true;
     }
 
+    // NOTE: there is no waiter-assignment route on OrdersController at all — this
+    // will always fail online and fall back to queuing indefinitely. Needs a new
+    // backend endpoint before it can work.
     public async Task<bool> AssignWaiterAsync(Guid orderId, string waiterName, CancellationToken ct = default)
     {
         if (!_state.IsOnline)
         {
-            _sync.Enqueue("ASSIGN_WAITER", $"/api/orders/{orderId}/waiter", "PUT",
+            _sync.Enqueue("ASSIGN_WAITER", $"/api/v1/orders/{orderId}/waiter", "PUT",
                 JsonConvert.SerializeObject(new { waiterName }));
             return true;
         }
@@ -200,7 +275,7 @@ public sealed class OrderService
             SetAuth();
             var body = JsonConvert.SerializeObject(new { waiterName });
             var res  = await _http.PutAsync(
-                $"http://localhost:5000/api/orders/{orderId}/waiter",
+                $"{BaseUrl}/{orderId}/waiter",
                 new StringContent(body, Encoding.UTF8, "application/json"), ct);
             return res.IsSuccessStatusCode;
         }
@@ -212,15 +287,20 @@ public sealed class OrderService
         _cache.RemoveAll(o => o.Id == orderId);
         _db.UpdateOrderStatus(orderId.ToString(), OrderStatus.Paid.ToString()); // mark closed
 
+        // Backend route is POST {id}/cancel with a required Reason (not DELETE {id}).
+        var payload = JsonConvert.SerializeObject(new { reason = "Cancelado desde el POS" });
+
         if (!_state.IsOnline)
         {
-            _sync.Enqueue("CANCEL_ORDER", $"/api/orders/{orderId}", "DELETE", "{}");
+            _sync.Enqueue("CANCEL_ORDER", $"/api/v1/orders/{orderId}/cancel", "POST", payload);
             return true;
         }
         try
         {
             SetAuth();
-            var res = await _http.DeleteAsync($"http://localhost:5000/api/orders/{orderId}", ct);
+            var res = await _http.PostAsync(
+                $"{BaseUrl}/{orderId}/cancel",
+                new StringContent(payload, Encoding.UTF8, "application/json"), ct);
             return res.IsSuccessStatusCode;
         }
         catch { return true; }
@@ -291,3 +371,26 @@ public sealed class OrderService
         new(Guid.NewGuid(), Guid.NewGuid(), name, qty, price, price * qty, null,
             allergens ?? [], []);
 }
+
+// (ApiEnvelope<T> is defined in AuthService.cs — same namespace, reused here.)
+
+// Matches backend's OrderSummaryDto (Orders/DTOs/OrderSummaryDto.cs) — GET /orders
+// list endpoint. Note this has no line items and no GuestCount; see MapSummary().
+internal sealed record OrderSummaryDto(
+    Guid   Id,
+    string OrderNumber,
+    Guid   TableId,
+    string? TableName,
+    string Status,
+    string Source,
+    decimal Total,
+    string Currency,
+    int    ItemCount,
+    DateTimeOffset CreatedAt);
+
+// Matches backend's CreateOrderResult (Orders/DTOs/CreateOrderResult.cs).
+internal sealed record CreateOrderResult(
+    Guid   OrderId,
+    string OrderNumber,
+    DateTimeOffset? EstimatedReadyAt,
+    string TrackingToken);

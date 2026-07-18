@@ -40,25 +40,25 @@ ALTER TABLE payments    ENABLE ROW LEVEL SECURITY;
             // which causes the filter to reject all rows — safe default.
             migrationBuilder.Sql(@"
 CREATE POLICY tenant_isolation ON restaurants
-    USING (tenant_id = current_setting('app.current_tenant_id', true)::uuid);
+    USING (""TenantId"" = current_setting('app.current_tenant_id', true)::uuid);
 
 CREATE POLICY tenant_isolation ON tables
-    USING (tenant_id = current_setting('app.current_tenant_id', true)::uuid);
+    USING (""TenantId"" = current_setting('app.current_tenant_id', true)::uuid);
 
 CREATE POLICY tenant_isolation ON users
-    USING (tenant_id = current_setting('app.current_tenant_id', true)::uuid);
+    USING (""TenantId"" = current_setting('app.current_tenant_id', true)::uuid);
 
 CREATE POLICY tenant_isolation ON customers
-    USING (tenant_id = current_setting('app.current_tenant_id', true)::uuid);
+    USING (""TenantId"" = current_setting('app.current_tenant_id', true)::uuid);
 
 CREATE POLICY tenant_isolation ON orders
-    USING (tenant_id = current_setting('app.current_tenant_id', true)::uuid);
+    USING (""TenantId"" = current_setting('app.current_tenant_id', true)::uuid);
 
 CREATE POLICY tenant_isolation ON products
-    USING (tenant_id = current_setting('app.current_tenant_id', true)::uuid);
+    USING (""TenantId"" = current_setting('app.current_tenant_id', true)::uuid);
 
 CREATE POLICY tenant_isolation ON payments
-    USING (tenant_id = current_setting('app.current_tenant_id', true)::uuid);
+    USING (""TenantId"" = current_setting('app.current_tenant_id', true)::uuid);
 ");
         }
 

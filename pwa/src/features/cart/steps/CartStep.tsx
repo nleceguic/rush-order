@@ -13,8 +13,8 @@ interface CartStepProps {
   onNotesChange:         (v: string) => void
   onCheckout:            () => void
   onClose:               () => void
-  vatRate?:              number
-  availableProductIds?:  Set<string>
+  vatRate?:              number | undefined
+  availableProductIds?:  Set<string> | undefined
   redeemedPoints:        number
   onRedemptionChange:    (points: number) => void
 }

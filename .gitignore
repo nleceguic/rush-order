@@ -129,6 +129,7 @@ terraform.rc
 *.pfx
 *.p12
 *.key
+*.pem
 *.cer
 *.crt
 appsettings.Local.json

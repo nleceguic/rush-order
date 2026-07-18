@@ -45,6 +45,21 @@ apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 
 let _refreshPromise: Promise<string> | null = null
 
+// ── Response: unwrap the backend's { status, data, message, ... } envelope ──
+// (ApiResponse<T> from ApiController.OkData) so callers can type useGet<T>/
+// apiClient.get<T> against the actual payload shape, not the wrapper.
+apiClient.interceptors.response.use((res) => {
+  if (
+    res.data !== null &&
+    typeof res.data === 'object' &&
+    'status' in res.data &&
+    'data' in res.data
+  ) {
+    res.data = res.data.data
+  }
+  return res
+})
+
 // ── Response: 401 refresh + 2-retry on network error ─────────────────────────
 apiClient.interceptors.response.use(
   (res) => res,

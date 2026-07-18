@@ -13,7 +13,7 @@ export interface Recommendation {
 }
 
 interface RecommendationsApiResponse {
-  data: { recommendations: Recommendation[] }
+  recommendations: Recommendation[]
 }
 
 // Backend caches this by restaurant + cart signature for 5 min (not per
@@ -31,7 +31,7 @@ export function useRecommendations(restaurantId: string | undefined, cartProduct
           ...(productIdsParam.length > 0 ? { productIds: productIdsParam } : {}),
         },
       })
-      return data.data.recommendations
+      return data.recommendations
     },
     enabled:   restaurantId !== undefined,
     staleTime: 5 * 60 * 1000,

@@ -22,7 +22,7 @@ public sealed class GetTableByQrCodeQueryHandler : IRequestHandler<GetTableByQrC
         var table = await _tableRepository.GetByQrCodeAsync(request.QrCode, cancellationToken);
         if (table is null) return null;
 
-        var restaurant = await _restaurantRepository.GetByIdAsync(table.RestaurantId, cancellationToken);
+        var restaurant = await _restaurantRepository.GetByIdPublicAsync(table.RestaurantId, cancellationToken);
         if (restaurant is null || !restaurant.IsActive) return null;
 
         return new TablePublicDto(
@@ -32,6 +32,10 @@ public sealed class GetTableByQrCodeQueryHandler : IRequestHandler<GetTableByQrC
             table.Zone,
             restaurant.Id,
             restaurant.Name,
-            restaurant.Currency);
+            restaurant.Currency,
+            restaurant.LogoUrl,
+            restaurant.CoverUrl,
+            restaurant.Settings.UpsellingEnabled,
+            AvailableLocales: ["es"]);
     }
 }

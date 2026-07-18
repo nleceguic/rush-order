@@ -4,8 +4,6 @@ import { Spinner } from '@shared/components/Spinner'
 
 const LandingPage   = lazy(() => import('@features/menu/LandingPage'))
 const MenuPage      = lazy(() => import('@features/menu/MenuPage'))
-const CartPage      = lazy(() => import('@features/order/CartPage'))
-const CheckoutPage  = lazy(() => import('@features/order/CheckoutPage'))
 const PaymentPage       = lazy(() => import('@features/payment/PaymentPage'))
 const PaymentResultPage = lazy(() => import('@features/payment/PaymentResultPage'))
 const TrackingPage      = lazy(() => import('@features/tracking/TrackingPage'))
@@ -31,8 +29,6 @@ export const router = createBrowserRouter([
 
   // Fallback direct menu (dev / standalone)
   { path: '/',                element: wrap(<MenuPage />) },
-  { path: '/cart',            element: wrap(<CartPage />) },
-  { path: '/checkout',        element: wrap(<CheckoutPage />) },
   // static /payment/result MUST come before the dynamic /payment/:orderId
   { path: '/payment/result',   element: wrap(<PaymentResultPage />) },
   { path: '/payment/:orderId', element: wrap(<PaymentPage />) },

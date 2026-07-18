@@ -3,14 +3,16 @@
 # Dev target:   docker build --target development -t rushorder-api:dev .
 
 # ─── Stage: base ─────────────────────────────────────────────────────────────
-FROM mcr.microsoft.com/dotnet/aspnet:9.0-alpine AS base
+FROM mcr.microsoft.com/dotnet/aspnet:8.0-alpine AS base
 WORKDIR /app
 
-# curl para HEALTHCHECK (Alpine no lo incluye por defecto)
-RUN apk add --no-cache curl
+# curl para HEALTHCHECK; icu-libs para culturas (es-ES) — la imagen alpine
+# base viene en modo "globalization-invariant" y sin ICU por defecto, lo que
+# rompe CultureInfo.GetCultureInfo("es-ES") usado en WeeklyInsightsJob.
+RUN apk add --no-cache curl icu-libs
+ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
 
-# Usuario no-root
-RUN addgroup -S app && adduser -S -G app app
+# La imagen base aspnet:8.0-alpine ya trae un usuario no-root "app" preconfigurado
 
 EXPOSE 8080
 ENV ASPNETCORE_URLS=http://+:8080
@@ -19,11 +21,9 @@ ENV ASPNETCORE_URLS=http://+:8080
 # Entorno de ejecución: Production | Staging | Development
 ENV ASPNETCORE_ENVIRONMENT=Production
 # Cadena de conexión PostgreSQL
-ENV ConnectionStrings__DefaultConnection=""
+ENV Database__ConnectionString=""
 # Cadena de conexión Redis  (ej: redis:6379)
-ENV ConnectionStrings__Redis=""
-# Clave de firma JWT (mínimo 32 chars en producción)
-ENV Jwt__Secret=""
+ENV Redis__ConnectionString=""
 # Emisor del token JWT
 ENV Jwt__Issuer=""
 # Audiencia del token JWT
@@ -33,7 +33,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
   CMD curl -f http://localhost:8080/health || exit 1
 
 # ─── Stage: build ─────────────────────────────────────────────────────────────
-FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
 # Copiar sólo los .csproj primero → Docker cachea la capa de restore
@@ -44,7 +44,8 @@ COPY src/RushOrder.Infrastructure/RushOrder.Infrastructure.csproj src/RushOrder.
 COPY src/RushOrder.API/RushOrder.API.csproj                   src/RushOrder.API/
 
 RUN dotnet restore src/RushOrder.API/RushOrder.API.csproj \
-    --runtime linux-musl-x64
+    --runtime linux-musl-x64 \
+    -p:PublishReadyToRun=true
 
 # Copiar código y publicar con ReadyToRun para mejor startup time
 COPY . .
@@ -61,12 +62,16 @@ FROM base AS final
 
 COPY --from=build --chown=app:app /app/publish .
 
+# Pre-crear con dueño "app" — si un volumen se monta aquí, Docker copia este
+# directorio (vacío, con estos permisos) al volumen en su primera creación.
+RUN mkdir -p keys logs && chown app:app keys logs
+
 USER app
 
 ENTRYPOINT ["dotnet", "RushOrder.API.dll"]
 
 # ─── Stage: development (hot-reload con dotnet watch) ────────────────────────
-FROM mcr.microsoft.com/dotnet/sdk:9.0 AS development
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS development
 WORKDIR /app
 
 EXPOSE 8080
@@ -82,4 +87,4 @@ COPY src/RushOrder.Infrastructure/RushOrder.Infrastructure.csproj src/RushOrder.
 COPY src/RushOrder.API/RushOrder.API.csproj                   src/RushOrder.API/
 RUN dotnet restore src/RushOrder.API/RushOrder.API.csproj
 
-CMD ["dotnet", "watch", "run", "--project", "src/RushOrder.API", "--no-restore"]
+CMD ["dotnet", "watch", "run", "--project", "src/RushOrder.API", "--no-restore", "--no-launch-profile"]

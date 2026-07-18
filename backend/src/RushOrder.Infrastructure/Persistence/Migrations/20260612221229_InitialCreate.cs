@@ -224,7 +224,7 @@ namespace RushOrder.Infrastructure.Persistence.Migrations
                 table: "payments",
                 column: "ProviderPaymentId",
                 unique: true,
-                filter: "provider_payment_id IS NOT NULL");
+                filter: "\"ProviderPaymentId\" IS NOT NULL");
 
             migrationBuilder.CreateIndex(
                 name: "IX_payments_TenantId_OrderId",

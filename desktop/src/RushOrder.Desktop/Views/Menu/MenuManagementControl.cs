@@ -791,11 +791,16 @@ public sealed class MenuManagementControl : UserControl
         await RefreshGridAsync();
     }
 
+    // NOTE: the PWA route is /menu/:qrToken (a table's QR code), not /menu/:restaurantId
+    // — this was pointing at the API's port (5000) with the wrong kind of id entirely.
+    // Still opens using the restaurant id as a placeholder since there's no table
+    // picker here; the PWA will 404 ("table not found") until this is wired to an
+    // actual table's QrCode.
     private void OnPreviewClicked(object? sender, EventArgs e)
     {
         // Open PWA menu preview in system browser
         var restaurantId = _state.CurrentRestaurant?.Id.ToString() ?? "demo";
-        var url = $"http://localhost:5000/menu/{restaurantId}?preview=true";
+        var url = $"http://localhost:5173/menu/{restaurantId}?preview=true";
         try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true }); }
         catch { _toasts.Show("No se pudo abrir la vista previa en el navegador", ToastType.Warning); }
     }

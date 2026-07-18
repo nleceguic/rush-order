@@ -165,6 +165,13 @@ public static class DependencyInjection
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
             {
+                // Without this, the handler silently remaps "sub"/"email"/"tid" to legacy
+                // XML/WS-Fed claim URIs on validation (e.g. "tid" -> the Azure AD tenant-id
+                // claim URI). CurrentTenantService reads the literal "tid" claim with no
+                // fallback, so every tenant-scoped EF query filter silently resolved to
+                // TenantId == null (constant-folded by EF to `WHERE FALSE`) for every
+                // authenticated request.
+                options.MapInboundClaims = false;
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuer = true,

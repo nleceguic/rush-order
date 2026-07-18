@@ -21,11 +21,35 @@ interface ProductCardProps {
 
 export function ProductCard({ product, onViewDetails }: ProductCardProps) {
   const addItem = useCartStore((s) => s.addItem)
+  const updateQuantity = useCartStore((s) => s.updateQuantity)
 
-  const handleQuickAdd = (e: React.MouseEvent) => {
+  // Total units of this product in the order, across every cart line —
+  // including ones added with notes/extras from the detail sheet — not just
+  // the plain (no customization) line the +/- buttons add to.
+  const quantity = useCartStore((s) =>
+    s.items.reduce((sum, i) => (i.productId === product.id ? sum + i.quantity : sum), 0),
+  )
+  const plainItem = useCartStore((s) =>
+    s.items.find((i) => i.productId === product.id && i.notes === undefined && i.modifiers.length === 0),
+  )
+
+  const handleIncrement = (e: React.MouseEvent) => {
     e.stopPropagation()
     if (!product.isAvailable) return
     addItem({ productId: product.id, name: product.name, price: product.price })
+  }
+
+  const handleDecrement = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (plainItem !== undefined) {
+      updateQuantity(plainItem.key, plainItem.quantity - 1)
+      return
+    }
+    // No plain line — every unit of this product in the cart is customized
+    // (notes/extras). Fall back to trimming the first such line instead of
+    // doing nothing.
+    const customized = useCartStore.getState().items.find((i) => i.productId === product.id)
+    if (customized !== undefined) updateQuantity(customized.key, customized.quantity - 1)
   }
 
   return (
@@ -60,7 +84,8 @@ export function ProductCard({ product, onViewDetails }: ProductCardProps) {
         {product.tags !== undefined && product.tags.length > 0 && (
           <div className="flex flex-wrap gap-1 mb-1">
             {product.tags.slice(0, 2).map((tag) => {
-              const cfg = TAG_CONFIG[tag]
+              const cfg: { label: string; cls: string } | undefined = TAG_CONFIG[tag]
+              if (cfg === undefined) return null
               return (
                 <span key={tag} className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${cfg.cls}`}>
                   {cfg.label}
@@ -88,20 +113,41 @@ export function ProductCard({ product, onViewDetails }: ProductCardProps) {
         {/* Price + Add */}
         <div className="flex items-center justify-between mt-auto pt-2">
           <span className="font-bold text-green-600 text-sm">{formatCurrency(product.price)}</span>
-          <button
-            onClick={handleQuickAdd}
-            disabled={!product.isAvailable}
-            aria-label={`Añadir ${product.name} al pedido`}
-            className="h-7 w-7 rounded-full bg-rush-red text-white flex items-center justify-center hover:bg-rush-red-hover disabled:opacity-40 transition-colors flex-shrink-0"
-          >
-            <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
-              <path
-                fillRule="evenodd"
-                d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
-                clipRule="evenodd"
-              />
-            </svg>
-          </button>
+          {quantity === 0 ? (
+            <button
+              onClick={handleIncrement}
+              disabled={!product.isAvailable}
+              aria-label={`Añadir ${product.name} al pedido`}
+              className="h-7 w-7 rounded-full bg-rush-red text-white flex items-center justify-center hover:bg-rush-red-hover disabled:opacity-40 transition-colors flex-shrink-0"
+            >
+              <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+                <path
+                  fillRule="evenodd"
+                  d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </button>
+          ) : (
+            <div className="flex items-center gap-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+              <button
+                onClick={handleDecrement}
+                aria-label={`Quitar una unidad de ${product.name}`}
+                className="h-7 w-7 rounded-full border-2 border-rush-red text-rush-red flex items-center justify-center hover:bg-rush-red/10 transition-colors"
+              >
+                −
+              </button>
+              <span className="w-4 text-center text-sm font-bold tabular-nums">{quantity}</span>
+              <button
+                onClick={handleIncrement}
+                disabled={!product.isAvailable}
+                aria-label={`Añadir otra unidad de ${product.name}`}
+                className="h-7 w-7 rounded-full bg-rush-red text-white flex items-center justify-center hover:bg-rush-red-hover disabled:opacity-40 transition-colors"
+              >
+                +
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

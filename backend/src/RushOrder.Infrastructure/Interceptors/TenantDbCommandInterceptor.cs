@@ -22,14 +22,14 @@ public sealed class TenantDbCommandInterceptor : DbCommandInterceptor
         return result;
     }
 
-    public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(
+    public override async ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(
         DbCommand command,
         CommandEventData eventData,
         InterceptionResult<DbDataReader> result,
         CancellationToken cancellationToken = default)
     {
-        SetTenantContext(command);
-        return ValueTask.FromResult(result);
+        await SetTenantContextAsync(command, cancellationToken);
+        return result;
     }
 
     public override InterceptionResult<int> NonQueryExecuting(
@@ -41,14 +41,14 @@ public sealed class TenantDbCommandInterceptor : DbCommandInterceptor
         return result;
     }
 
-    public override ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(
+    public override async ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(
         DbCommand command,
         CommandEventData eventData,
         InterceptionResult<int> result,
         CancellationToken cancellationToken = default)
     {
-        SetTenantContext(command);
-        return ValueTask.FromResult(result);
+        await SetTenantContextAsync(command, cancellationToken);
+        return result;
     }
 
     public override InterceptionResult<object> ScalarExecuting(
@@ -60,20 +60,41 @@ public sealed class TenantDbCommandInterceptor : DbCommandInterceptor
         return result;
     }
 
-    public override ValueTask<InterceptionResult<object>> ScalarExecutingAsync(
+    public override async ValueTask<InterceptionResult<object>> ScalarExecutingAsync(
         DbCommand command,
         CommandEventData eventData,
         InterceptionResult<object> result,
         CancellationToken cancellationToken = default)
     {
-        SetTenantContext(command);
-        return ValueTask.FromResult(result);
+        await SetTenantContextAsync(command, cancellationToken);
+        return result;
     }
 
+    // Issued as its own command (not concatenated into `command.CommandText`) because
+    // prepending text to a batched multi-statement modification command shifts Npgsql's
+    // NextResult()/RecordsAffected alignment, corrupting EF's per-row concurrency check
+    // (surfaces as spurious DbUpdateConcurrencyException on multi-row SaveChanges batches).
+    // Session-scoped SET (not SET LOCAL) is safe here because this runs before every
+    // command on the connection, so it's always refreshed before any tenant-sensitive query.
     private void SetTenantContext(DbCommand command)
     {
+        if (command.Connection is null) return;
+
         var tenantId = _currentTenant.TenantId?.ToString() ?? Guid.Empty.ToString();
-        // Prepend SET LOCAL so it's scoped to the current transaction/statement
-        command.CommandText = $"SET LOCAL app.current_tenant_id = '{tenantId}';\n{command.CommandText}";
+        using var setCmd = command.Connection.CreateCommand();
+        setCmd.Transaction = command.Transaction;
+        setCmd.CommandText = $"SET app.current_tenant_id = '{tenantId}';";
+        setCmd.ExecuteNonQuery();
+    }
+
+    private async Task SetTenantContextAsync(DbCommand command, CancellationToken cancellationToken)
+    {
+        if (command.Connection is null) return;
+
+        var tenantId = _currentTenant.TenantId?.ToString() ?? Guid.Empty.ToString();
+        await using var setCmd = command.Connection.CreateCommand();
+        setCmd.Transaction = command.Transaction;
+        setCmd.CommandText = $"SET app.current_tenant_id = '{tenantId}';";
+        await setCmd.ExecuteNonQueryAsync(cancellationToken);
     }
 }

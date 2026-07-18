@@ -10,7 +10,7 @@ public sealed class ConnectivityMonitor : IDisposable
     private readonly ILogger<ConnectivityMonitor> _logger;
     private readonly CancellationTokenSource _cts = new();
 
-    private const string HealthUrl = "http://localhost:5000/health";
+    private const string HealthUrl = "http://localhost:5143/health";
 
     public ConnectivityMonitor(AppState state, SyncService sync, ILogger<ConnectivityMonitor> logger)
     {

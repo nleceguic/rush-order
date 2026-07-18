@@ -17,18 +17,34 @@ public sealed class KitchenService
 
     public KitchenService(AppState state) => _state = state;
 
+    // Backend's list endpoint (GET /orders) has no multi-status filter and returns
+    // summary rows with no items — kitchen tickets need item-level detail, so this
+    // fetches the active summary list then GETs each order's detail individually
+    // (N+1, but there's no bulk-with-items endpoint to use instead).
     public async Task<IReadOnlyList<KitchenOrderDto>> GetActiveOrdersAsync()
     {
         try
         {
             ApplyAuth();
             var baseUrl = BaseUrl();
-            var resp    = await _http.GetFromJsonAsync<List<OrderDto>>(
-                $"{baseUrl}/api/v1/orders?status=New,Preparing,Ready");
-            if (resp is null) throw new InvalidOperationException("null response");
+            var rid     = _state.CurrentRestaurant?.Id;
+            var summary = await _http.GetFromJsonAsync<ApiEnvelope<List<OrderSummaryDto>>>(
+                $"{baseUrl}/api/v1/orders?restaurantId={rid}&pageSize=200");
+            var active = summary?.Data?
+                .Where(o => o.Status is "Pending" or "Confirmed" or "Preparing" or "Ready")
+                .ToList();
+            if (active is null) throw new InvalidOperationException("null response");
+
+            var detailed = new List<KitchenOrderDto>();
+            foreach (var o in active)
+            {
+                var env = await _http.GetFromJsonAsync<ApiEnvelope<KitchenOrderDetailDto>>(
+                    $"{baseUrl}/api/v1/orders/{o.Id}");
+                if (env?.Data is not null) detailed.Add(MapToKitchen(env.Data));
+            }
 
             _cache.Clear();
-            _cache.AddRange(resp.Select(MapToKitchen));
+            _cache.AddRange(detailed);
             return _cache.AsReadOnly();
         }
         catch
@@ -46,7 +62,7 @@ public sealed class KitchenService
         try
         {
             ApplyAuth();
-            await _http.PutAsync($"{BaseUrl()}/api/v1/orders/{orderId}/status",
+            await _http.PatchAsync($"{BaseUrl()}/api/v1/orders/{orderId}/status",
                 JsonContent.Create(new { Status = "Preparing" }));
         }
         catch { }
@@ -58,7 +74,7 @@ public sealed class KitchenService
         try
         {
             ApplyAuth();
-            await _http.PutAsync($"{BaseUrl()}/api/v1/orders/{orderId}/status",
+            await _http.PatchAsync($"{BaseUrl()}/api/v1/orders/{orderId}/status",
                 JsonContent.Create(new { Status = "Ready" }));
         }
         catch { }
@@ -121,7 +137,7 @@ public sealed class KitchenService
             new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _state.AccessToken);
 
     private string BaseUrl() =>
-        "http://localhost:5000"; // real apps: read from config/state
+        "http://localhost:5143"; // real apps: read from config/state
 
     private void UpdateStatus(Guid orderId, OrderStatus status)
     {
@@ -129,12 +145,27 @@ public sealed class KitchenService
         if (idx >= 0) _cache[idx] = _cache[idx] with { Status = status };
     }
 
-    private static KitchenOrderDto MapToKitchen(OrderDto o) => new(
-        o.Id, o.OrderNumber, o.TableName, o.GuestCount, o.PlacedAt, o.Status, false,
+    // Backend's OrderStatus has Pending/Confirmed/Cancelled with no desktop
+    // equivalent; Pending/Confirmed both fold into New (see OrderService.MapStatus
+    // for the same mapping — kept local here to avoid cross-service coupling).
+    private static OrderStatus MapStatus(string status) => status switch
+    {
+        "Pending" or "Confirmed" => OrderStatus.New,
+        "Preparing"              => OrderStatus.Preparing,
+        "Ready"                  => OrderStatus.Ready,
+        "Served"                 => OrderStatus.Served,
+        "Paid"                   => OrderStatus.Paid,
+        _                        => OrderStatus.New,
+    };
+
+    // Backend order items have no per-item Allergens field (allergens live on
+    // Product, not OrderItem) — always empty until the backend joins that in.
+    private static KitchenOrderDto MapToKitchen(KitchenOrderDetailDto o) => new(
+        o.Id, o.OrderNumber, o.TableName ?? "—", 2, o.CreatedAt, MapStatus(o.Status), false,
         o.Items.Select(i => new KitchenItemDto(
-            i.Id, i.ProductId, i.ProductName, i.Quantity,
-            i.Allergens, i.Modifiers, i.Notes,
-            KitchenStationHelper.Detect(i.ProductName))).ToList());
+            i.Id, i.ProductId, i.Name, i.Quantity,
+            [], i.Modifiers, i.Notes,
+            KitchenStationHelper.Detect(i.Name))).ToList());
 
     // ── Mock data ─────────────────────────────────────────────────────────
 
@@ -174,3 +205,14 @@ public sealed class KitchenService
         ];
     }
 }
+
+// Matches the subset of backend's OrderDetailDto (Orders/DTOs/OrderDetailDto.cs)
+// needed for kitchen tickets.
+internal sealed record KitchenOrderDetailDto(
+    Guid Id, string OrderNumber, string? TableName, string Status,
+    DateTimeOffset CreatedAt, IReadOnlyList<KitchenOrderItemDetailDto> Items);
+
+// Matches backend's OrderItemDto (Orders/DTOs/OrderItemDto.cs) — no Allergens field.
+internal sealed record KitchenOrderItemDetailDto(
+    Guid Id, Guid ProductId, string Name, int Quantity, string? Notes,
+    IReadOnlyList<string> Modifiers);

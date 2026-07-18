@@ -26,7 +26,7 @@ public sealed class ForecastDataService
         {
             ApplyAuth();
             var restaurantId = _state.CurrentRestaurant?.Id;
-            var url = $"http://localhost:5000/api/v1/analytics/demand-forecast?restaurantId={restaurantId}&date={date:yyyy-MM-dd}";
+            var url = $"http://localhost:5143/api/v1/analytics/demand-forecast?restaurantId={restaurantId}&date={date:yyyy-MM-dd}";
             var json = await _http.GetStringAsync(url, ct);
             var envelope = JsonSerializer.Deserialize<ApiEnvelope<DemandForecastResult>>(json, JsonOpts);
             return envelope?.Data;
@@ -44,7 +44,7 @@ public sealed class ForecastDataService
         {
             ApplyAuth();
             var restaurantId = _state.CurrentRestaurant?.Id;
-            var url = $"http://localhost:5000/api/v1/analytics/kitchen-eta?restaurantId={restaurantId}";
+            var url = $"http://localhost:5143/api/v1/analytics/kitchen-eta?restaurantId={restaurantId}";
             var json = await _http.GetStringAsync(url, ct);
             var envelope = JsonSerializer.Deserialize<ApiEnvelope<KitchenEta>>(json, JsonOpts);
             return envelope?.Data;

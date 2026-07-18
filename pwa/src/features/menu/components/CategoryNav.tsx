@@ -1,5 +1,6 @@
 import type { RefObject } from 'react'
 import type { MenuCategory } from '../types'
+import { useEdgeBounce } from '@shared/hooks/useEdgeBounce'
 
 interface CategoryNavProps {
   categories: MenuCategory[]
@@ -9,6 +10,8 @@ interface CategoryNavProps {
 }
 
 export function CategoryNav({ categories, activeId, navRef, onSelect }: CategoryNavProps) {
+  useEdgeBounce(navRef, 'x')
+
   return (
     <nav
       ref={navRef}

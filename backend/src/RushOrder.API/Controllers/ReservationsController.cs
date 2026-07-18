@@ -21,7 +21,10 @@ public sealed class ReservationsController : ApiController
         CancellationToken ct) =>
         ExecuteAsync(async () =>
         {
-            var result = await Mediator.Send(new GetReservationsQuery(restaurantId, date, status), ct);
+            // Npgsql rejects non-UTC offsets against "timestamp with time zone" columns
+            // ("Cannot write DateTimeOffset with Offset=... only offset 0 is supported").
+            // Clients send their local offset, so normalize before it reaches EF Core.
+            var result = await Mediator.Send(new GetReservationsQuery(restaurantId, date.ToUniversalTime(), status), ct);
             return OkData(result);
         });
 

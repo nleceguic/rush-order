@@ -11,10 +11,10 @@ interface CartFlowProps {
   open:                 boolean
   onClose:              () => void
   onNewRound:           () => void
-  vatRate?:             number
+  vatRate?:             number | undefined
   onlinePayEnabled?:    boolean
-  availableProductIds?: Set<string>
-  categories?:          MenuCategory[]
+  availableProductIds?: Set<string> | undefined
+  categories?:          MenuCategory[] | undefined
   upsellingEnabled?:    boolean
 }
 

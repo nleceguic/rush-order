@@ -1,14 +1,19 @@
-import type { Category } from '@shared/types'
+import { useRef } from 'react'
+import type { MenuCategory } from '../types'
+import { useEdgeBounce } from '@shared/hooks/useEdgeBounce'
 
 interface CategoryListProps {
-  categories: Category[]
+  categories: MenuCategory[]
   selected:   string | null
   onSelect:   (id: string) => void
 }
 
 export function CategoryList({ categories, selected, onSelect }: CategoryListProps) {
+  const navRef = useRef<HTMLElement>(null)
+  useEdgeBounce(navRef, 'x')
+
   return (
-    <nav className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide" aria-label="Categorías">
+    <nav ref={navRef} className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide" aria-label="Categorías">
       {categories.map((cat) => (
         <button
           key={cat.id}

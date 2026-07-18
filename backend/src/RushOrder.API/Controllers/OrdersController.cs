@@ -47,7 +47,7 @@ public sealed class OrdersController : ApiController
         ExecuteAsync(async () =>
         {
             var result = await Mediator.Send(
-                new GetOrdersByRestaurantQuery(restaurantId, status, dateFrom, dateTo, page, pageSize), ct);
+                new GetOrdersByRestaurantQuery(restaurantId, status, dateFrom?.ToUniversalTime(), dateTo?.ToUniversalTime(), page, pageSize), ct);
             return OkPaged(result);
         });
 

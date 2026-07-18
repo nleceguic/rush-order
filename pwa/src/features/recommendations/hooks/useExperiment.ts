@@ -12,7 +12,9 @@ export type ExperimentEventType = 'Exposure' | 'SuggestionAdded' | 'OrderComplet
 export const CART_RECOMMENDATIONS_EXPERIMENT_KEY = 'cart-recommendations'
 
 interface AssignmentApiResponse {
-  data: { experimentKey: string; variant: ExperimentVariant; bucket: number }
+  experimentKey: string
+  variant:       ExperimentVariant
+  bucket:        number
 }
 
 interface TrackExtra {
@@ -33,7 +35,7 @@ export function useExperiment(restaurantId: string | undefined, experimentKey: s
         ENDPOINTS.experiments.assignment(experimentKey),
         { params: { restaurantId, deviceFingerprint } },
       )
-      return data.data.variant
+      return data.variant
     },
     enabled:   restaurantId !== undefined,
     staleTime: Infinity, // deterministic per device+experiment — no need to ever refetch

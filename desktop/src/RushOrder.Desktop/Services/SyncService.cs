@@ -84,7 +84,7 @@ public sealed class SyncService : IDisposable
                     using var content = new StringContent(payload, Encoding.UTF8, "application/json");
                     using var req     = new HttpRequestMessage(
                         new HttpMethod(op.HttpMethod),
-                        $"http://localhost:5000{op.Endpoint}") { Content = content };
+                        $"http://localhost:5143{op.Endpoint}") { Content = content };
                     using var res = await http.SendAsync(req).ConfigureAwait(false);
 
                     if (res.IsSuccessStatusCode)
@@ -140,20 +140,33 @@ public sealed class SyncService : IDisposable
         }
     }
 
+    // The backend's create-order response only carries {orderId, orderNumber,
+    // estimatedReadyAt, trackingToken} — not a full order. Patch the cached local
+    // order (already built with all the display fields) with the server-assigned id.
     private async Task HandleOrderCreatedAsync(
         HttpResponseMessage res, string localRef, Dictionary<string, string> idMapping)
     {
         try
         {
-            var body        = await res.Content.ReadAsStringAsync().ConfigureAwait(false);
-            var serverOrder = JsonConvert.DeserializeObject<OrderDto>(body);
-            if (serverOrder is null) return;
+            var body   = await res.Content.ReadAsStringAsync().ConfigureAwait(false);
+            var result = JsonConvert.DeserializeObject<ApiEnvelope<CreateOrderResult>>(body)?.Data;
+            if (result is null) return;
 
-            var serverIdStr = serverOrder.Id.ToString();
-            idMapping[localRef] = serverIdStr;
+            if (!Guid.TryParse(localRef, out var localGuid)) return;
+            var cached = _db.GetOrders().FirstOrDefault(o => o.Id == localGuid);
+            if (cached is null) return;
 
-            _db.UpdateOrderServerId(localRef, serverOrder.Id, serverOrder);
-            OrderIdReplaced?.Invoke(localRef, serverOrder.Id, serverOrder);
+            var serverOrder = cached with
+            {
+                Id = result.OrderId,
+                OrderNumber = result.OrderNumber,
+                IsOffline = false,
+            };
+
+            idMapping[localRef] = result.OrderId.ToString();
+
+            _db.UpdateOrderServerId(localRef, result.OrderId, serverOrder);
+            OrderIdReplaced?.Invoke(localRef, result.OrderId, serverOrder);
         }
         catch (Exception ex)
         {

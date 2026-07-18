@@ -1,0 +1,104 @@
+# Despliegue de producción para Ubuntu Server.
+# No confundir con infrastructure/docker/docker-compose.yml, que es el
+# entorno de desarrollo local (hot-reload, pgAdmin, MailHog).
+#
+# Uso:
+#   cp .env.production.example .env.production   # y completar los valores
+#   docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    networks: [rushorder]
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks: [rushorder]
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: final
+    image: rushorder-api:latest
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      Database__ConnectionString: "Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
+      Redis__ConnectionString: "redis:6379"
+      Jwt__Issuer: "${JWT_ISSUER}"
+      Jwt__Audience: "${JWT_AUDIENCE}"
+      Cors__AllowedOrigins__0: "${PWA_ORIGIN}"
+      Stripe__SecretKey: "${STRIPE_SECRET_KEY}"
+      Stripe__PublishableKey: "${STRIPE_PUBLISHABLE_KEY}"
+      Stripe__WebhookSecret: "${STRIPE_WEBHOOK_SECRET}"
+      Smtp__Host: "${SMTP_HOST:-localhost}"
+      Smtp__Port: "${SMTP_PORT:-587}"
+      Smtp__FromName: "${SMTP_FROM_NAME:-Rush Order}"
+      Smtp__FromAddress: "${SMTP_FROM_ADDRESS:-noreply@rushorder.local}"
+      Smtp__UseSsl: "${SMTP_USE_SSL:-true}"
+      Smtp__AdminEmail: "${SMTP_ADMIN_EMAIL:-admin@rushorder.local}"
+      Frontend__BaseUrl: "${PWA_ORIGIN}"
+      QrCode__BaseUrl: "${PWA_ORIGIN}/menu"
+      ApplicationInsights__ConnectionString: "${APPINSIGHTS_CONNECTION_STRING:-}"
+    volumes:
+      # Claves RSA del JWT: se autogeneran en el primer arranque si no existen.
+      # Deben persistir o los refresh tokens se invalidan en cada restart.
+      - api_keys:/app/keys
+      - api_logs:/app/logs
+    ports:
+      - "${API_PORT:-5000}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks: [rushorder]
+
+  pwa:
+    build:
+      context: ./pwa
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: "${VITE_API_URL}"
+        VITE_RESTAURANT_ID: "${VITE_RESTAURANT_ID}"
+        VITE_STRIPE_PUBLISHABLE_KEY: "${STRIPE_PUBLISHABLE_KEY}"
+        VITE_VAPID_PUBLIC_KEY: "${VITE_VAPID_PUBLIC_KEY:-}"
+    image: rushorder-pwa:latest
+    ports:
+      - "${PWA_PORT:-3000}:80"
+    depends_on:
+      - api
+    restart: unless-stopped
+    networks: [rushorder]
+
+networks:
+  rushorder:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  api_keys:
+  api_logs:

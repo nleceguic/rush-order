@@ -27,6 +27,6 @@ public sealed class PaymentConfiguration : IEntityTypeConfiguration<Payment>
         });
 
         builder.HasIndex(p => new { p.TenantId, p.OrderId });
-        builder.HasIndex(p => p.ProviderPaymentId).IsUnique().HasFilter("provider_payment_id IS NOT NULL");
+        builder.HasIndex(p => p.ProviderPaymentId).IsUnique().HasFilter("\"ProviderPaymentId\" IS NOT NULL");
     }
 }

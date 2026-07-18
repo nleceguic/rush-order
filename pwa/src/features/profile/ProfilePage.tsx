@@ -31,7 +31,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 }
 
 // ── Row ──────────────────────────────────────────────────────────
-function Row({ label, value, onClick }: { label: string; value?: string; onClick?: () => void }) {
+function Row({ label, value, onClick }: { label: string; value?: string | undefined; onClick?: (() => void) | undefined }) {
   return (
     <button
       type="button"

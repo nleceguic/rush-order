@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react'
 import type { MenuProduct, SelectedOptions, VariantGroup, ExtraGroup } from '../types'
 import type { CartModifier } from '@shared/types'
 import { AllergenIcons } from './AllergenIcons'
@@ -55,26 +55,57 @@ function buildModifiers(product: MenuProduct, opts: SelectedOptions): CartModifi
 
 const INITIAL_OPTS: SelectedOptions = { variants: {}, extras: {}, quantity: 1 }
 
+// Matches the Ver pedido button's transition duration (duration-300).
+const EXIT_DURATION = 300
+
 export function ProductDetailSheet({ product, onClose }: ProductDetailSheetProps) {
   const addItem      = useCartStore((s) => s.addItem)
   const cartItems     = useCartStore((s) => s.items)
   const restaurantId  = useCartStore((s) => s.restaurantId)
   const [opts, setOpts] = useState<SelectedOptions>(INITIAL_OPTS)
 
+  // Kept mounted (with stale content) while the close animation plays, so the
+  // sheet has something to render as it slides out instead of vanishing instantly.
+  const [displayProduct, setDisplayProduct] = useState<MenuProduct | null>(null)
+  const [open, setOpen] = useState(false)
+  const sheetRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (product !== null) {
+      setDisplayProduct(product)
+      return
+    }
+
+    setOpen(false)
+    const timer = setTimeout(() => setDisplayProduct(null), EXIT_DURATION)
+    return () => clearTimeout(timer)
+  }, [product])
+
+  // Flip to the open (visible) position right after the sheet mounts in its
+  // closed one. A forced synchronous reflow between the two guarantees the
+  // browser has registered the closed styles before we change them — a plain
+  // requestAnimationFrame (even doubled) can get coalesced with the mount and
+  // silently skip the enter transition.
+  useLayoutEffect(() => {
+    if (displayProduct === null) return
+    sheetRef.current?.getBoundingClientRect()
+    const raf = requestAnimationFrame(() => setOpen(true))
+    return () => cancelAnimationFrame(raf)
+  }, [displayProduct])
+
   // The product being viewed counts as part of "tu selección" for the
   // recommendation signal (manual pairing rules / co-occurrence), even
   // before it's actually added to the cart.
-  const cartProductIds = product !== null
-    ? Array.from(new Set([...cartItems.map((i) => i.productId), product.id]))
+  const cartProductIds = displayProduct !== null
+    ? Array.from(new Set([...cartItems.map((i) => i.productId), displayProduct.id]))
     : []
   const { data: recommendations = [] } = useRecommendations(
-    product !== null ? (restaurantId ?? undefined) : undefined,
+    displayProduct !== null ? (restaurantId ?? undefined) : undefined,
     cartProductIds,
   )
   const [dragY, setDragY] = useState(0)
   const startY  = useRef(0)
-  const sheetRef = useRef<HTMLDivElement>(null)
-  useFocusTrap(sheetRef, product !== null)
+  useFocusTrap(sheetRef, open)
 
   // Reset state on new product
   useEffect(() => {
@@ -133,15 +164,17 @@ export function ProductDetailSheet({ product, onClose }: ProductDetailSheetProps
     onClose()
   }
 
-  if (product === null) return null
+  if (displayProduct === null) return null
 
-  const total = calcTotal(product, opts)
+  const total = calcTotal(displayProduct, opts)
 
   return (
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+        className={`fixed inset-0 z-40 bg-black/50 backdrop-blur-sm transition-opacity duration-300 ease-out ${
+          open ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        }`}
         onClick={onClose}
         aria-hidden="true"
       />
@@ -151,11 +184,15 @@ export function ProductDetailSheet({ product, onClose }: ProductDetailSheetProps
         ref={sheetRef}
         role="dialog"
         aria-modal="true"
-        aria-label={product.name}
-        className="fixed inset-x-0 bottom-0 z-50 flex flex-col rounded-t-3xl bg-white shadow-2xl max-h-[92dvh]"
+        aria-label={displayProduct.name}
+        aria-hidden={!open}
+        className={`fixed inset-x-0 bottom-0 z-50 flex flex-col rounded-t-3xl bg-white shadow-2xl max-h-[92dvh] ${
+          open ? '' : 'pointer-events-none'
+        }`}
         style={{
-          transform:  `translateY(${dragY}px)`,
-          transition: dragY === 0 ? 'transform 0.25s ease' : 'none',
+          transform:  `translateY(calc(${open ? 0 : 100}% + ${dragY}px))`,
+          opacity:    open ? 1 : 0,
+          transition: dragY === 0 ? 'transform 300ms ease-out, opacity 300ms ease-out' : 'none',
         }}
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
@@ -169,11 +206,11 @@ export function ProductDetailSheet({ product, onClose }: ProductDetailSheetProps
         {/* Scrollable body */}
         <div className="overflow-y-auto flex-1 overscroll-contain">
           {/* Hero image */}
-          {product.imageUrl !== undefined && (
+          {displayProduct.imageUrl !== undefined && (
             <BlurImage
-              src={product.imageUrl}
-              alt={`Foto de ${product.name}`}
-              placeholder={product.imagePlaceholder}
+              src={displayProduct.imageUrl}
+              alt={`Foto de ${displayProduct.name}`}
+              placeholder={displayProduct.imagePlaceholder}
               className="h-56 w-full"
               sizes="100vw"
             />
@@ -182,43 +219,43 @@ export function ProductDetailSheet({ product, onClose }: ProductDetailSheetProps
           <div className="px-5 py-4 space-y-6">
             {/* Name + description */}
             <div>
-              <h2 className="text-xl font-bold text-rush-dark">{product.name}</h2>
-              {product.description !== undefined && (
-                <p className="mt-2 text-sm text-gray-600 leading-relaxed">{product.description}</p>
+              <h2 className="text-xl font-bold text-rush-dark">{displayProduct.name}</h2>
+              {displayProduct.description !== undefined && (
+                <p className="mt-2 text-sm text-gray-600 leading-relaxed">{displayProduct.description}</p>
               )}
             </div>
 
             {/* Allergens */}
-            {product.allergens !== undefined && product.allergens.length > 0 && (
+            {displayProduct.allergens !== undefined && displayProduct.allergens.length > 0 && (
               <div>
                 <SectionLabel>Alérgenos</SectionLabel>
-                <AllergenIcons allergens={product.allergens} showLabels size="md" />
+                <AllergenIcons allergens={displayProduct.allergens} showLabels size="md" />
               </div>
             )}
 
             {/* Nutrition */}
-            {product.nutrition !== undefined && (
+            {displayProduct.nutrition !== undefined && (
               <div>
                 <SectionLabel>Información nutricional</SectionLabel>
                 <div className="grid grid-cols-4 gap-2">
-                  {product.nutrition.calories !== undefined && (
-                    <NutriCell label="Kcal" value={product.nutrition.calories} />
+                  {displayProduct.nutrition.calories !== undefined && (
+                    <NutriCell label="Kcal" value={displayProduct.nutrition.calories} />
                   )}
-                  {product.nutrition.protein !== undefined && (
-                    <NutriCell label="Proteína" value={`${product.nutrition.protein}g`} />
+                  {displayProduct.nutrition.protein !== undefined && (
+                    <NutriCell label="Proteína" value={`${displayProduct.nutrition.protein}g`} />
                   )}
-                  {product.nutrition.carbs !== undefined && (
-                    <NutriCell label="Carbos" value={`${product.nutrition.carbs}g`} />
+                  {displayProduct.nutrition.carbs !== undefined && (
+                    <NutriCell label="Carbos" value={`${displayProduct.nutrition.carbs}g`} />
                   )}
-                  {product.nutrition.fat !== undefined && (
-                    <NutriCell label="Grasa" value={`${product.nutrition.fat}g`} />
+                  {displayProduct.nutrition.fat !== undefined && (
+                    <NutriCell label="Grasa" value={`${displayProduct.nutrition.fat}g`} />
                   )}
                 </div>
               </div>
             )}
 
             {/* Variants */}
-            {product.variants?.map((group) => (
+            {displayProduct.variants?.map((group) => (
               <VariantSection
                 key={group.id}
                 group={group}
@@ -228,7 +265,7 @@ export function ProductDetailSheet({ product, onClose }: ProductDetailSheetProps
             ))}
 
             {/* Extras */}
-            {product.extras?.map((group) => (
+            {displayProduct.extras?.map((group) => (
               <ExtraSection
                 key={group.id}
                 group={group}
@@ -296,7 +333,7 @@ export function ProductDetailSheet({ product, onClose }: ProductDetailSheetProps
         <div className="flex-shrink-0 border-t bg-white px-5 py-4">
           <button
             onClick={handleAdd}
-            disabled={!product.isAvailable}
+            disabled={!displayProduct.isAvailable}
             className="w-full rounded-2xl bg-rush-red py-4 font-bold text-white text-base hover:bg-rush-red-hover disabled:opacity-50 transition-colors"
           >
             Añadir al pedido — {formatCurrency(total)}

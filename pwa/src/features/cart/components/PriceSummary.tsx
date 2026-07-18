@@ -2,8 +2,8 @@ import { formatCurrency } from '@shared/utils/format'
 
 interface PriceSummaryProps {
   subtotal:  number
-  vatRate?:  number
-  discount?: number
+  vatRate?:  number | undefined
+  discount?: number | undefined
 }
 
 export function PriceSummary({ subtotal, vatRate, discount }: PriceSummaryProps) {

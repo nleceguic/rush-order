@@ -10,8 +10,8 @@ interface ReviewStepProps {
   generalNotes:      string
   onConfirm:         () => void
   onBack:            () => void
-  vatRate?:          number
-  categories?:       MenuCategory[]
+  vatRate?:          number | undefined
+  categories?:       MenuCategory[] | undefined
   upsellingEnabled?: boolean
 }
 

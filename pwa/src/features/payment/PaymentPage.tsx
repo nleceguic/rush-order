@@ -7,7 +7,7 @@ import {
   useStripe,
   useElements,
 } from '@stripe/react-stripe-js'
-import type { StripeElementsOptions } from '@stripe/stripe-js'
+import type { Appearance } from '@stripe/stripe-js'
 import { Spinner } from '@shared/components/Spinner'
 import { TipSelector } from './components/TipSelector'
 import { SplitBillSheet } from './components/SplitBillSheet'
@@ -18,7 +18,7 @@ import { formatCurrency } from '@shared/utils/format'
 const stripeKey = String(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY ?? '')
 const stripePromise = stripeKey.length > 0 ? loadStripe(stripeKey) : Promise.resolve(null)
 
-const APPEARANCE: StripeElementsOptions['appearance'] = {
+const APPEARANCE: Appearance = {
   theme: 'flat',
   variables: {
     colorPrimary:    '#E63946',

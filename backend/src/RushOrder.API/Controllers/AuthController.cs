@@ -3,6 +3,7 @@ using System.Security.Claims;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using RushOrder.API.Common;
 using RushOrder.Application.Auth.Commands;
 
 namespace RushOrder.API.Controllers;
@@ -15,6 +16,12 @@ public sealed class AuthController : ControllerBase
 
     public AuthController(IMediator mediator) => _mediator = mediator;
 
+    // Local helper — AuthController can't inherit ApiController because that base
+    // class applies [Authorize] at the class level, which would break these
+    // anonymous endpoints. Wraps responses in the same ApiResponse<T> envelope
+    // used everywhere else, so the frontend's response-unwrapping stays uniform.
+    private IActionResult OkData<T>(T data) => Ok(ApiResponse<T>.Ok(data));
+
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginRequest request, CancellationToken ct)
     {
@@ -25,9 +32,9 @@ public sealed class AuthController : ControllerBase
             Request.Headers.UserAgent.ToString()), ct);
 
         if (result.RequiresMfa)
-            return Ok(new { requiresMfa = true, tempToken = result.TempToken });
+            return OkData(new { requiresMfa = true, tempToken = result.TempToken });
 
-        return Ok(new
+        return OkData(new
         {
             requiresMfa = false,
             accessToken = result.Tokens!.AccessToken,
@@ -45,7 +52,7 @@ public sealed class AuthController : ControllerBase
             request.Code,
             HttpContext.Connection.RemoteIpAddress?.ToString()), ct);
 
-        return Ok(new
+        return OkData(new
         {
             accessToken = result.Tokens!.AccessToken,
             refreshToken = result.Tokens.RefreshToken,
@@ -61,7 +68,7 @@ public sealed class AuthController : ControllerBase
             request.RefreshToken,
             HttpContext.Connection.RemoteIpAddress?.ToString()), ct);
 
-        return Ok(new
+        return OkData(new
         {
             accessToken = result.AccessToken,
             refreshToken = result.RefreshToken,
@@ -85,14 +92,14 @@ public sealed class AuthController : ControllerBase
     public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request, CancellationToken ct)
     {
         await _mediator.Send(new ForgotPasswordCommand(request.Email), ct);
-        return Ok(new { message = "If that email is registered, a reset link has been sent." });
+        return OkData(new { message = "If that email is registered, a reset link has been sent." });
     }
 
     [HttpPost("reset-password")]
     public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request, CancellationToken ct)
     {
         await _mediator.Send(new ResetPasswordCommand(request.Token, request.NewPassword), ct);
-        return Ok(new { message = "Password reset successfully." });
+        return OkData(new { message = "Password reset successfully." });
     }
 
     [HttpPost("mfa/setup")]
@@ -101,7 +108,7 @@ public sealed class AuthController : ControllerBase
     {
         var userId = GetCurrentUserId();
         var result = await _mediator.Send(new MfaSetupCommand(userId), ct);
-        return Ok(new
+        return OkData(new
         {
             qrCodeImageBase64 = result.QrCodeImageBase64,
             secret = result.Secret,
@@ -114,7 +121,7 @@ public sealed class AuthController : ControllerBase
     public async Task<IActionResult> MfaConfirm([FromBody] MfaCodeRequest request, CancellationToken ct)
     {
         await _mediator.Send(new MfaConfirmCommand(GetCurrentUserId(), request.Code), ct);
-        return Ok(new { message = "MFA enabled successfully." });
+        return OkData(new { message = "MFA enabled successfully." });
     }
 
     [HttpPost("mfa/disable")]
@@ -122,7 +129,7 @@ public sealed class AuthController : ControllerBase
     public async Task<IActionResult> MfaDisable([FromBody] MfaCodeRequest request, CancellationToken ct)
     {
         await _mediator.Send(new MfaDisableCommand(GetCurrentUserId(), request.Code), ct);
-        return Ok(new { message = "MFA disabled." });
+        return OkData(new { message = "MFA disabled." });
     }
 
     private Guid GetCurrentUserId() =>

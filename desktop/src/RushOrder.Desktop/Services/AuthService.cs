@@ -1,3 +1,6 @@
+using System.IO;
+using System.Linq;
+using System.Net.Http.Headers;
 using System.Runtime.InteropServices;
 using System.Text;
 using Newtonsoft.Json;
@@ -9,8 +12,14 @@ public sealed class AuthService
 {
     private const string CredentialTarget = "RushOrder_RefreshToken";
 
+    // Same host the rest of the desktop app's services point at. If the backend is
+    // started via `docker-compose` instead of `dotnet run`, this needs to be 5000.
+    private static readonly string CachedUserPath = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "RushOrder", "lastuser.json");
+
     private readonly AppState _state;
-    private readonly HttpClient _http = new() { BaseAddress = new Uri("http://localhost:5000") };
+    private readonly HttpClient _http = new() { BaseAddress = new Uri("http://localhost:5143") };
 
     public AuthService(AppState state) => _state = state;
 
@@ -21,60 +30,68 @@ public sealed class AuthService
         HttpResponseMessage response;
         try
         {
-            response = await _http.PostAsync("/api/auth/login",
+            response = await _http.PostAsync("/api/v1/auth/login",
                 new StringContent(body, Encoding.UTF8, "application/json"), ct);
         }
         catch { return LoginResult.NetworkError; }
 
         if (!response.IsSuccessStatusCode) return LoginResult.InvalidCredentials;
 
-        var json   = await response.Content.ReadAsStringAsync(ct);
-        var result = JsonConvert.DeserializeObject<LoginResponse>(json)!;
+        var json    = await response.Content.ReadAsStringAsync(ct);
+        var payload = JsonConvert.DeserializeObject<ApiEnvelope<LoginData>>(json)?.Data;
+        if (payload is null) return LoginResult.InvalidCredentials;
 
-        if (result.RequiresMfa)
-            return LoginResult.MfaRequired(result.MfaToken!);
+        if (payload.RequiresMfa)
+            return LoginResult.MfaRequired(payload.TempToken!);
 
-        ApplyLoginResponse(result, rememberMe);
+        await ApplyLoginResponseAsync(payload, rememberMe, ct);
         return LoginResult.Success;
     }
 
     public async Task<LoginResult> VerifyMfaAsync(
         string mfaToken, string totpCode, bool rememberMe, CancellationToken ct = default)
     {
-        var body = JsonConvert.SerializeObject(new { mfaToken, totpCode });
+        var body = JsonConvert.SerializeObject(new { tempToken = mfaToken, code = totpCode });
         HttpResponseMessage response;
         try
         {
-            response = await _http.PostAsync("/api/auth/mfa/verify",
+            response = await _http.PostAsync("/api/v1/auth/mfa/verify",
                 new StringContent(body, Encoding.UTF8, "application/json"), ct);
         }
         catch { return LoginResult.NetworkError; }
 
         if (!response.IsSuccessStatusCode) return LoginResult.InvalidCredentials;
 
-        var json   = await response.Content.ReadAsStringAsync(ct);
-        var result = JsonConvert.DeserializeObject<LoginResponse>(json)!;
+        var json    = await response.Content.ReadAsStringAsync(ct);
+        var payload = JsonConvert.DeserializeObject<ApiEnvelope<LoginData>>(json)?.Data;
+        if (payload is null) return LoginResult.InvalidCredentials;
 
-        ApplyLoginResponse(result, rememberMe);
+        await ApplyLoginResponseAsync(payload, rememberMe, ct);
         return LoginResult.Success;
     }
 
     public async Task<bool> TryAutoLoginAsync(CancellationToken ct = default)
     {
         var token = ReadCredential(CredentialTarget);
-        if (token is null) return false;
+        var cachedUser = ReadCachedUser();
+        if (token is null || cachedUser is null) return false;
 
         var body = JsonConvert.SerializeObject(new { refreshToken = token });
         try
         {
-            var response = await _http.PostAsync("/api/auth/refresh",
+            var response = await _http.PostAsync("/api/v1/auth/refresh",
                 new StringContent(body, Encoding.UTF8, "application/json"), ct);
 
             if (!response.IsSuccessStatusCode) return false;
 
-            var json   = await response.Content.ReadAsStringAsync(ct);
-            var result = JsonConvert.DeserializeObject<LoginResponse>(json)!;
-            ApplyLoginResponse(result, rememberMe: true);
+            var json    = await response.Content.ReadAsStringAsync(ct);
+            // /refresh only returns new tokens, not user info — reuse the cached identity.
+            var payload = JsonConvert.DeserializeObject<ApiEnvelope<RefreshData>>(json)?.Data;
+            if (payload is null) return false;
+
+            _state.SetAuthenticated(cachedUser, payload.AccessToken, payload.RefreshToken);
+            SaveCredential(CredentialTarget, payload.RefreshToken);
+            await LoadCurrentRestaurantAsync(ct);
             return true;
         }
         catch { return false; }
@@ -83,17 +100,70 @@ public sealed class AuthService
     public void Logout()
     {
         DeleteCredential(CredentialTarget);
+        DeleteCachedUser();
         _state.Logout();
     }
 
-    private void ApplyLoginResponse(LoginResponse result, bool rememberMe)
+    private async Task ApplyLoginResponseAsync(LoginData result, bool rememberMe, CancellationToken ct)
     {
-        var initials = GetInitials(result.FullName);
-        _state.SetAuthenticated(
-            new UserInfo(result.UserId, result.Email, result.FullName, result.Role, initials),
-            result.AccessToken, result.RefreshToken);
+        var user = result.User!;
+        var initials = GetInitials(user.Email);
+        var userInfo = new UserInfo(user.Id, user.Email, GetDisplayName(user.Email), user.Role, initials);
 
-        if (rememberMe) SaveCredential(CredentialTarget, result.RefreshToken);
+        _state.SetAuthenticated(userInfo, result.AccessToken!, result.RefreshToken!);
+
+        if (rememberMe)
+        {
+            SaveCredential(CredentialTarget, result.RefreshToken!);
+            SaveCachedUser(userInfo);
+        }
+
+        await LoadCurrentRestaurantAsync(ct);
+    }
+
+    // AppState.CurrentRestaurant has no other setter anywhere in the app — every
+    // service that reads it (Dashboard, Menu, Orders, Tables, Kitchen, Statistics,
+    // RealTime...) depends on this running once, right after authentication.
+    private async Task LoadCurrentRestaurantAsync(CancellationToken ct)
+    {
+        try
+        {
+            _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _state.AccessToken);
+            var response = await _http.GetAsync("/api/v1/restaurants", ct);
+            if (!response.IsSuccessStatusCode) return;
+
+            var json = await response.Content.ReadAsStringAsync(ct);
+            var restaurants = JsonConvert.DeserializeObject<ApiEnvelope<List<RestaurantData>>>(json)?.Data;
+            var first = restaurants?.FirstOrDefault();
+            if (first is not null)
+                _state.SetRestaurant(new RestaurantInfo(first.Id, first.Name, first.LogoUrl));
+        }
+        catch { /* screens fall back to mock data individually; not fatal to login */ }
+    }
+
+    // Backend's login response has no display name (UserInfoDto only has Id/Email/Role/
+    // Restaurants) — fall back to the email's local part.
+    private static string GetDisplayName(string email) => email[..email.IndexOf('@')];
+
+    // ── Local user-identity cache (for auto-login via refresh token) ───────────
+
+    private static void SaveCachedUser(UserInfo user)
+    {
+        var dir = Path.GetDirectoryName(CachedUserPath)!;
+        Directory.CreateDirectory(dir);
+        File.WriteAllText(CachedUserPath, JsonConvert.SerializeObject(user));
+    }
+
+    private static UserInfo? ReadCachedUser()
+    {
+        if (!File.Exists(CachedUserPath)) return null;
+        try { return JsonConvert.DeserializeObject<UserInfo>(File.ReadAllText(CachedUserPath)); }
+        catch { return null; }
+    }
+
+    private static void DeleteCachedUser()
+    {
+        if (File.Exists(CachedUserPath)) File.Delete(CachedUserPath);
     }
 
     private static string GetInitials(string name)
@@ -165,15 +235,25 @@ public sealed class AuthService
     }
 }
 
-internal sealed record LoginResponse(
-    Guid   UserId,
-    string Email,
-    string FullName,
-    string Role,
+// Backend wraps every AuthController response in ApiResponse<T> ({status, data, ...}).
+internal sealed record ApiEnvelope<T>(string Status, T? Data);
+
+internal sealed record UserData(Guid Id, string Email, string Role, List<Guid>? Restaurants);
+
+internal sealed record LoginData(
+    bool      RequiresMfa,
+    string?   TempToken,
+    string?   AccessToken,
+    string?   RefreshToken,
+    DateTimeOffset? ExpiresAt,
+    UserData? User);
+
+internal sealed record RefreshData(
     string AccessToken,
     string RefreshToken,
-    bool   RequiresMfa = false,
-    string? MfaToken   = null);
+    DateTimeOffset ExpiresAt);
+
+internal sealed record RestaurantData(Guid Id, string Name, string? LogoUrl);
 
 public sealed class LoginResult
 {

@@ -56,7 +56,7 @@ public sealed class GetPublicMenuQueryHandlerTests
             .ReturnsAsync((PublicMenuDto?)null);
         _tableRepo.Setup(r => r.GetByQrCodeAsync(table.QrCode, It.IsAny<CancellationToken>()))
             .ReturnsAsync(table);
-        _restaurantRepo.Setup(r => r.GetByIdAsync(RestaurantId, It.IsAny<CancellationToken>()))
+        _restaurantRepo.Setup(r => r.GetByIdPublicAsync(RestaurantId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(restaurant);
 
         var result = await _handler.Handle(new GetPublicMenuQuery(table.QrCode), CancellationToken.None);
@@ -92,7 +92,7 @@ public sealed class GetPublicMenuQueryHandlerTests
             .ReturnsAsync((PublicMenuDto?)null);
         _tableRepo.Setup(r => r.GetByQrCodeAsync(table.QrCode, It.IsAny<CancellationToken>()))
             .ReturnsAsync(table);
-        _restaurantRepo.Setup(r => r.GetByIdAsync(RestaurantId, It.IsAny<CancellationToken>()))
+        _restaurantRepo.Setup(r => r.GetByIdPublicAsync(RestaurantId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(restaurant);
         _categoryRepo.Setup(r => r.GetByRestaurantPublicAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<Category>());

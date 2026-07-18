@@ -41,7 +41,7 @@ public sealed class AnalyticsController : ApiController
             if (!new[] { "hour", "day", "week", "month" }.Contains(groupBy))
                 return ValidationErrorResponse(["groupBy must be one of: hour, day, week, month"]);
 
-            var result = await Mediator.Send(new GetSalesQuery(restaurantId, from, to, groupBy), ct);
+            var result = await Mediator.Send(new GetSalesQuery(restaurantId, from.ToUniversalTime(), to.ToUniversalTime(), groupBy), ct);
             return OkData(result);
         });
 
@@ -55,7 +55,7 @@ public sealed class AnalyticsController : ApiController
         CancellationToken ct = default) =>
         ExecuteAsync(async () =>
         {
-            var result = await Mediator.Send(new GetProductPerformanceQuery(restaurantId, from, to), ct);
+            var result = await Mediator.Send(new GetProductPerformanceQuery(restaurantId, from.ToUniversalTime(), to.ToUniversalTime()), ct);
             return OkData(result);
         });
 
@@ -69,7 +69,7 @@ public sealed class AnalyticsController : ApiController
         CancellationToken ct = default) =>
         ExecuteAsync(async () =>
         {
-            var result = await Mediator.Send(new GetTablePerformanceQuery(restaurantId, from, to), ct);
+            var result = await Mediator.Send(new GetTablePerformanceQuery(restaurantId, from.ToUniversalTime(), to.ToUniversalTime()), ct);
             return OkData(result);
         });
 
@@ -83,7 +83,7 @@ public sealed class AnalyticsController : ApiController
         CancellationToken ct = default) =>
         ExecuteAsync(async () =>
         {
-            var result = await Mediator.Send(new GetWaiterPerformanceQuery(restaurantId, from, to), ct);
+            var result = await Mediator.Send(new GetWaiterPerformanceQuery(restaurantId, from.ToUniversalTime(), to.ToUniversalTime()), ct);
             return OkData(result);
         });
 
@@ -123,7 +123,7 @@ public sealed class AnalyticsController : ApiController
     {
         try
         {
-            var bytes = await Mediator.Send(new ExportSalesQuery(restaurantId, from, to), ct);
+            var bytes = await Mediator.Send(new ExportSalesQuery(restaurantId, from.ToUniversalTime(), to.ToUniversalTime()), ct);
             var fileName = $"ventas_{from:yyyyMMdd}_{to:yyyyMMdd}.xlsx";
             return File(
                 bytes,

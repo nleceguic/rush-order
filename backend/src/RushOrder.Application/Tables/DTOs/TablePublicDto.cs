@@ -1,10 +1,14 @@
 namespace RushOrder.Application.Tables.DTOs;
 
 public record TablePublicDto(
-    Guid Id,
+    Guid TableId,
     string Name,
     int Capacity,
     string? Zone,
     Guid RestaurantId,
     string RestaurantName,
-    string Currency);
+    string Currency,
+    string? LogoUrl,
+    string? CoverImageUrl,
+    bool UpsellingEnabled,
+    IReadOnlyList<string> AvailableLocales);
