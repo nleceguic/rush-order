@@ -342,7 +342,7 @@ jobs:
             core.setOutput('url', release.html_url);
 
       - name: Slack — #deployments notification
-        uses: slackapi/slack-github-action@v1.27.0
+        uses: slackapi/slack-github-action@v4.0.0
         with:
           payload: |
             {

@@ -420,7 +420,7 @@ jobs:
 
       - name: Slack notification
         if: always()
-        uses: slackapi/slack-github-action@v1.27.0
+        uses: slackapi/slack-github-action@v4.0.0
         with:
           payload: |
             {
