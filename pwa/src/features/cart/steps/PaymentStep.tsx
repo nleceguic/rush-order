@@ -25,7 +25,7 @@ export function PaymentStep({ isLoading, error, onlinePayEnabled, onSelect, onBa
         <h2 className="text-lg font-bold text-rush-dark">¿Cómo vas a pagar?</h2>
       </div>
 
-      <div className="flex-1 flex flex-col justify-center px-5 pb-4 overflow-y-auto gap-4">
+      <div className="flex-1 flex flex-col justify-center px-5 pb-4 overflow-y-auto gap-4 scrollbar-hide">
         {error !== null && (
           <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
             {error}

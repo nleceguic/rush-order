@@ -15,7 +15,7 @@ internal sealed class KitchenEtaWidget : KpiWidget
         _lblValue = new Label
         {
             Text = "—",
-            Font = new Font("Segoe UI", 26f, FontStyle.Bold),
+            Font = PoppinsFont.New("Poppins", 26f, FontStyle.Bold),
             ForeColor = Theme.Colors.Primary,
             Dock = DockStyle.Top,
             Height = 50,

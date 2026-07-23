@@ -27,7 +27,7 @@ internal sealed class SuggestionOfTheDayWidget : KpiWidget
         _lblProduct = new Label
         {
             Text = "—",
-            Font = new Font("Segoe UI", 13f, FontStyle.Bold),
+            Font = PoppinsFont.New("Poppins", 13f, FontStyle.Bold),
             ForeColor = Theme.Colors.TextPrimary,
             Dock = DockStyle.Top,
             Height = 30,

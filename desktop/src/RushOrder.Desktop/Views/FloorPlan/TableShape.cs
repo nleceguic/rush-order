@@ -1,4 +1,5 @@
 using RushOrder.Desktop.Models;
+using RushOrder.Desktop.Theme;
 
 namespace RushOrder.Desktop.Views.FloorPlan;
 
@@ -53,13 +54,16 @@ public sealed class TableShape
         CurrentWaiter  = dto.CurrentWaiter,
     };
 
-    public static Color GetStateColor(TableState state) => state switch
+    // Pulled from the same ThemeManager palette every other screen uses (KPI widget accents,
+    // alert icons, status pills) instead of a separate hardcoded hex set that happened to
+    // share the same general hues but didn't actually match anything else in the app.
+    public static Color GetStateColor(ThemeManager theme, TableState state) => state switch
     {
-        TableState.Free      => Color.FromArgb(82,  183, 136),  // #52B788
-        TableState.Occupied  => Color.FromArgb(231, 111, 81),   // #E76F51
-        TableState.Reserved  => Color.FromArgb(69,  123, 157),  // #457B9D
-        TableState.Cleaning  => Color.FromArgb(173, 181, 189),  // #ADB5BD
-        _                    => Color.Gray,
+        TableState.Free      => theme.Colors.Success,
+        TableState.Occupied  => theme.Colors.Primary,
+        TableState.Reserved  => theme.Colors.Info,
+        TableState.Cleaning  => theme.Colors.TextSecondary,
+        _                    => theme.Colors.TextSecondary,
     };
 
     public string OccupancyLabel()

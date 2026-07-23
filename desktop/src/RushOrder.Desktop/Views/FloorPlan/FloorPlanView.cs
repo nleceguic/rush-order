@@ -15,12 +15,11 @@ public sealed class FloorPlanView : UserControl
     private TableFloorPlanControl _canvas     = null!;
     private TableDetailPanel      _detailPanel = null!;
     private Panel                 _toolbar     = null!;
-    private Button                _btnEdit     = null!;
-    private Button                _btnAdd      = null!;
-    private Button                _btnDelete   = null!;
-    private Button                _btnSave     = null!;
-    private Button                _btnReset    = null!;
-    private Label                 _lblZoom     = null!;
+    private ToolButton             _btnEdit     = null!;
+    private ToolButton             _btnAdd      = null!;
+    private ToolButton             _btnDelete   = null!;
+    private ToolButton             _btnSave     = null!;
+    private ToolButton             _btnReset    = null!;
 
     public FloorPlanView(
         ThemeManager theme, TableService tables,
@@ -48,46 +47,38 @@ public sealed class FloorPlanView : UserControl
             Dock      = DockStyle.Top,
             Height    = 44,
             BackColor = _theme.Colors.Surface,
-            Padding   = new Padding(8, 6, 8, 6),
+            Padding   = new Padding(16, 6, 8, 6),
         };
-        AddToolbarBorder(_toolbar);
 
-        _btnEdit = MakeToolButton("✏ Editar sala", false);
+        _btnEdit = MakeToolButton("✏ Modo edición");
         _btnEdit.Click += (_, _) => ToggleEditMode();
 
-        _btnAdd = MakeToolButton("+ Mesa", false);
+        _btnAdd = MakeToolButton("+ Mesa");
         _btnAdd.Enabled = false;
         _btnAdd.Click   += (_, _) => AddTable();
 
-        _btnDelete = MakeToolButton("✕ Eliminar", false);
+        _btnDelete = MakeToolButton("✕ Eliminar");
         _btnDelete.Enabled = false;
-        _btnDelete.ForeColor = _theme.Colors.Error;
         _btnDelete.Click += (_, _) => DeleteSelected();
 
-        _btnSave = MakeToolButton("💾 Guardar", true);
+        _btnSave = MakeToolButton("💾 Guardar");
         _btnSave.Enabled = false;
         _btnSave.Click   += async (_, _) => await SaveLayoutAsync();
 
-        _btnReset = MakeToolButton("⟳ Resetear vista", false);
+        _btnReset = MakeToolButton("⟳ Resetear vista");
         _btnReset.Click += (_, _) => _canvas.ResetView();
 
-        _lblZoom = new Label
-        {
-            Text      = "Zoom: 100%",
-            Font      = _theme.Fonts.Small,
-            ForeColor = _theme.Colors.TextSecondary,
-            AutoSize  = true,
-            Location  = new Point(0, 14),
-        };
-
-        int x = 0;
+        // _toolbar.Padding.Left only affects auto-laid-out children — these are positioned via
+        // explicit Location, so it was silently ignored and the row sat flush against the
+        // toolbar's left edge. Start x from the padding value instead.
+        // Toolbar is 44 tall, buttons are 32 — (44-32)/2 = 6 centers them; 4 sat 2px high.
+        int x = _toolbar.Padding.Left;
         foreach (var btn in new[] { _btnEdit, _btnAdd, _btnDelete, _btnSave, _btnReset })
         {
-            btn.Location = new Point(x, 4);
+            btn.Location = new Point(x, 6);
             x += btn.Width + 6;
         }
-        _lblZoom.Location = new Point(x + 8, 14);
-        _toolbar.Controls.AddRange([_btnEdit, _btnAdd, _btnDelete, _btnSave, _btnReset, _lblZoom]);
+        _toolbar.Controls.AddRange([_btnEdit, _btnAdd, _btnDelete, _btnSave, _btnReset]);
 
         // ── Detail panel (right) ──────────────────────────────────────────
         _detailPanel = new TableDetailPanel(_theme, _tables);
@@ -144,9 +135,7 @@ public sealed class FloorPlanView : UserControl
     {
         var entering      = !_canvas.IsEditMode;
         _canvas.IsEditMode = entering;
-        _btnEdit.Text     = entering ? "✓ Salir edición" : "✏ Editar sala";
-        _btnEdit.BackColor = entering ? _theme.Colors.Primary : _theme.Colors.Surface;
-        _btnEdit.ForeColor = entering ? Color.White : _theme.Colors.TextPrimary;
+        _btnEdit.Text     = entering ? "✓ Salir edición" : "✏ Modo edición";
         _btnAdd.Enabled    = entering;
         _btnSave.Enabled   = entering;
         UpdateDeleteButton();
@@ -236,7 +225,7 @@ public sealed class FloorPlanView : UserControl
     {
         if (_canvas.IsEditMode) return;
         // Navigate to table orders — raise event for MainForm to handle
-        MessageBox.Show($"Navegando a pedidos de Mesa {table.Number}", "RushOrder",
+        MessageBox.Show($"Navegando a pedidos de Mesa {table.Number}", "Rush Order",
             MessageBoxButtons.OK, MessageBoxIcon.Information);
     }
 
@@ -297,28 +286,59 @@ public sealed class FloorPlanView : UserControl
         _ = _tables.UpdateTableStateAsync(table.Id, state);
     }
 
-    private Button MakeToolButton(string text, bool isPrimary) => new()
-    {
-        Text      = text,
-        AutoSize  = false,
-        Width     = text.Length * 7 + 16,
-        Height    = 32,
-        FlatStyle = FlatStyle.Flat,
-        BackColor = isPrimary ? _theme.Colors.Primary : _theme.Colors.Surface,
-        ForeColor = isPrimary ? Color.White : _theme.Colors.TextPrimary,
-        Font      = _theme.Fonts.Small,
-        Cursor    = Cursors.Hand,
-        FlatAppearance = { BorderColor = _theme.Colors.Border, BorderSize = 1 },
-    };
+    // Red (the app's usual accent) while clickable, transparent while disabled, no border,
+    // white text always.
+    private ToolButton MakeToolButton(string text) => new(_theme, text);
+}
 
-    private static void AddToolbarBorder(Control c)
+/// <summary>Custom-painted toolbar button — replaces a plain Button whose rounded corners were
+/// done via Control.Region, which clips with a hard, non-anti-aliased pixel mask (no partial/
+/// blended edge pixels at all). No radius fixed that; drawing the rounded fill directly with
+/// Graphics.SmoothingMode.AntiAlias (the same technique every other rounded shape in this app
+/// already uses) does.</summary>
+internal sealed class ToolButton : Control
+{
+    private readonly ThemeManager _theme;
+
+    public ToolButton(ThemeManager theme, string text)
     {
-        c.Paint += (_, e) =>
-        {
-            using var pen = new Pen(Color.FromArgb(229, 229, 229), 1f);
-            e.Graphics.DrawLine(pen, 0, c.Height - 1, c.Width, c.Height - 1);
-        };
+        _theme = theme;
+        Text   = text;
+        Height = 32;
+        Font   = theme.Fonts.Small;
+        Cursor = Cursors.Hand;
+        SetStyle(ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer |
+                 ControlStyles.AllPaintingInWmPaint, true);
+
+        var textSize = TextRenderer.MeasureText(text, Font);
+        Width = textSize.Width + 28;
+
+        EnabledChanged += (_, _) => Invalidate();
     }
+
+    protected override void OnPaint(PaintEventArgs e)
+    {
+        var g = e.Graphics;
+        g.SetQuality();
+
+        // OnPaintBackground is suppressed below, so this must paint its own fill — matches the
+        // toolbar's own background exactly, so a disabled (unfilled) button blends in seamlessly.
+        using (var bg = new SolidBrush(_theme.Colors.Surface))
+            g.FillRectangle(bg, ClientRectangle);
+
+        if (Enabled)
+        {
+            // Radius = half the height → fully rounded (pill) ends, not just rounded corners.
+            using var fillBrush = new SolidBrush(_theme.Colors.Primary);
+            g.FillRoundedRectangle(fillBrush, new RectangleF(0, 0, Width, Height), Height / 2f);
+        }
+
+        using var textBrush = new SolidBrush(Color.White);
+        var format = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+        g.DrawString(Text, Font, textBrush, new RectangleF(0, 0, Width, Height), format);
+    }
+
+    protected override void OnPaintBackground(PaintEventArgs e) { }
 }
 
 // ── Auxiliary dialogs ─────────────────────────────────────────────────────────

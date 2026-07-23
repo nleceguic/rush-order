@@ -143,21 +143,20 @@ public sealed class TableFloorPlanControl : Control
 
     private void DrawTable(Graphics g, TableShape t)
     {
-        var stateColor  = TableShape.GetStateColor(t.State);
-        var shadowColor = Color.FromArgb(30, 0, 0, 0);
+        // Every table is now the same dark card color — the same Surface tone as every KPI
+        // widget/panel elsewhere in the app — instead of each state getting its own saturated
+        // fill. State is instead an accent: the border and the table number below use it,
+        // matching how the rest of the app treats color (a dark card with a colored accent),
+        // not a screen full of solid colored blobs in a palette that didn't match anything else.
+        var stateColor = TableShape.GetStateColor(_theme, t.State);
 
-        // Drop shadow (only at adequate zoom)
         if (_zoom > 0.6f)
-        {
-            var shadowRect = new RectangleF(t.X + 3, t.Y + 3, t.Width, t.Height);
-            using var shadowBrush = new SolidBrush(shadowColor);
-            DrawShape(g, shadowBrush, null, t.ShapeType, shadowRect);
-        }
+            DrawSoftShadow(g, t);
 
-        // Table body
-        using var fill = new SolidBrush(stateColor);
-        using var selBorder = new Pen(t.IsSelected ? Color.White : Color.FromArgb(50, 255, 255, 255), 2f);
-        DrawShape(g, fill, selBorder, t.ShapeType, t.Bounds);
+        using var fillBrush = new SolidBrush(_theme.Colors.Surface);
+        var borderColor = t.IsSelected ? Color.White : stateColor;
+        using var border = new Pen(borderColor, t.IsSelected ? 2.5f : 2f);
+        DrawShape(g, fillBrush, border, t.ShapeType, t.Bounds);
 
         // Selected highlight ring
         if (t.IsSelected)
@@ -169,11 +168,25 @@ public sealed class TableFloorPlanControl : Control
 
         // Text (hide below zoom threshold)
         if (_zoom >= 0.55f)
-            DrawTableText(g, t);
+            DrawTableText(g, t, stateColor);
 
         // Pending order pulse indicator
         if (t.HasPendingOrder)
             DrawPulsingDot(g, t);
+    }
+
+    private void DrawSoftShadow(Graphics g, TableShape t)
+    {
+        for (var i = 3; i >= 1; i--)
+        {
+            var alpha  = 10 * i;
+            var grow   = i * 1.5f;
+            var offset = i * 1.4f;
+            var rect   = new RectangleF(
+                t.X - grow / 2 + offset, t.Y - grow / 2 + offset, t.Width + grow, t.Height + grow);
+            using var shadowBrush = new SolidBrush(Color.FromArgb(alpha, 0, 0, 0));
+            DrawShape(g, shadowBrush, null, t.ShapeType, rect);
+        }
     }
 
     private void DrawShape(Graphics g, Brush? fill, Pen? pen, TableShapeType type, RectangleF r)
@@ -191,24 +204,25 @@ public sealed class TableFloorPlanControl : Control
         }
     }
 
-    private void DrawTableText(Graphics g, TableShape t)
+    private void DrawTableText(Graphics g, TableShape t, Color numberColor)
     {
-        using var white = new SolidBrush(Color.FromArgb(230, 255, 255, 255));
+        using var numberBrush = new SolidBrush(numberColor);
+        using var timeBrush   = new SolidBrush(_theme.Colors.TextSecondary);
         var sf    = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
         var numSz = 11f;
-        using var numFont = new Font("Segoe UI", numSz, FontStyle.Bold);
+        using var numFont = PoppinsFont.New("Poppins", numSz, FontStyle.Bold);
 
         if (t.OccupiedSince.HasValue)
         {
             var upper = new RectangleF(t.X, t.Y, t.Width, t.Height * 0.54f);
             var lower = new RectangleF(t.X, t.Y + t.Height * 0.52f, t.Width, t.Height * 0.48f);
-            g.DrawString(t.Number.ToString(), numFont, white, upper, sf);
-            using var timeFont = new Font("Segoe UI", 7.5f);
-            g.DrawString(t.OccupancyLabel(), timeFont, white, lower, sf);
+            g.DrawString(t.Number.ToString(), numFont, numberBrush, upper, sf);
+            using var timeFont = PoppinsFont.New("Poppins", 7.5f);
+            g.DrawString(t.OccupancyLabel(), timeFont, timeBrush, lower, sf);
         }
         else
         {
-            g.DrawString(t.Number.ToString(), numFont, white, t.Bounds, sf);
+            g.DrawString(t.Number.ToString(), numFont, numberBrush, t.Bounds, sf);
         }
     }
 

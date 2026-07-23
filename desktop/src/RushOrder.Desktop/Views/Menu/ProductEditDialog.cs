@@ -111,7 +111,7 @@ public sealed class ProductEditDialog : Form
         var lblImgHint = new Label
         {
             Text      = "Click para cambiar",
-            Font      = new Font("Segoe UI", 7.5f),
+            Font      = PoppinsFont.New("Poppins", 7.5f),
             ForeColor = _theme.Colors.TextSecondary,
             Location  = new Point(0, 136),
             AutoSize  = true,
@@ -148,7 +148,7 @@ public sealed class ProductEditDialog : Form
         _lblCharCount = new Label
         {
             Text = $"{(_existing?.Name?.Length ?? 0)}/200",
-            Font = new Font("Segoe UI", 7.5f), ForeColor = _theme.Colors.TextSecondary,
+            Font = PoppinsFont.New("Poppins", 7.5f), ForeColor = _theme.Colors.TextSecondary,
             Location = new Point(486, y + 4), AutoSize = true,
         };
         pnlRight.Controls.AddRange([_txtName, _lblCharCount]);
@@ -164,7 +164,7 @@ public sealed class ProductEditDialog : Form
         };
         var lblCat = new Label
         {
-            Text = "Categoría *", Font = new Font("Segoe UI", 7.5f, FontStyle.Bold),
+            Text = "Categoría *", Font = PoppinsFont.New("Poppins", 7.5f, FontStyle.Bold),
             ForeColor = _theme.Colors.TextSecondary, Location = new Point(126, y - 16), AutoSize = true,
         };
         _cmbCategory = new ComboBox
@@ -181,7 +181,7 @@ public sealed class ProductEditDialog : Form
 
         var lblPrep = new Label
         {
-            Text = "Preparación (min)", Font = new Font("Segoe UI", 7.5f, FontStyle.Bold),
+            Text = "Preparación (min)", Font = PoppinsFont.New("Poppins", 7.5f, FontStyle.Bold),
             ForeColor = _theme.Colors.TextSecondary, Location = new Point(370, y - 16), AutoSize = true,
         };
         _nudPrepTime = new NumericUpDown
@@ -263,7 +263,7 @@ public sealed class ProductEditDialog : Form
         using var cb = new SolidBrush(Color.White);
         g.FillEllipse(cb, cx, y + 2, h - 4, h - 4);
 
-        using var tf = new Font("Segoe UI", 8f, FontStyle.Bold);
+        using var tf = PoppinsFont.New("Poppins", 8f, FontStyle.Bold);
         using var tb = new SolidBrush(Color.White);
         var label = _isAvailable ? "DISPONIBLE" : "OCULTO";
         var lx = _isAvailable ? x + 6 : x + h + 2;
@@ -531,7 +531,7 @@ public sealed class ProductEditDialog : Form
         var lblHint = new Label
         {
             Text      = "Cuando el stock sea ≤ al umbral, aparecerá la alerta de stock bajo en el KDS y el dashboard.",
-            Font      = new Font("Segoe UI", 8f, FontStyle.Italic),
+            Font      = PoppinsFont.New("Poppins", 8f, FontStyle.Italic),
             ForeColor = _theme.Colors.TextSecondary,
             Location  = new Point(0, 60),
             Size      = new Size(480, 36),
@@ -714,7 +714,7 @@ public sealed class ProductEditDialog : Form
         parent.Controls.Add(new Label
         {
             Text      = text,
-            Font      = new Font("Segoe UI", 7.5f, FontStyle.Bold),
+            Font      = PoppinsFont.New("Poppins", 7.5f, FontStyle.Bold),
             ForeColor = Color.FromArgb(100, 100, 100),
             Location  = new Point(x, y),
             AutoSize  = true,
@@ -726,7 +726,7 @@ public sealed class ProductEditDialog : Form
         parent.Controls.Add(new Label
         {
             Text      = text,
-            Font      = new Font("Segoe UI", 7.5f, FontStyle.Bold),
+            Font      = PoppinsFont.New("Poppins", 7.5f, FontStyle.Bold),
             ForeColor = Color.FromArgb(100, 100, 100),
             Location  = new Point(0, y),
             AutoSize  = true,
@@ -739,7 +739,7 @@ public sealed class ProductEditDialog : Form
         var lbl = new Label
         {
             Text      = text,
-            Font      = new Font("Segoe UI", 8f, FontStyle.Bold),
+            Font      = PoppinsFont.New("Poppins", 8f, FontStyle.Bold),
             ForeColor = Color.FromArgb(120, 120, 120),
             Location  = new Point(x + 16, 30),
             AutoSize  = true,

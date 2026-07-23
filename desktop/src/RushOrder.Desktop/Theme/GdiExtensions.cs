@@ -5,13 +5,40 @@ namespace RushOrder.Desktop.Theme;
 internal static class GdiExtensions
 {
     public static GraphicsPath CreateRoundedRect(RectangleF r, float radius)
+        => CreateRoundedRect(r, radius, radius, radius, radius);
+
+    /// <summary>Rounds only the right-hand corners — e.g. a full-height sidebar flush against
+    /// the window's left edge, where rounding the left corners would just cut a notch out of
+    /// its own straight edge for no visual benefit.</summary>
+    public static GraphicsPath CreateRightRoundedRect(RectangleF r, float radius)
+        => CreateRoundedRect(r, 0, radius, radius, 0);
+
+    public static GraphicsPath CreateRoundedRect(
+        RectangleF r, float topLeft, float topRight, float bottomRight, float bottomLeft)
     {
-        float d   = radius * 2;
-        var path  = new GraphicsPath();
-        path.AddArc(r.X,          r.Y,           d, d, 180, 90);
-        path.AddArc(r.Right - d,  r.Y,           d, d, 270, 90);
-        path.AddArc(r.Right - d,  r.Bottom - d,  d, d, 0,   90);
-        path.AddArc(r.X,          r.Bottom - d,  d, d, 90,  90);
+        // Clamp so AddArc never gets a diameter bigger than the rectangle itself — with an
+        // unclamped diameter, a widget painted before its layout pass has given it a real
+        // Width/Height (e.g. 0 or a couple px) throws an ArgumentException here, which can
+        // leave that widget's card background/border unpainted for the rest of its lifetime.
+        var maxD = Math.Min(r.Width, r.Height);
+        float DClamp(float radiusVal) => Math.Max(0, Math.Min(radiusVal * 2, maxD));
+        var dTL = DClamp(topLeft);
+        var dTR = DClamp(topRight);
+        var dBR = DClamp(bottomRight);
+        var dBL = DClamp(bottomLeft);
+
+        // GDI+ throws on a zero-width/height AddArc — a corner asked to have radius 0 (e.g.
+        // the left corners of a sidebar rounded only on the right) must skip the arc entirely
+        // and just run a straight line through that corner instead of drawing a degenerate one.
+        var path = new GraphicsPath();
+        path.AddLine(r.X + dTL, r.Y, r.Right - dTR, r.Y);
+        if (dTR > 0) path.AddArc(r.Right - dTR, r.Y, dTR, dTR, 270, 90);
+        path.AddLine(r.Right, r.Y + dTR, r.Right, r.Bottom - dBR);
+        if (dBR > 0) path.AddArc(r.Right - dBR, r.Bottom - dBR, dBR, dBR, 0, 90);
+        path.AddLine(r.Right - dBR, r.Bottom, r.X + dBL, r.Bottom);
+        if (dBL > 0) path.AddArc(r.X, r.Bottom - dBL, dBL, dBL, 90, 90);
+        path.AddLine(r.X, r.Bottom - dBL, r.X, r.Y + dTL);
+        if (dTL > 0) path.AddArc(r.X, r.Y, dTL, dTL, 180, 90);
         path.CloseFigure();
         return path;
     }

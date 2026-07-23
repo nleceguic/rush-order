@@ -22,9 +22,34 @@ public sealed class OrderCardControl : UserControl
     private Panel  _pnlActions  = null!;
 
     private const int CollapsedItems = 3;
-    private static readonly Color BorderIdle   = Color.FromArgb(220, 220, 220);
-    private static readonly Color BorderHover  = Color.FromArgb(180, 180, 180);
+    private const float CornerRadius = 10f;
+    // The status stripe is drawn over part of _pnlActions.Padding.Left rather than beside it,
+    // so lining a button's left edge up with the raw padding value alone left it visibly
+    // closer to the stripe than to the padding-only gap on the right. Applies to every action
+    // button layout (paired Confirmar/Cancelar and the single full-width ones) uniformly.
+    private const int StripeCompensation = 6;
+    // Was a light-gray pair (220/180) sized for a white card — the card itself was
+    // Color.White too, so the whole thing sat in light mode inside an otherwise all-dark app.
+    private static readonly Color BorderIdle   = Color.FromArgb(60, 60, 60);
+    private static readonly Color BorderHover  = Color.FromArgb(100, 100, 100);
     private bool _hovered;
+
+    // Every one of these used to be a fresh `PoppinsFont.New(...)` call per card (and per
+    // allergen badge, per action button) — Font construction isn't free, and worse, none of
+    // them were ever disposed (Control.Dispose() doesn't cascade to a Font assigned to it,
+    // same as any other GDI handle). Kanban cards get fully rebuilt on every 30s auto-refresh
+    // and every status change, so that leaked a GDI font handle per label on every single
+    // rebuild — compounding for as long as the Pedidos screen stayed open, which is exactly the
+    // kind of thing that makes something feel progressively slower the longer it's used.
+    // Shared static instances, created once, are never disposed — same rule as
+    // ThemeManager.Fonts.*.
+    private static readonly Font NumberFont    = PoppinsFont.New("Poppins", 10.5f, FontStyle.Bold);
+    private static readonly Font TimerFont     = PoppinsFont.New("Poppins", 9f, FontStyle.Bold);
+    private static readonly Font MoreItemsFont = PoppinsFont.New("Poppins", 7.5f, FontStyle.Italic);
+    private static readonly Font AllergenFont  = PoppinsFont.New("Poppins", 6f, FontStyle.Bold);
+    private static readonly Font ActionFont    = PoppinsFont.New("Poppins", 7.5f, FontStyle.Bold);
+    private static readonly Font FullActionFont = PoppinsFont.New("Poppins", 8f, FontStyle.Bold);
+    private static readonly Font OfflineFont   = PoppinsFont.New("Poppins", 7f, FontStyle.Bold);
 
     // Drag support
     private Point _mouseDownPt;
@@ -48,14 +73,31 @@ public sealed class OrderCardControl : UserControl
         _theme = theme;
 
         Width          = 220;
-        BackColor      = Color.White;
-        Margin         = new Padding(6, 6, 6, 0);
+        BackColor      = _theme.Colors.Surface;
+        // Left is 0, not 6 — the card should start flush with the column's left edge (matching
+        // the header/workload-bar), not inset from it.
+        Margin         = new Padding(0, 6, 6, 0);
         Cursor         = Cursors.Hand;
         DoubleBuffered = true;
 
         Build();
         UpdateTimer();
+
+        // OnPaint draws a rounded card, but the child labels/buttons/panels fill their own
+        // square rectangles right up to the edges — clip the whole control to the same rounded
+        // shape so their sharp corners never show past it (same pattern as KpiWidget).
+        Resize += (_, _) => ApplyRoundedRegion();
+        ApplyRoundedRegion();
     }
+
+    private void ApplyRoundedRegion()
+    {
+        if (Width <= 0 || Height <= 0) return;
+        using var path = GdiExtensions.CreateRoundedRect(new RectangleF(0, 0, Width, Height), CornerRadius);
+        Region = new Region(path);
+    }
+
+    protected override void OnPaintBackground(PaintEventArgs e) { }  // suppress default square fill
 
     private void Build()
     {
@@ -64,7 +106,7 @@ public sealed class OrderCardControl : UserControl
         _lblNumber = new Label
         {
             Text      = $"#{_order.OrderNumber}",
-            Font      = new Font("Segoe UI", 10.5f, FontStyle.Bold),
+            Font      = NumberFont,
             ForeColor = _theme.Colors.TextPrimary,
             Location  = new Point(10, 8),
             AutoSize  = true,
@@ -72,7 +114,7 @@ public sealed class OrderCardControl : UserControl
         _lblTimer = new Label
         {
             Text      = "00:00",
-            Font      = new Font("Segoe UI", 9f, FontStyle.Bold),
+            Font      = TimerFont,
             ForeColor = _theme.Colors.Success,
             AutoSize  = true,
         };
@@ -97,7 +139,7 @@ public sealed class OrderCardControl : UserControl
         _lblMoreItems = new Label
         {
             Text      = "",
-            Font      = new Font("Segoe UI", 7.5f, FontStyle.Italic),
+            Font      = MoreItemsFont,
             ForeColor = _theme.Colors.TextSecondary,
             Dock      = DockStyle.Top,
             Height    = 18,
@@ -115,7 +157,10 @@ public sealed class OrderCardControl : UserControl
             Text      = $"♟ {_order.WaiterName ?? "Sin asignar"}",
             Font      = _theme.Fonts.Small,
             ForeColor = _theme.Colors.TextSecondary,
-            Location  = new Point(8, 4),
+            // 6, not 10 — same font/size as the item rows, but the "♟" glyph itself carries
+            // ~4px more left bearing than a plain digit, so equal Location.X values still left
+            // the visible ink sitting further right (measured: 265 vs 261 on screen).
+            Location  = new Point(6, 4),
             AutoSize  = true,
         };
         _pnlAllergens = new Panel { Location = new Point(0, 0), BackColor = Color.Transparent, AutoSize = true };
@@ -127,6 +172,13 @@ public sealed class OrderCardControl : UserControl
 
         // ── Actions ───────────────────────────────────────────────────────
         _pnlActions = new Panel { Dock = DockStyle.Top, Height = 36, BackColor = Color.Transparent, Padding = new Padding(8, 4, 8, 4) };
+        _pnlActions.Resize += (_, _) =>
+        {
+            if (_pnlActions.Controls.Count == 2)
+                LayoutPairedActions(_pnlActions.Controls[0], _pnlActions.Controls[1]);
+            else if (_pnlActions.Controls.Count == 1)
+                LayoutSingleAction(_pnlActions.Controls[0]);
+        };
         RebuildActions();
 
         Controls.AddRange([_pnlHeader, _lblTable, _pnlItems, _lblMoreItems, _pnlFooter, _pnlActions]);
@@ -136,7 +188,7 @@ public sealed class OrderCardControl : UserControl
             var lbl = new Label
             {
                 Text      = "⬤  PENDIENTE DE SINCRONIZACIÓN",
-                Font      = new Font("Segoe UI", 7f, FontStyle.Bold),
+                Font      = OfflineFont,
                 ForeColor = Color.White,
                 BackColor = Color.FromArgb(204, 102, 0),
                 Dock      = DockStyle.Bottom,
@@ -146,15 +198,34 @@ public sealed class OrderCardControl : UserControl
             Controls.Add(lbl);
         }
 
-        // Separator line at top
+        // Rounded card. OnPaintBackground is suppressed above, so the plain BackColor fill has
+        // to happen here too, or the corners outside the rounded path would be left unpainted.
         Paint += (_, e) =>
         {
+            var g = e.Graphics;
+            g.SetQuality();
+
+            // Inset 1px from the Region's own bounds (0,0,Width,Height) — drawing right up to
+            // the region's edge left the anti-aliased fringe with nowhere to blend, so the hard
+            // (non-AA) region mask clipped it away and left a jagged stairstep instead.
+            var full = new RectangleF(1, 1, Width - 2, Height - 2);
             var statusColor = GetStatusColor(_order.Status);
-            using var b = new SolidBrush(statusColor);
-            e.Graphics.FillRectangle(b, 0, 0, 4, Height);
+
+            // The accent "stripe" is two overlapping anti-aliased fills, not a flat rectangle
+            // clipped against the rounded corner — a Graphics clip/Region is never anti-aliased
+            // in GDI+ regardless of SmoothingMode, so a straight-edged stripe drawn over the
+            // curve got hard-cut into the same jagged stairstep. Filling the whole shape with
+            // the accent color first, then covering all but a ~4px left sliver with the card's
+            // own background, lets that sliver curve smoothly around the same corner instead.
+            using (var accentBrush = new SolidBrush(statusColor))
+                g.FillRoundedRectangle(accentBrush, full, CornerRadius);
+
+            var inner = new RectangleF(full.X + 4, full.Y, full.Width - 4, full.Height);
+            using (var bg = new SolidBrush(BackColor))
+                g.FillRoundedRectangle(bg, inner, CornerRadius);
 
             using var pen = new Pen(_hovered ? BorderHover : BorderIdle, 1f);
-            e.Graphics.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
+            g.DrawRoundedRectangle(pen, full, CornerRadius);
         };
 
         RecalcHeight();
@@ -192,7 +263,11 @@ public sealed class OrderCardControl : UserControl
 
         foreach (var item in show)
         {
-            var row = new Panel { Width = _pnlItems.Width - 20, Height = 18, Location = new Point(0, y), BackColor = Color.Transparent };
+            // _pnlItems.Padding.Left (10) only affects auto-laid-out children — this row is
+            // positioned via explicit Location, so it silently ignored the padding and sat
+            // flush against the card's left edge instead of lined up with the header/table
+            // text above it.
+            var row = new Panel { Width = _pnlItems.Width - 20, Height = 18, Location = new Point(_pnlItems.Padding.Left, y), BackColor = Color.Transparent };
             var qty = new Label { Text = $"{item.Quantity}×", Font = _theme.Fonts.Small, ForeColor = _theme.Colors.Primary, Location = new Point(0, 1), AutoSize = true };
             var name = new Label { Text = item.ProductName, Font = _theme.Fonts.Small, ForeColor = _theme.Colors.TextPrimary, Location = new Point(22, 1), AutoSize = true };
             var price = new Label { Text = $"€{item.LineTotal:N0}", Font = _theme.Fonts.Small, ForeColor = _theme.Colors.TextSecondary, AutoSize = true };
@@ -225,7 +300,7 @@ public sealed class OrderCardControl : UserControl
                 Location  = new Point(x, 0),
                 BackColor = AllergenColor(a),
                 ForeColor = Color.White,
-                Font      = new Font("Segoe UI", 6f, FontStyle.Bold),
+                Font      = AllergenFont,
                 TextAlign = ContentAlignment.MiddleCenter,
             };
             _pnlAllergens.Controls.Add(badge);
@@ -245,17 +320,25 @@ public sealed class OrderCardControl : UserControl
         switch (_order.Status)
         {
             case OrderStatus.New:
-                _pnlActions.Controls.Add(MakeAction("Confirmar", _theme.Colors.Success, () => ConfirmClicked?.Invoke(this), 0));
-                _pnlActions.Controls.Add(MakeAction("Cancelar",  _theme.Colors.Error,   () => CancelClicked?.Invoke(this), 1));
+                var confirm = MakeAction("Confirmar", _theme.Colors.Success, () => ConfirmClicked?.Invoke(this));
+                var cancel  = MakeAction("Cancelar",  _theme.Colors.Error,   () => CancelClicked?.Invoke(this));
+                _pnlActions.Controls.AddRange([confirm, cancel]);
+                LayoutPairedActions(confirm, cancel);
                 break;
             case OrderStatus.Preparing:
-                _pnlActions.Controls.Add(MakeFullAction("Marcar listo ✓", _theme.Colors.Info, () => MarkReadyClicked?.Invoke(this)));
+                var ready = MakeFullAction("Marcar listo", _theme.Colors.Info, () => MarkReadyClicked?.Invoke(this));
+                _pnlActions.Controls.Add(ready);
+                LayoutSingleAction(ready);
                 break;
             case OrderStatus.Ready:
-                _pnlActions.Controls.Add(MakeFullAction("Marcar servido", _theme.Colors.Success, () => MarkServedClicked?.Invoke(this)));
+                var served = MakeFullAction("Marcar servido", _theme.Colors.Success, () => MarkServedClicked?.Invoke(this));
+                _pnlActions.Controls.Add(served);
+                LayoutSingleAction(served);
                 break;
             case OrderStatus.Served:
-                _pnlActions.Controls.Add(MakeFullAction("Ir a cobrar →", _theme.Colors.Primary, () => GoToPayClicked?.Invoke(this)));
+                var pay = MakeFullAction("Ir a cobrar", _theme.Colors.Primary, () => GoToPayClicked?.Invoke(this));
+                _pnlActions.Controls.Add(pay);
+                LayoutSingleAction(pay);
                 break;
             case OrderStatus.Paid:
                 _pnlActions.Height = 0;
@@ -263,40 +346,48 @@ public sealed class OrderCardControl : UserControl
         }
     }
 
-    private Button MakeAction(string text, Color color, Action onClick, int position)
+    // Reads _pnlActions.Width/Height, so it must run once the panel is actually parented and
+    // Dock-laid-out — computing this eagerly inside MakeAction read Panel's own *unparented*
+    // DefaultSize (200×100, not the card's real width), giving Cancelar a right-hand gap a few
+    // pixels off from Confirmar's left-hand one. Hooked to _pnlActions.Resize (below) so it
+    // also stays correct if the card itself is resized later (KanbanColumn does this after
+    // construction, once the column's real width is known).
+    private void LayoutPairedActions(Control first, Control second)
     {
-        var w   = (_pnlActions.Width - 20) / 2;
-        var btn = new Button
-        {
-            Text      = text,
-            Size      = new Size(w, 26),
-            Location  = new Point(position * (w + 4), 0),
-            BackColor = Color.FromArgb(20, color.R, color.G, color.B),
-            ForeColor = color,
-            FlatStyle = FlatStyle.Flat,
-            Font      = new Font("Segoe UI", 7.5f, FontStyle.Bold),
-            Cursor    = Cursors.Hand,
-        };
-        btn.FlatAppearance.BorderColor = Color.FromArgb(60, color.R, color.G, color.B);
-        btn.FlatAppearance.BorderSize  = 1;
+        var left = _pnlActions.Padding.Left + StripeCompensation;
+        var w = (_pnlActions.Width - left - _pnlActions.Padding.Right - 4) / 2;
+        var h = _pnlActions.Height - _pnlActions.Padding.Vertical;
+        first.Size      = new Size(w, h);
+        first.Location  = new Point(left, _pnlActions.Padding.Top);
+        second.Size     = new Size(w, h);
+        second.Location = new Point(left + w + 4, _pnlActions.Padding.Top);
+    }
+
+    // Same stripe-compensated inset as the paired layout above, for the single full-width
+    // action button (Marcar listo / Marcar servido / Ir a cobrar). No longer Dock=Fill, since
+    // that would inset evenly off _pnlActions.Padding and reproduce the same left/right
+    // mismatch the paired buttons had.
+    private void LayoutSingleAction(Control btn)
+    {
+        var left = _pnlActions.Padding.Left + StripeCompensation;
+        btn.Size     = new Size(_pnlActions.Width - left - _pnlActions.Padding.Right,
+                                 _pnlActions.Height - _pnlActions.Padding.Vertical);
+        btn.Location = new Point(left, _pnlActions.Padding.Top);
+    }
+
+    private CardActionButton MakeAction(string text, Color color, Action onClick)
+    {
+        var btn = new CardActionButton(text, ActionFont, BackColor,
+            fill: Color.FromArgb(20, color.R, color.G, color.B),
+            foreColor: color,
+            border: Color.FromArgb(60, color.R, color.G, color.B));
         btn.Click += (_, _) => onClick();
         return btn;
     }
 
-    private Button MakeFullAction(string text, Color color, Action onClick)
+    private CardActionButton MakeFullAction(string text, Color color, Action onClick)
     {
-        var btn = new Button
-        {
-            Text      = text,
-            Dock      = DockStyle.Fill,
-            Height    = 26,
-            BackColor = color,
-            ForeColor = Color.White,
-            FlatStyle = FlatStyle.Flat,
-            Font      = new Font("Segoe UI", 8f, FontStyle.Bold),
-            Cursor    = Cursors.Hand,
-        };
-        btn.FlatAppearance.BorderSize = 0;
+        var btn = new CardActionButton(text, FullActionFont, BackColor, fill: color, foreColor: Color.White, border: null);
         btn.Click += (_, _) => onClick();
         return btn;
     }
@@ -412,4 +503,51 @@ public sealed class OrderCardControl : UserControl
         "Sulphites"   => Color.FromArgb(147, 112, 219),
         _             => Color.Gray,
     };
+}
+
+// Plain Button + Region-clip rounding produces a jagged, non-anti-aliased corner (same issue
+// fixed on the card's own outer shape) — but Region on a control whose parent panel has
+// BackColor=Transparent (as _pnlActions does) fought with WinForms' background-relay mechanism
+// for transparent controls and produced garbled/overlapping paint instead. Since there's
+// nothing translucent behind these buttons, the simplest fix skips Region entirely: paint the
+// real backdrop color as a plain (opaque, default) background, then draw the rounded shape and
+// text on top — the anti-aliased path renders cleanly with no clipping involved at all.
+internal sealed class CardActionButton : Control
+{
+    private const float Radius = 8f;
+    private readonly Color  _fill;
+    private readonly Color? _border;
+    private readonly Color  _foreColor;
+
+    public CardActionButton(string text, Font font, Color backdrop, Color fill, Color foreColor, Color? border)
+    {
+        Text       = text;
+        Font       = font;
+        BackColor  = backdrop;
+        _fill      = fill;
+        _foreColor = foreColor;
+        _border    = border;
+        Cursor     = Cursors.Hand;
+        SetStyle(ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint, true);
+    }
+
+    protected override void OnPaint(PaintEventArgs e)
+    {
+        var g = e.Graphics;
+        g.SetQuality();
+
+        var r = new RectangleF(0.5f, 0.5f, Width - 1, Height - 1);
+        using (var brush = new SolidBrush(_fill))
+            g.FillRoundedRectangle(brush, r, Radius);
+
+        if (_border is { } borderColor)
+        {
+            using var pen = new Pen(borderColor, 1f);
+            g.DrawRoundedRectangle(pen, r, Radius);
+        }
+
+        using var textBrush = new SolidBrush(_foreColor);
+        var format = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+        g.DrawString(Text, Font, textBrush, new RectangleF(0, 0, Width, Height), format);
+    }
 }

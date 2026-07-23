@@ -131,17 +131,18 @@ public sealed class ColorPalette
 
 public sealed class FontPalette : IDisposable
 {
-    public Font Regular  { get; } = new("Segoe UI", 9f,  FontStyle.Regular);
-    public Font SemiBold { get; } = new("Segoe UI", 9f,  FontStyle.Bold);
-    public Font Bold     { get; } = new("Segoe UI", 11f, FontStyle.Bold);
-    public Font Small    { get; } = new("Segoe UI", 8f,  FontStyle.Regular);
-    public Font Title    { get; } = new("Segoe UI", 16f, FontStyle.Bold);
-    public Font NavItem  { get; } = new("Segoe UI", 9f,  FontStyle.Regular);
-    public Font Avatar   { get; } = new("Segoe UI", 11f, FontStyle.Bold);
+    public Font Regular  { get; } = new(PoppinsFont.Regular, 9f,  FontStyle.Regular);
+    public Font Medium   { get; } = new(PoppinsFont.Medium, 9f,  FontStyle.Regular);
+    public Font SemiBold { get; } = new(PoppinsFont.SemiBold, 9f,  FontStyle.Regular);
+    public Font Bold     { get; } = new(PoppinsFont.Regular, 11f, FontStyle.Bold);
+    public Font Small    { get; } = new(PoppinsFont.Regular, 8f,  FontStyle.Regular);
+    public Font Title    { get; } = new(PoppinsFont.Regular, 16f, FontStyle.Bold);
+    public Font NavItem  { get; } = new(PoppinsFont.Medium, 9f,  FontStyle.Regular);
+    public Font Avatar   { get; } = new(PoppinsFont.SemiBold, 11f, FontStyle.Regular);
 
     public void Dispose()
     {
-        Regular.Dispose(); SemiBold.Dispose(); Bold.Dispose();
+        Regular.Dispose(); Medium.Dispose(); SemiBold.Dispose(); Bold.Dispose();
         Small.Dispose(); Title.Dispose(); NavItem.Dispose(); Avatar.Dispose();
     }
 }

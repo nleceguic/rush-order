@@ -78,6 +78,7 @@ public sealed class MenuManagementControl : UserControl
         };
 
         Load += async (_, _) => await LoadAllAsync();
+        Load += (_, _) => ApplySplitterSizing();
     }
 
     // ── Layout ────────────────────────────────────────────────────────────
@@ -88,15 +89,28 @@ public sealed class MenuManagementControl : UserControl
         {
             Dock             = DockStyle.Fill,
             SplitterWidth    = 4,
-            SplitterDistance = 260,
-            Panel1MinSize    = 180,
-            Panel2MinSize    = 400,
             BackColor        = _theme.Colors.Border,
         };
 
         BuildLeftPanel();
         BuildRightPanel();
         Controls.Add(_split);
+    }
+
+    // Panel1MinSize/Panel2MinSize/SplitterDistance all validate against the control's
+    // CURRENT Width. HandleCreated turned out to still fire before Dock=Fill finishes
+    // resolving the real width, so this runs on this UserControl's own Load instead —
+    // by then the whole chain has been through layout. Clamped against the actual
+    // width regardless, so it can never throw even if that assumption is ever wrong.
+    private void ApplySplitterSizing()
+    {
+        var width     = _split.Width;
+        var panel1Min = Math.Clamp(180, 0, width);
+        var panel2Min = Math.Clamp(400, 0, width - panel1Min);
+        _split.Panel1MinSize = panel1Min;
+        _split.Panel2MinSize = panel2Min;
+        var maxDistance = Math.Max(panel1Min, width - panel2Min);
+        _split.SplitterDistance = Math.Clamp(260, panel1Min, maxDistance);
     }
 
     private void BuildLeftPanel()
@@ -287,7 +301,7 @@ public sealed class MenuManagementControl : UserControl
         {
             BackColor = _theme.Colors.Surface,
             ForeColor = _theme.Colors.TextSecondary,
-            Font      = new Font("Segoe UI", 8f, FontStyle.Bold),
+            Font      = PoppinsFont.New("Poppins", 8f, FontStyle.Bold),
             SelectionBackColor = _theme.Colors.Surface,
         };
     }
@@ -396,7 +410,9 @@ public sealed class MenuManagementControl : UserControl
         // Label
         var textColor = isSelected ? Color.White : _theme.Colors.TextPrimary;
         using var textBrush = new SolidBrush(textColor);
-        using var font = _theme.Fonts.Regular;
+        // NOT `using` — Fonts.Regular is the shared app-wide Font instance owned by
+        // ThemeManager; disposing it here would break every other control using it too.
+        var font = _theme.Fonts.Regular;
         g.DrawString(node.Text, font, textBrush, r.X + 26, r.Y + (r.Height - font.Height) / 2);
 
         // Product count badge for category nodes
@@ -406,7 +422,7 @@ public sealed class MenuManagementControl : UserControl
                 ? $"{cat.ProductCount} ({cat.UnavailableCount}✕)"
                 : cat.ProductCount.ToString();
             using var badgeFg = new SolidBrush(isSelected ? Color.FromArgb(200, 255, 255, 255) : _theme.Colors.TextSecondary);
-            using var sf = new Font("Segoe UI", 8f);
+            using var sf = PoppinsFont.New("Poppins", 8f);
             var bSz = g.MeasureString(badge, sf);
             g.DrawString(badge, sf, badgeFg, r.Right - bSz.Width - 8, r.Y + (r.Height - sf.Height) / 2);
         }
@@ -548,7 +564,7 @@ public sealed class MenuManagementControl : UserControl
         if (e.ColumnIndex == ColName && !sel)
         {
             e.Paint(r, DataGridViewPaintParts.Background | DataGridViewPaintParts.Border);
-            using var f  = new Font("Segoe UI", 9f, FontStyle.Bold);
+            using var f  = PoppinsFont.New("Poppins", 9f, FontStyle.Bold);
             using var tb = new SolidBrush(_theme.Colors.TextPrimary);
             g.DrawString(prod.Name, f, tb, r.X + 6, r.Y + (r.Height - f.Height) / 2);
             e.Handled = true;
@@ -572,7 +588,7 @@ public sealed class MenuManagementControl : UserControl
         int ci      = Math.Abs(p.Name.GetHashCode()) % CatColors.Length;
         using var b = new SolidBrush(CatColors[ci]);
         g.FillRectangle(b, sqR);
-        using var tf = new Font("Segoe UI", 11f, FontStyle.Bold);
+        using var tf = PoppinsFont.New("Poppins", 11f, FontStyle.Bold);
         using var tb = new SolidBrush(Color.White);
         var letter   = p.Name.Length > 0 ? p.Name[0].ToString().ToUpper() : "?";
         var sz       = g.MeasureString(letter, tf);
@@ -609,7 +625,7 @@ public sealed class MenuManagementControl : UserControl
         g.FillEllipse(cb, cx, pill.Y + 2, pill.Height - 4, pill.Height - 4);
 
         // Label
-        using var tf = new Font("Segoe UI", 7.5f, FontStyle.Bold);
+        using var tf = PoppinsFont.New("Poppins", 7.5f, FontStyle.Bold);
         using var tb = new SolidBrush(Color.White);
         var label = available ? "ACTIVO" : "OCULTO";
         var lx    = available ? pill.X + 6 : pill.X + pill.Height + 2;

@@ -27,7 +27,6 @@ public sealed class MainForm : Form
     private readonly NavigationService        _nav;
     private readonly ToastNotificationManager _toasts;
     private readonly AppState                 _state;
-    private readonly AuthService              _auth;
     private readonly SyncService              _sync;
     private readonly ConnectivityMonitor      _connectivity; // holds reference so DI keeps it alive
     private readonly PrintService             _print;
@@ -47,7 +46,6 @@ public sealed class MainForm : Form
     private Panel   _pnlLoadingOverlay = null!;
 
     // Sidebar controls
-    private Label   _lblLogo       = null!;
     private Panel   _pnlNavItems   = null!;
     private Panel   _pnlUser       = null!;
     private Label   _lblAvatar     = null!;
@@ -55,15 +53,11 @@ public sealed class MainForm : Form
     private NavButton _btnToggle   = null!;
 
     // Header controls
-    private Label   _lblTitle      = null!;
     private Label   _lblDot        = null!;
     private Label   _lblStatus     = null!;
     private Label   _lblSyncStatus = null!;
     private Label   _lblSyncBadge  = null!;
     private Label   _lblClock      = null!;
-    private Button  _btnNotify     = null!;
-    private Label   _lblBadge      = null!;
-    private int     _notifyCount   = 0;
 
     // Sync status auto-clear timer
     private readonly System.Windows.Forms.Timer _syncClearTimer = new() { Interval = 5000 };
@@ -80,12 +74,12 @@ public sealed class MainForm : Form
     // Clock
     private readonly System.Windows.Forms.Timer _clockTimer = new() { Interval = 1000 };
 
-    // Content fade
-    private Form? _fadeOverlay;
+    // Content transition
+    private System.Windows.Forms.Timer? _slideTimer;
 
     public MainForm(
         ThemeManager theme, NavigationService nav,
-        ToastNotificationManager toasts, AppState state, AuthService auth,
+        ToastNotificationManager toasts, AppState state,
         SyncService sync, ConnectivityMonitor connectivity,
         PrintService print, UpdateService update,
         IServiceProvider sp)
@@ -94,7 +88,6 @@ public sealed class MainForm : Form
         _nav          = nav;
         _toasts       = toasts;
         _state        = state;
-        _auth         = auth;
         _sync         = sync;
         _connectivity = connectivity;
         _print        = print;
@@ -107,7 +100,7 @@ public sealed class MainForm : Form
 
     private void InitializeComponent()
     {
-        Text            = "RushOrder";
+        Text            = "Rush Order";
         Size            = new Size(1280, 800);
         MinimumSize     = new Size(900, 600);
         StartPosition   = FormStartPosition.CenterScreen;
@@ -118,7 +111,13 @@ public sealed class MainForm : Form
         BuildHeader();
         BuildContent();
 
-        Controls.AddRange([_pnlSidebar, _pnlHeader, _pnlContent]);
+        // Dock resolves in reverse of Controls.Add order: the LAST control added claims its
+        // space against the form's full original bounds; earlier ones divide up whatever is
+        // left. _pnlSidebar is added last so its Dock=Left column runs the full window height
+        // (past the header, not just below it); _pnlHeader (Top) then only spans the remaining
+        // area to the right of the sidebar; _pnlContent (Fill) is added first so it always ends
+        // up with whatever's left over after both.
+        Controls.AddRange([_pnlContent, _pnlHeader, _pnlSidebar]);
 
         Resize += (_, _) => RelayoutMain();
         RelayoutMain();
@@ -134,20 +133,14 @@ public sealed class MainForm : Form
             BackColor = _theme.Colors.SidebarBg,
             Dock      = DockStyle.Left,
         };
-
-        _lblLogo = new Label
-        {
-            Text      = "RushOrder",
-            Font      = new Font("Segoe UI", 11f, FontStyle.Bold),
-            ForeColor = Color.FromArgb(230, 57, 70),
-            Size      = new Size(SidebarExpanded, 56),
-            Location  = new Point(0, 0),
-            TextAlign = ContentAlignment.MiddleCenter,
-        };
+        // Only the right corners are rounded — the left edge is flush against the window's
+        // own edge, so rounding it would just cut a notch out of a straight border.
+        _pnlSidebar.Resize += (_, _) => ApplySidebarRegion();
+        ApplySidebarRegion();
 
         _pnlNavItems = new Panel
         {
-            Location  = new Point(0, 60),
+            Location  = new Point(0, 0),
             Size      = new Size(SidebarExpanded, 500),
             BackColor = Color.Transparent,
         };
@@ -196,6 +189,7 @@ public sealed class MainForm : Form
         };
         _lblAvatar = new Label
         {
+            Text      = "?", // placeholder until OnUserChanged fills in real initials
             Size      = new Size(36, 36),
             Location  = new Point(12, 14),
             BackColor = _theme.Colors.Primary,
@@ -213,11 +207,13 @@ public sealed class MainForm : Form
             TextAlign = ContentAlignment.MiddleLeft,
         };
 
-        // Sidebar toggle button
+        // Sidebar toggle button — icon only, left-aligned like the nav items above it
+        // (IsCollapsed stays false: that's the mode NavButton uses to draw the icon at a
+        // fixed left offset instead of centered across the whole width).
         _btnToggle = new NavButton
         {
             IconText  = "◀",
-            LabelText = "Colapsar",
+            LabelText = "",
             Width     = SidebarExpanded,
             Height    = 38,
             Dock      = DockStyle.Bottom,
@@ -225,10 +221,18 @@ public sealed class MainForm : Form
         _btnToggle.Click += (_, _) => ToggleSidebar();
 
         _pnlUser.Controls.AddRange([_lblAvatar, _lblUserName]);
-        _pnlSidebar.Controls.AddRange([_lblLogo, _pnlNavItems, _pnlUser, _btnToggle]);
+        _pnlSidebar.Controls.AddRange([_pnlNavItems, _pnlUser, _btnToggle]);
 
         // Sidebar animation tick
         _sidebarTimer.Tick += OnSidebarAnimTick;
+    }
+
+    private void ApplySidebarRegion()
+    {
+        if (_pnlSidebar.Width <= 0 || _pnlSidebar.Height <= 0) return;
+        using var path = GdiExtensions.CreateRightRoundedRect(
+            new RectangleF(0, 0, _pnlSidebar.Width, _pnlSidebar.Height), 16);
+        _pnlSidebar.Region = new Region(path);
     }
 
     private void ActivateNav(NavButton btn, Action navigate)
@@ -245,7 +249,6 @@ public sealed class MainForm : Form
         _sidebarExpanded = !_sidebarExpanded;
         _sidebarTarget   = _sidebarExpanded ? SidebarExpanded : SidebarCollapsed;
         _btnToggle.IconText  = _sidebarExpanded ? "◀" : "▶";
-        _btnToggle.LabelText = _sidebarExpanded ? "Colapsar" : "";
         _sidebarTimer.Start();
     }
 
@@ -268,7 +271,6 @@ public sealed class MainForm : Form
 
     private void UpdateSidebarCollapsedState(bool collapsed)
     {
-        _lblLogo.Text = collapsed ? "R" : "RushOrder";
         _lblUserName.Visible = !collapsed;
         foreach (var btn in _navButtons)
         {
@@ -288,21 +290,11 @@ public sealed class MainForm : Form
             BackColor = _theme.Colors.HeaderBg,
             Dock      = DockStyle.Top,
         };
-        AddBottomBorder(_pnlHeader);
-
-        _lblTitle = new Label
-        {
-            Text      = "Dashboard",
-            Font      = _theme.Fonts.Bold,
-            ForeColor = _theme.Colors.TextPrimary,
-            AutoSize  = true,
-            Location  = new Point(16, 14),
-        };
 
         _lblDot = new Label
         {
             Text      = "●",
-            Font      = new Font("Segoe UI", 10f),
+            Font      = PoppinsFont.New("Poppins", 10f),
             ForeColor = _theme.Colors.Success,
             AutoSize  = true,
         };
@@ -322,33 +314,10 @@ public sealed class MainForm : Form
             AutoSize  = true,
         };
 
-        _btnNotify = new Button
-        {
-            Text      = "🔔",
-            Size      = new Size(36, 36),
-            FlatStyle = FlatStyle.Flat,
-            BackColor = Color.Transparent,
-            ForeColor = _theme.Colors.TextPrimary,
-            Font      = new Font("Segoe UI Symbol", 14f),
-            Cursor    = Cursors.Hand,
-        };
-        _btnNotify.FlatAppearance.BorderSize = 0;
-
-        _lblBadge = new Label
-        {
-            Text      = "",
-            Size      = new Size(18, 18),
-            BackColor = _theme.Colors.Primary,
-            ForeColor = Color.White,
-            Font      = new Font("Segoe UI", 7f, FontStyle.Bold),
-            TextAlign = ContentAlignment.MiddleCenter,
-            Visible   = false,
-        };
-
         _lblSyncStatus = new Label
         {
             Text      = "",
-            Font      = new Font("Segoe UI", 8f),
+            Font      = PoppinsFont.New("Poppins", 8f),
             ForeColor = _theme.Colors.TextSecondary,
             AutoSize  = true,
             Visible   = false,
@@ -360,7 +329,7 @@ public sealed class MainForm : Form
             Size      = new Size(22, 18),
             BackColor = Color.FromArgb(204, 102, 0),
             ForeColor = Color.White,
-            Font      = new Font("Segoe UI", 7f, FontStyle.Bold),
+            Font      = PoppinsFont.New("Poppins", 7f, FontStyle.Bold),
             TextAlign = ContentAlignment.MiddleCenter,
             Visible   = false,
         };
@@ -372,8 +341,8 @@ public sealed class MainForm : Form
             RelayoutHeader();
         };
 
-        _pnlHeader.Controls.AddRange([_lblTitle, _lblDot, _lblStatus,
-            _lblSyncStatus, _lblSyncBadge, _lblClock, _btnNotify, _lblBadge]);
+        _pnlHeader.Controls.AddRange([_lblDot, _lblStatus,
+            _lblSyncStatus, _lblSyncBadge, _lblClock]);
         _pnlHeader.Resize += (_, _) => RelayoutHeader();
         RelayoutHeader();
 
@@ -388,15 +357,13 @@ public sealed class MainForm : Form
         int cy = HeaderHeight / 2;
 
         _lblClock.Location  = new Point(w - _lblClock.Width - 16, cy - _lblClock.Height / 2);
-        _btnNotify.Location = new Point(_lblClock.Left - 44,       cy - 18);
-        _lblBadge.Location  = new Point(_btnNotify.Right - 10,     _btnNotify.Top - 4);
 
-        // Sync badge (pending count) just left of notify bell
+        // Sync badge (pending count) just left of the clock
         if (_lblSyncBadge.Visible)
-            _lblSyncBadge.Location = new Point(_btnNotify.Left - _lblSyncBadge.Width - 6, cy - 9);
+            _lblSyncBadge.Location = new Point(_lblClock.Left - _lblSyncBadge.Width - 10, cy - 9);
 
         // Sync status message to the right of the connection dot
-        _lblDot.Location    = new Point(200, cy - _lblDot.Height / 2);
+        _lblDot.Location    = new Point(16, cy - _lblDot.Height / 2);
         _lblStatus.Location = new Point(_lblDot.Right + 4, cy - _lblStatus.Height / 2);
 
         if (_lblSyncStatus.Visible)
@@ -424,7 +391,7 @@ public sealed class MainForm : Form
         _lblUpdateText = new Label
         {
             Text      = "",
-            Font      = new Font("Segoe UI", 9f, FontStyle.Bold),
+            Font      = PoppinsFont.New("Poppins", 9f, FontStyle.Bold),
             ForeColor = Color.FromArgb(33, 33, 33),
             AutoSize  = true,
             Location  = new Point(12, 10),
@@ -437,7 +404,7 @@ public sealed class MainForm : Form
             FlatStyle = FlatStyle.Flat,
             BackColor = Color.FromArgb(33, 33, 33),
             ForeColor = Color.White,
-            Font      = new Font("Segoe UI", 8.5f),
+            Font      = PoppinsFont.New("Poppins", 8.5f),
             Cursor    = Cursors.Hand,
         };
         _btnUpdateNow.FlatAppearance.BorderSize = 0;
@@ -451,7 +418,7 @@ public sealed class MainForm : Form
             FlatStyle = FlatStyle.Flat,
             BackColor = Color.Transparent,
             ForeColor = Color.FromArgb(33, 33, 33),
-            Font      = new Font("Segoe UI", 11f),
+            Font      = PoppinsFont.New("Poppins", 11f),
             Cursor    = Cursors.Hand,
         };
         _btnUpdateDismiss.FlatAppearance.BorderSize = 0;
@@ -498,7 +465,7 @@ public sealed class MainForm : Form
         _update.InstallReady    += OnInstallReady;
         _update.DownloadProgress += pct => { };
 
-        Load += async (_, _) => await OnLoadAsync();
+        Load += (_, _) => OnLoadAsync();
     }
 
     private void OnSyncStatusMessage(string msg)
@@ -540,21 +507,9 @@ public sealed class MainForm : Form
         return await tcs.Task;
     }
 
-    private async Task OnLoadAsync()
+    private void OnLoadAsync()
     {
         _toasts.SetOwner(this);
-
-        var autoLoggedIn = await _auth.TryAutoLoginAsync();
-        if (!autoLoggedIn)
-        {
-            using var login = new LoginForm(_auth, _theme);
-            var result = login.ShowDialog(this);
-            if (result != DialogResult.OK)
-            {
-                Application.Exit();
-                return;
-            }
-        }
 
         // Navigate to default view
         _nav.ClearAndNavigateTo<DashboardView>();
@@ -569,25 +524,14 @@ public sealed class MainForm : Form
         if (InvokeRequired) { Invoke(() => OnNavigated(view)); return; }
 
         FadeToView(view);
-        _lblTitle.Text = GetViewTitle(view);
         RelayoutHeader();
     }
 
     private void FadeToView(UserControl newView)
     {
-        // Capture current content as overlay
-        if (_pnlContent.Width > 0 && _pnlContent.Height > 0 && _pnlContent.Controls.Count > 1)
-        {
-            var bmp    = new Bitmap(_pnlContent.Width, _pnlContent.Height);
-            _pnlContent.DrawToBitmap(bmp, new Rectangle(0, 0, bmp.Width, bmp.Height));
-            var bounds = _pnlContent.RectangleToScreen(new Rectangle(0, 0, _pnlContent.Width, _pnlContent.Height));
-
-            _fadeOverlay?.Close();
-            _fadeOverlay = new FadeOverlayForm(bounds, bmp);
-            _fadeOverlay.Show(this);
-        }
-
-        // Swap view — preserve LoadingOverlay and update banner
+        // Swap view immediately — preserve LoadingOverlay and update banner. The old view just
+        // disappears (same as the PWA's checkout steps: the outgoing step unmounts with no exit
+        // animation); only the INCOMING view slides in.
         for (int i = _pnlContent.Controls.Count - 1; i >= 0; i--)
         {
             var c = _pnlContent.Controls[i];
@@ -597,16 +541,54 @@ public sealed class MainForm : Form
                 c.Dispose();
             }
         }
-        newView.Dock = DockStyle.Fill;
+
+        _slideTimer?.Stop();
+        _slideTimer?.Dispose();
+        _slideTimer = null;
+
+        if (_pnlContent.Width <= 0 || _pnlContent.Height <= 0)
+        {
+            newView.Dock = DockStyle.Fill;
+            _pnlContent.Controls.Add(newView);
+            newView.BringToFront();
+            return;
+        }
+
+        // Slide the real control in directly — no bitmap snapshot, no separate layered Form.
+        // The previous version rendered the new view to a full-size Bitmap and animated it via
+        // a borderless Form's Opacity; a Form with Opacity set at all runs as a layered window,
+        // which forces Windows to alpha-recomposite that entire bitmap on every single frame.
+        // For a near-full-window image at a 15ms tick that was expensive enough to visibly drop
+        // frames. Animating Control.Location on the live control instead is a plain move+repaint
+        // — one of the cheapest operations WinForms has — and keeps the view interactive/loading
+        // live during the slide instead of showing a frozen frame of it.
+        const int slideDistance = 40;
+        const int durationMs    = 200;
+
+        newView.Dock   = DockStyle.None;
+        newView.Bounds = new Rectangle(slideDistance, 0, _pnlContent.Width, _pnlContent.Height);
         _pnlContent.Controls.Add(newView);
         newView.BringToFront();
 
-        // Fade out the overlay
-        if (_fadeOverlay is FadeOverlayForm fof)
+        var elapsed = 0;
+        var timer   = new System.Windows.Forms.Timer { Interval = 15 };
+        _slideTimer = timer;
+        timer.Tick += (_, _) =>
         {
-            var captured = fof;
-            fof.FadeOut(() => { if (!captured.IsDisposed) captured.Close(); });
-        }
+            elapsed += timer.Interval;
+            var t     = Math.Min(1.0, elapsed / (double)durationMs);
+            var eased = 1 - Math.Pow(1 - t, 3); // ease-out cubic
+            newView.Left = (int)(slideDistance * (1 - eased));
+
+            if (t >= 1.0)
+            {
+                timer.Stop();
+                timer.Dispose();
+                if (_slideTimer == timer) _slideTimer = null;
+                newView.Dock = DockStyle.Fill; // resume normal responsive layout once settled
+            }
+        };
+        timer.Start();
     }
 
     private void OnUserChanged(UserInfo? user)
@@ -625,33 +607,6 @@ public sealed class MainForm : Form
     }
 
     public void ShowLoading(bool show) => _pnlLoadingOverlay.Visible = show;
-
-    public void IncrementNotificationBadge()
-    {
-        _notifyCount++;
-        _lblBadge.Text    = _notifyCount > 9 ? "9+" : _notifyCount.ToString();
-        _lblBadge.Visible = true;
-        RelayoutHeader();
-    }
-
-    public void ClearNotificationBadge()
-    {
-        _notifyCount  = 0;
-        _lblBadge.Visible = false;
-    }
-
-    private static string GetViewTitle(UserControl view) => view.GetType().Name
-        .Replace("View", "")
-        .Replace("Panel", "");
-
-    private static void AddBottomBorder(Control c)
-    {
-        c.Paint += (_, e) =>
-        {
-            using var pen = new Pen(Color.FromArgb(229, 229, 229), 1);
-            e.Graphics.DrawLine(pen, 0, c.Height - 1, c.Width, c.Height - 1);
-        };
-    }
 
     private void OnUpdateAvailable(UpdateInfo info)
     {
@@ -749,39 +704,5 @@ internal sealed class LoadingOverlay : Panel
     {
         if (disposing) _spinTimer.Dispose();
         base.Dispose(disposing);
-    }
-}
-
-internal sealed class FadeOverlayForm : Form
-{
-    private double _opacity = 1.0;
-    private readonly System.Windows.Forms.Timer _timer = new() { Interval = 16 };
-
-    public FadeOverlayForm(Rectangle screenBounds, Bitmap capture)
-    {
-        FormBorderStyle       = FormBorderStyle.None;
-        ShowInTaskbar         = false;
-        TopMost               = false;
-        Opacity               = 1.0;
-        Bounds                = screenBounds;
-        BackgroundImage       = capture;
-        BackgroundImageLayout = ImageLayout.Stretch;
-        StartPosition         = FormStartPosition.Manual;
-    }
-
-    public void FadeOut(Action onComplete)
-    {
-        _timer.Tick += (_, _) =>
-        {
-            _opacity = Math.Max(0, _opacity - 0.15);
-            Opacity  = _opacity;
-            if (_opacity <= 0)
-            {
-                _timer.Stop();
-                _timer.Dispose();
-                onComplete();
-            }
-        };
-        _timer.Start();
     }
 }

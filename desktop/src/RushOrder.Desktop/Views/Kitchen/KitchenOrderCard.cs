@@ -75,13 +75,15 @@ public sealed class KitchenOrderCard : UserControl
         _animTimer.Tick += OnAnimTick;
         _animTimer.Start();
 
+        // Must exist before the first UpdateTimerLabel() call below, which can reach into
+        // it (Stop/Start) immediately if this order is already old when the card is built.
+        _flashTimer = new System.Windows.Forms.Timer { Interval = 600 };
+        _flashTimer.Tick += (_, _) => { _flashOn = !_flashOn; _pnlHeader.Invalidate(); };
+
         _clockTimer = new System.Windows.Forms.Timer { Interval = 1000 };
         _clockTimer.Tick += (_, _) => UpdateTimerLabel();
         _clockTimer.Start();
         UpdateTimerLabel();
-
-        _flashTimer = new System.Windows.Forms.Timer { Interval = 600 };
-        _flashTimer.Tick += (_, _) => { _flashOn = !_flashOn; _pnlHeader.Invalidate(); };
 
         // Swipe detection on the whole card
         MouseDown += (_, e) => { if (e.Button == MouseButtons.Left) { _swipeStartX = e.X; _swiping = true; } };
@@ -110,7 +112,7 @@ public sealed class KitchenOrderCard : UserControl
         _lblNum = new Label
         {
             Text      = _order.OrderNumber,
-            Font      = new Font("Segoe UI", 18f, FontStyle.Bold),
+            Font      = PoppinsFont.New("Poppins", 18f, FontStyle.Bold),
             ForeColor = Color.White,
             Location  = new Point(12, 10),
             AutoSize  = true,
@@ -119,7 +121,7 @@ public sealed class KitchenOrderCard : UserControl
         _lblTable = new Label
         {
             Text      = $"{_order.TableName}  ·  {_order.GuestCount} pax",
-            Font      = new Font("Segoe UI", 11f),
+            Font      = PoppinsFont.New("Poppins", 11f),
             ForeColor = Color.FromArgb(210, 210, 210),
             Location  = new Point(12, 46),
             AutoSize  = true,
@@ -128,7 +130,7 @@ public sealed class KitchenOrderCard : UserControl
         _lblTimer = new Label
         {
             Text      = "0:00",
-            Font      = new Font("Segoe UI", 15f, FontStyle.Bold),
+            Font      = PoppinsFont.New("Poppins", 15f, FontStyle.Bold),
             ForeColor = GreenTime,
             AutoSize  = true,
         };
@@ -136,7 +138,7 @@ public sealed class KitchenOrderCard : UserControl
         _lblUrgent = new Label
         {
             Text      = "⚡ URGENTE",
-            Font      = new Font("Segoe UI", 9f, FontStyle.Bold),
+            Font      = PoppinsFont.New("Poppins", 9f, FontStyle.Bold),
             ForeColor = Color.White,
             BackColor = Color.FromArgb(239, 68, 68),
             Visible   = _order.IsUrgent,
@@ -383,7 +385,7 @@ public sealed class KitchenOrderCard : UserControl
         BackColor = bg,
         ForeColor = fg,
         FlatStyle = FlatStyle.Flat,
-        Font      = new Font("Segoe UI", 11f, FontStyle.Bold),
+        Font      = PoppinsFont.New("Poppins", 11f, FontStyle.Bold),
         Cursor    = Cursors.Hand,
         FlatAppearance = { BorderSize = 0 },
     };
@@ -457,7 +459,7 @@ public sealed class KitchenOrderCard : UserControl
             bool hasAllergens = item.Allergens.Count > 0;
             var nameForeColor = _checked ? theme.Colors.TextSecondary : theme.Colors.TextPrimary;
             using var nameBrush = new SolidBrush(nameForeColor);
-            using var nameFont  = new Font("Segoe UI", 12f, FontStyle.Bold);
+            using var nameFont  = PoppinsFont.New("Poppins", 12f, FontStyle.Bold);
             var quantityText = $"{item.Quantity}×  {item.ProductName}";
             if (_checked)
             {
@@ -475,7 +477,7 @@ public sealed class KitchenOrderCard : UserControl
             // Allergen badges
             if (hasAllergens && !_checked)
             {
-                using var allergenFont  = new Font("Segoe UI", 7.5f, FontStyle.Bold);
+                using var allergenFont  = PoppinsFont.New("Poppins", 7.5f, FontStyle.Bold);
                 using var allergenBrush = new SolidBrush(AllergenFg);
                 int ax = Width - 8;
                 foreach (var allergen in item.Allergens.Reverse())
@@ -494,7 +496,7 @@ public sealed class KitchenOrderCard : UserControl
             int subY = textY + 24;
             if (item.Modifiers.Count > 0 && !_checked)
             {
-                using var modFont  = new Font("Segoe UI", 9.5f, FontStyle.Italic);
+                using var modFont  = PoppinsFont.New("Poppins", 9.5f, FontStyle.Italic);
                 using var modBrush = new SolidBrush(theme.Colors.TextSecondary);
                 g.DrawString("  " + string.Join("  ·  ", item.Modifiers), modFont, modBrush, textX, subY);
                 subY += 18;
@@ -503,7 +505,7 @@ public sealed class KitchenOrderCard : UserControl
             // Notes
             if (!string.IsNullOrEmpty(item.Notes) && !_checked)
             {
-                using var noteFont  = new Font("Segoe UI", 9f, FontStyle.Italic);
+                using var noteFont  = PoppinsFont.New("Poppins", 9f, FontStyle.Italic);
                 using var noteBrush = new SolidBrush(Color.FromArgb(234, 179, 8));
                 g.DrawString($"  ★ {item.Notes}", noteFont, noteBrush, textX, subY);
             }

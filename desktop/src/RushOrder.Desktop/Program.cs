@@ -20,12 +20,23 @@ namespace RushOrder.Desktop;
 
 static class Program
 {
+    // TEMPORARY: set to false to restore the normal login gate. Left on while iterating
+    // on Dashboard/UI fixes so each rebuild doesn't require logging in again.
+    private const bool SkipLoginForTesting = true;
+
     [STAThread]
     static void Main()
     {
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
         Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
+
+        // TEMPORARY diagnostics: log UI-thread exceptions (e.g. from Paint handlers) instead
+        // of showing the JIT-debugger dialog per occurrence, so repeated ones are all visible
+        // in one log file instead of blocking on a dialog each time.
+        Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
+        Application.ThreadException += (_, e) =>
+            Log.Error(e.Exception, "DEBUG unhandled UI exception");
 
         var logDir = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
@@ -46,6 +57,7 @@ static class Program
         try
         {
             Log.Information("RushOrder Desktop starting");
+            PoppinsFont.Initialize();
 
             var host = Host.CreateDefaultBuilder()
                 .UseSerilog()
@@ -96,6 +108,26 @@ static class Program
 
             var services = host.Services;
             ThemeManager.Initialize(services.GetRequiredService<ThemeManager>());
+
+            // Block synchronously (not await) — this runs before Application.Run(), so
+            // WindowsFormsSynchronizationContext isn't installed yet. An `await` here can
+            // resume on a thread-pool thread instead of this STA thread, and everything built
+            // afterward (MainForm, OrdersView's drag-and-drop, etc.) silently inherits that
+            // wrong thread — it mostly works until an OLE call (RegisterDragDrop) enforces STA
+            // and throws. GetResult() keeps the whole startup path on the real STA thread.
+            if (!SkipLoginForTesting)
+            {
+                var auth = services.GetRequiredService<AuthService>();
+                var autoLoggedIn = auth.TryAutoLoginAsync().GetAwaiter().GetResult();
+                if (!autoLoggedIn)
+                {
+                    using var login = services.GetRequiredService<LoginForm>();
+                    if (login.ShowDialog() != DialogResult.OK)
+                    {
+                        return;
+                    }
+                }
+            }
 
             Application.Run(services.GetRequiredService<MainForm>());
         }

@@ -88,7 +88,7 @@ public sealed class PrintService
                 using var grayBrush = new SolidBrush(Color.Gray);
                 using var pen       = new Pen(Color.Black, 1);
 
-                g.DrawString("RushOrder — Página de prueba", titleFont, Brushes.Black, 20, 20);
+                g.DrawString("Rush Order — Página de prueba", titleFont, Brushes.Black, 20, 20);
                 g.DrawLine(pen, 20, 46, 400, 46);
                 g.DrawString($"Impresora: {printerName}", bodyFont, Brushes.Black, 20, 54);
                 g.DrawString(DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss"), bodyFont, grayBrush, 20, 72);

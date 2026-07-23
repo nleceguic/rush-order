@@ -16,7 +16,7 @@ internal sealed class ReservationsWidget : KpiWidget
             Dock          = DockStyle.Fill,
             FlowDirection = FlowDirection.TopDown,
             WrapContents  = false,
-            BackColor     = Color.Transparent,
+            BackColor     = Theme.Colors.Surface,
             Padding       = new Padding(4, 4, 4, 4),
         };
         container.Controls.Add(_flow);
@@ -41,7 +41,7 @@ internal sealed class ReservationsWidget : KpiWidget
         {
             Width     = _flow.ClientSize.Width - 8,
             Height    = 50,
-            BackColor = Color.Transparent,
+            BackColor = Theme.Colors.Surface,
             Margin    = new Padding(0, 0, 0, 4),
         };
 
@@ -49,7 +49,7 @@ internal sealed class ReservationsWidget : KpiWidget
         var timeBadge = new Label
         {
             Text      = res.ReservationTime.LocalDateTime.ToString("HH:mm"),
-            Font      = new Font("Segoe UI", 10f, FontStyle.Bold),
+            Font      = PoppinsFont.New("Poppins", 10f, FontStyle.Bold),
             ForeColor = Color.White,
             BackColor = urgentColor,
             Size      = new Size(52, 44),

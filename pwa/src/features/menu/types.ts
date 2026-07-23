@@ -44,7 +44,6 @@ export interface NutritionInfo {
 export interface MenuProduct {
   id:               string
   name:             string
-  shortDescription?: string
   description?:     string
   price:            number
   imageUrl?:        string
@@ -68,6 +67,7 @@ export interface MenuCategory {
 export interface QRData {
   restaurantId:          string
   tableId:               string
+  name:                  string
   restaurantName:        string
   coverImageUrl?:        string
   logoUrl?:              string

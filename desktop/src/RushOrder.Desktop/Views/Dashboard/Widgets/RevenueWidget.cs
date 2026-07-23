@@ -20,13 +20,16 @@ internal sealed class RevenueWidget : KpiWidget
         _lblValue = new Label
         {
             Text      = "€ 0,00",
-            Font      = new Font("Segoe UI", 22f, FontStyle.Bold),
+            Font      = PoppinsFont.New("Poppins", 22f, FontStyle.Bold),
             ForeColor = Theme.Colors.TextPrimary,
             Dock      = DockStyle.Top,
             Height    = 46,
             TextAlign = ContentAlignment.BottomLeft,
-            Padding   = new Padding(8, 0, 0, 0),
-            BackColor = Color.Transparent,
+            // 6px, not the 10px _lblDelta uses below — this glyph ("€" at 22pt Bold) carries
+            // more inherent left-side bearing than the delta line's "▲" at the small font, so
+            // equal Padding.Left values leave the value's visible ink sitting further right.
+            Padding   = new Padding(6, 0, 0, 0),
+            BackColor = Theme.Colors.Surface,
         };
 
         _lblDelta = new Label
@@ -37,12 +40,18 @@ internal sealed class RevenueWidget : KpiWidget
             Dock      = DockStyle.Top,
             Height    = 22,
             Padding   = new Padding(10, 0, 0, 0),
-            BackColor = Color.Transparent,
+            BackColor = Theme.Colors.Surface,
         };
 
         _spark = new SparklinePanel(Theme) { Dock = DockStyle.Fill };
 
-        container.Controls.AddRange([_lblValue, _lblDelta, _spark]);
+        // A Dock=Fill sibling must be added BEFORE the Dock=Top/Bottom ones — WinForms
+        // resolves docking back-to-front through the Controls z-order, so a Fill control
+        // added last (as this was) computes its bounds as if it had no siblings at all,
+        // covering the whole container and hiding _lblValue/_lblDelta underneath it.
+        // Among same-edge Dock=Top siblings, the LAST one added ends up outermost (Y=0), so
+        // _lblValue (meant to sit above _lblDelta) must be added after it here.
+        container.Controls.AddRange([_spark, _lblDelta, _lblValue]);
     }
 
     public void Update(decimal today, decimal yesterday, decimal[] hourly)
@@ -72,7 +81,7 @@ internal sealed class RevenueWidget : KpiWidget
             _lineColor = theme.Colors.Success;
             SetStyle(ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer |
                      ControlStyles.AllPaintingInWmPaint, true);
-            BackColor = Color.Transparent;
+            BackColor = theme.Colors.Surface;
         }
 
         public void SetData(decimal[] data, Color lineColor)
@@ -84,11 +93,21 @@ internal sealed class RevenueWidget : KpiWidget
 
         protected override void OnPaint(PaintEventArgs e)
         {
-            if (_data.Length < 2) return;
             var g = e.Graphics;
             g.SetQuality();
 
-            var pad    = new Padding(8, 8, 8, 8);
+            // OnPaintBackground is suppressed below, so this control must paint its own fill —
+            // otherwise whatever's left in the (possibly stale) buffer shows through instead.
+            using (var bg = new SolidBrush(BackColor))
+                g.FillRectangle(bg, ClientRectangle);
+
+            if (_data.Length < 2) return;
+
+            // Left/right kept to just the dot marker's own radius (2.5px, rounded up) — any
+            // more and the line stops short of the panel's edges; any less and the first/last
+            // dots get clipped by the panel bounds. Top/bottom stay wider for the line's
+            // vertical range and the hour labels below it.
+            var pad    = new Padding(3, 8, 3, 8);
             var w      = Width  - pad.Horizontal;
             var h      = Height - pad.Vertical;
             var minVal = (double)_data.Min();
@@ -123,14 +142,27 @@ internal sealed class RevenueWidget : KpiWidget
             foreach (var pt in pts)
                 g.FillEllipse(dotBrush, pt.X - 2.5f, pt.Y - 2.5f, 5f, 5f);
 
-            // Hour labels
-            using var lblFont  = new Font("Segoe UI", 6.5f);
+            // Hour labels — kept clear of the card's rounded corners (KpiWidget clips the
+            // whole widget to a 10px-radius Region). Centering on a fixed "-8" offset instead
+            // of the label's real width let the first point's label (drawn at X=0) bleed into
+            // that corner and get clipped almost entirely; the last point's overran the right
+            // edge by a smaller amount for the same reason.
+            using var lblFont  = PoppinsFont.New("Poppins", 6.5f);
             using var lblBrush = new SolidBrush(_theme.Colors.TextSecondary);
-            var now   = DateTime.Now.Hour;
+            var now       = DateTime.Now.Hour;
+            const float cornerMargin = 12f;
+            var minX = cornerMargin;
+            var maxX = Width - cornerMargin;
             for (int i = 0; i < pts.Length; i++)
             {
-                var hr = ((now - 7 + i + 24) % 24).ToString("D2") + "h";
-                g.DrawString(hr, lblFont, lblBrush, pts[i].X - 8, pad.Top + h - 2);
+                var hr   = ((now - 7 + i + 24) % 24).ToString("D2") + "h";
+                var size = g.MeasureString(hr, lblFont);
+                var x    = Math.Clamp(pts[i].X - size.Width / 2f, minX, maxX - size.Width);
+                // "pad.Top + h - 2" placed the label's TOP 2px above the panel's bottom edge,
+                // so its full height (text runs ~10-11px at this font) overshot past Height and
+                // got clipped — anchor from the bottom using the label's real measured height.
+                var y    = Height - size.Height - 2f;
+                g.DrawString(hr, lblFont, lblBrush, x, y);
             }
         }
 

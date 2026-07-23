@@ -195,7 +195,7 @@ public sealed class StatisticsView : UserControl
         var lbl = new Label
         {
             Text      = title,
-            Font      = new Font("Segoe UI", 8.5f, FontStyle.Bold),
+            Font      = PoppinsFont.New("Poppins", 8.5f, FontStyle.Bold),
             ForeColor = _theme.Colors.TextSecondary,
             Dock      = DockStyle.Top,
             Height    = 28,
@@ -230,7 +230,7 @@ public sealed class StatisticsView : UserControl
             {
                 BackColor = _theme.Colors.HeaderBg,
                 ForeColor = _theme.Colors.TextSecondary,
-                Font      = new Font("Segoe UI", 8.5f, FontStyle.Bold),
+                Font      = PoppinsFont.New("Poppins", 8.5f, FontStyle.Bold),
             },
         };
 
@@ -475,7 +475,7 @@ public sealed class StatisticsView : UserControl
 
                 page.Header().Column(col =>
                 {
-                    col.Item().Text("RushOrder — Estadísticas")
+                    col.Item().Text("Rush Order — Estadísticas")
                         .Bold().FontSize(18).FontColor("#E43946");
                     col.Item().Text(
                         $"Período: {dto.From:dd/MM/yyyy} — {dto.To:dd/MM/yyyy}  ·  " +
@@ -578,7 +578,7 @@ public sealed class StatisticsView : UserControl
 
                 page.Footer().AlignCenter().Text(x =>
                 {
-                    x.Span("RushOrder Desktop · Generado el ");
+                    x.Span("Rush Order Desktop · Generado el ");
                     x.Span(DateTime.Now.ToString("dd/MM/yyyy HH:mm")).Bold();
                     x.Span("  ·  Página ");
                     x.CurrentPageNumber();

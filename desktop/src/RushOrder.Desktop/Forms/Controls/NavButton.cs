@@ -70,7 +70,7 @@ internal sealed class NavButton : Control
             g.DrawString(IconText, iconFont, textBrush, iconRect,
                 new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center });
 
-            var labelFont = new Font("Segoe UI", 9f, _isActive ? FontStyle.Bold : FontStyle.Regular);
+            var labelFont = PoppinsFont.New("Poppins", 9f, _isActive ? FontStyle.Bold : FontStyle.Regular);
             g.DrawString(LabelText, labelFont, textBrush, labelRect,
                 new StringFormat { Alignment = StringAlignment.Near, LineAlignment = StringAlignment.Center });
             labelFont.Dispose();

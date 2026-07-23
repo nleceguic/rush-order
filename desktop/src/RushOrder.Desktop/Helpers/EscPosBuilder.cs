@@ -200,7 +200,7 @@ public sealed class EscPosBuilder
             .Align(Alignment.Center)
             .Bold(true)
             .DoubleHeight(true)
-            .Line("RushOrder")
+            .Line("Rush Order")
             .DoubleHeight(false)
             .Bold(false)
             .Line(DateTime.Now.ToString("dd/MM/yyyy HH:mm"))

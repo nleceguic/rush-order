@@ -298,7 +298,7 @@ public sealed class PaymentDialog : Form
         pnl.Controls.Add(new Label
         {
             Text      = title,
-            Font      = new Font("Segoe UI", 7.5f, FontStyle.Bold),
+            Font      = PoppinsFont.New("Poppins", 7.5f, FontStyle.Bold),
             ForeColor = _theme.Colors.TextSecondary,
             Location  = new Point(12, 8),
             AutoSize  = true,

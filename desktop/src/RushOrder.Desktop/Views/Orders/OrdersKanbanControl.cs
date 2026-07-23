@@ -87,46 +87,14 @@ public sealed class OrdersKanbanControl : UserControl
         if (InvokeRequired) { Invoke(() => LoadOrders(orders)); return; }
 
         _allOrders = orders;
-        foreach (var col in _columns.Values)
-        {
-            // Suspend layout on the column's flow to avoid flicker
-            col.SuspendLayout();
-        }
-
-        // Clear all columns
-        foreach (var col in _columns.Values)
-        {
-            var cards = col.Controls.OfType<Control>().ToList();
-            foreach (Control c in cards) { }
-            // Use the RemoveCard logic by clearing via reflection would be complex;
-            // instead, reload columns entirely by removing and re-adding
-        }
-
-        // Re-populate
-        foreach (var status in _columns.Keys)
-        {
-            var col = _columns[status];
-            // Remove all existing cards
-            var toRemove = col.Controls.OfType<KanbanColumn>().ToList();
-        }
-
-        // Simplest rebuild: dispose old columns and rebuild
         RebuildAllColumns(orders);
     }
 
     private void RebuildAllColumns(IReadOnlyList<OrderDto> orders)
     {
-        // Clear each column by removing cards
         foreach (var (status, col) in _columns)
         {
             var statusOrders = orders.Where(o => o.Status == status).ToList();
-
-            // Remove all current cards
-            var existingCards = col.Controls.OfType<KanbanColumn>()
-                                           .Concat(col.Controls.OfType<Control>())
-                                           .ToList();
-
-            // Use internal method: repopulate
             col.SuspendLayout();
             InternalClearColumn(col);
             foreach (var order in statusOrders)

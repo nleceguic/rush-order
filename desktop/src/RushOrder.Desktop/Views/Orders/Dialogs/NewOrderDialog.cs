@@ -121,7 +121,7 @@ public sealed class NewOrderDialog : Form
         var lblSummary = new Label
         {
             Text    = "RESUMEN DEL PEDIDO",
-            Font    = new Font("Segoe UI", 8f, FontStyle.Bold),
+            Font    = PoppinsFont.New("Poppins", 8f, FontStyle.Bold),
             ForeColor = _theme.Colors.TextSecondary,
             Dock    = DockStyle.Top,
             Height  = 28,
@@ -280,7 +280,7 @@ public sealed class NewOrderDialog : Form
             row.Controls.Add(new Label
             {
                 Text      = $"  ↳ {notes}",
-                Font      = new Font("Segoe UI", 7f, FontStyle.Italic),
+                Font      = PoppinsFont.New("Poppins", 7f, FontStyle.Italic),
                 ForeColor = _theme.Colors.TextSecondary,
                 Location  = new Point(8, 24), AutoSize = true,
             });
@@ -322,7 +322,7 @@ public sealed class NewOrderDialog : Form
     private Label MakeSectionLabel(string text, Point location) => new()
     {
         Text      = text,
-        Font      = new Font("Segoe UI", 7.5f, FontStyle.Bold),
+        Font      = PoppinsFont.New("Poppins", 7.5f, FontStyle.Bold),
         ForeColor = _theme.Colors.TextSecondary,
         Location  = location,
         AutoSize  = true,

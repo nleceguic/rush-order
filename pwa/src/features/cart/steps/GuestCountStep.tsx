@@ -19,7 +19,7 @@ export function GuestCountStep({ value, onChange, onNext, onBack }: GuestCountSt
         <h2 className="text-lg font-bold text-rush-dark">¿Cuántos comensales?</h2>
       </div>
 
-      <div className="flex-1 flex flex-col items-center justify-center px-5 pb-4 overflow-y-auto">
+      <div className="flex-1 flex flex-col items-center justify-center px-5 pb-4 overflow-y-auto scrollbar-hide">
         <p className="text-sm text-gray-500 mb-8 text-center">
           Ayuda al restaurante a preparar la mesa correctamente
         </p>

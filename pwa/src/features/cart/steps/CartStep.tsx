@@ -77,7 +77,7 @@ export function CartStep({
       </div>
 
       {/* Scrollable body */}
-      <div className="flex-1 overflow-y-auto overscroll-contain">
+      <div className="flex-1 overflow-y-auto overscroll-contain scrollbar-hide">
         {unavailable.length > 0 && (
           <div className="mx-5 mt-4 p-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800">
             <strong>Atención:</strong>{' '}
@@ -93,16 +93,7 @@ export function CartStep({
           ))}
         </div>
 
-        <div className="flex justify-end px-5 mt-1">
-          <button
-            onClick={clear}
-            className="text-xs text-gray-400 hover:text-red-500 transition-colors py-1"
-          >
-            Vaciar carrito
-          </button>
-        </div>
-
-        <div className="px-5 mt-3">
+        <div className="px-5 mt-1">
           <label
             htmlFor="order-notes"
             className="text-xs font-semibold text-gray-400 uppercase tracking-wider block mb-1.5"
@@ -117,6 +108,15 @@ export function CartStep({
             placeholder="Alergias, preferencias generales…"
             className="w-full rounded-xl border-gray-200 text-sm resize-none focus:ring-rush-red"
           />
+        </div>
+
+        <div className="flex justify-end px-5 mt-1">
+          <button
+            onClick={clear}
+            className="text-xs text-gray-400 hover:text-red-500 transition-colors py-1"
+          >
+            Vaciar carrito
+          </button>
         </div>
 
         <div className="px-5 mt-3 pb-1">

@@ -26,7 +26,6 @@ export function useMenuSearch(categories: MenuCategory[]) {
         products:     cat.products.filter(
           (p) =>
             p.name.toLowerCase().includes(lower) ||
-            p.shortDescription?.toLowerCase().includes(lower) === true ||
             p.description?.toLowerCase().includes(lower) === true,
         ),
       }))

@@ -104,22 +104,13 @@ public sealed class PrinterConfigDialog : Form
         var lbl = new Label
         {
             Text      = title,
-            Font      = new Font("Segoe UI", 8f, FontStyle.Bold),
+            Font      = PoppinsFont.New("Poppins", 8f, FontStyle.Bold),
             ForeColor = _theme.Colors.TextSecondary,
             AutoSize  = true,
             Location  = new Point(16, y),
         };
         Controls.Add(lbl);
-        y += 22;
-
-        var sep = new Panel
-        {
-            Location  = new Point(16, y),
-            Size      = new Size(ClientSize.Width - 32, 1),
-            BackColor = Color.FromArgb(229, 229, 229),
-        };
-        Controls.Add(sep);
-        y += 10;
+        y += 32;
     }
 
     private ComboBox AddPrinterRow(string label, string[] choices, ref int y)

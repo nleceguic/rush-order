@@ -3,12 +3,26 @@
 @tailwind utilities;
 
 @layer base {
+  /* Lock the outer shell down completely — this app's screens manage their
+     own internal scroll regions (e.g. the menu's product list / category
+     tabs), so html/body themselves must never scroll or rubber-band in
+     either direction, on any device. */
+  html, body {
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+
   html {
     -webkit-tap-highlight-color: transparent;
   }
 
   body {
     @apply font-sans antialiased;
+  }
+
+  #root {
+    height: 100%;
   }
 
   /* WCAG 2.1 AA — visible focus ring for keyboard users */
@@ -39,9 +53,26 @@
     from { transform: scale(0.75); opacity: 0; }
     to   { transform: scale(1);    opacity: 1; }
   }
+  /* `bottom` (not `transform`) on purpose — animating a GPU-composited
+     transform on an element that also has border-radius + overflow-hidden
+     can rasterize the two top corners with visibly different anti-aliasing
+     in Chromium. Plain layout-position animation doesn't have that failure
+     mode. */
   @keyframes slide-up {
-    from { transform: translateY(100%); opacity: 0; }
-    to   { transform: translateY(0);    opacity: 1; }
+    from { bottom: -100%; opacity: 0; }
+    to   { bottom: 0;      opacity: 1; }
+  }
+  @keyframes slide-down {
+    from { bottom: 0;      opacity: 1; }
+    to   { bottom: -100%; opacity: 0; }
+  }
+  @keyframes step-slide-in-right {
+    from { transform: translateX(24px); opacity: 0; }
+    to   { transform: translateX(0);    opacity: 1; }
+  }
+  @keyframes step-slide-in-left {
+    from { transform: translateX(-24px); opacity: 0; }
+    to   { transform: translateX(0);     opacity: 1; }
   }
   @keyframes pulse-ring {
     0%   { transform: scale(1);    opacity: 1; }

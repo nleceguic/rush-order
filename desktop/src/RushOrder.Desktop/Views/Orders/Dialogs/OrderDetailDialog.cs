@@ -62,7 +62,7 @@ public sealed class OrderDetailDialog : Form
             Text    = "ARTÍCULOS",
             Dock    = DockStyle.Top,
             Height  = 30,
-            Font    = new Font("Segoe UI", 7.5f, FontStyle.Bold),
+            Font    = PoppinsFont.New("Poppins", 7.5f, FontStyle.Bold),
             ForeColor = _theme.Colors.TextSecondary,
             Padding = new Padding(16, 10, 0, 0),
             BackColor = Color.Transparent,

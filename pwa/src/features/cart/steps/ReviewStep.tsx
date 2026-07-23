@@ -39,7 +39,7 @@ export function ReviewStep({
         <h2 className="text-lg font-bold text-rush-dark">Revisa tu pedido</h2>
       </div>
 
-      <div className="flex-1 overflow-y-auto overscroll-contain">
+      <div className="flex-1 overflow-y-auto overscroll-contain scrollbar-hide">
         <div className="px-5 py-3 bg-gray-50 border-b flex gap-6 text-sm">
           {tableId !== null && (
             <div>

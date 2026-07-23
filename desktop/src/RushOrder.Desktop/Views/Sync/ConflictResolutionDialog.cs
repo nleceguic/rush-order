@@ -38,7 +38,7 @@ public sealed class ConflictResolutionDialog : Form
         var lblWarn = new Label
         {
             Text      = $"⚠  Conflicto detectado — operación: {FriendlyType(info.Operation.OperationType)}",
-            Font      = new Font("Segoe UI", 10.5f, FontStyle.Bold),
+            Font      = PoppinsFont.New("Poppins", 10.5f, FontStyle.Bold),
             ForeColor = WarnFg,
             Dock      = DockStyle.Top,
             Height    = 32,
@@ -47,7 +47,7 @@ public sealed class ConflictResolutionDialog : Form
         var lblSub = new Label
         {
             Text      = $"Endpoint: {info.Operation.HttpMethod} {info.Operation.Endpoint}  ·  Creada: {info.Operation.CreatedAt:HH:mm dd/MM}  ·  Reintentos: {info.Operation.RetryCount}",
-            Font      = new Font("Segoe UI", 8.5f),
+            Font      = PoppinsFont.New("Poppins", 8.5f),
             ForeColor = WarnFg,
             Dock      = DockStyle.Top,
             Height    = 22,
@@ -60,9 +60,23 @@ public sealed class ConflictResolutionDialog : Form
         {
             Dock             = DockStyle.Fill,
             Orientation      = Orientation.Vertical,
-            SplitterDistance = 390,
-            Panel1MinSize    = 200,
-            Panel2MinSize    = 200,
+        };
+        // Panel1MinSize/Panel2MinSize/SplitterDistance all validate against the control's
+        // CURRENT Width, which at construction time is still the small design-time default
+        // (Dock=Fill hasn't resolved against the Form yet) — setting Panel2MinSize=200 alone
+        // can already exceed that width and throw from inside its own setter. HandleCreated
+        // still fires too early for this (Dock=Fill isn't resolved by then either), so this
+        // runs on the Form's own Load instead, once the whole chain has been through layout.
+        // Clamped against the actual width regardless, so it can never throw either way.
+        Load += (_, _) =>
+        {
+            var width     = split.Width;
+            var panel1Min = Math.Clamp(200, 0, width);
+            var panel2Min = Math.Clamp(200, 0, width - panel1Min);
+            split.Panel1MinSize = panel1Min;
+            split.Panel2MinSize = panel2Min;
+            var maxDistance = Math.Max(panel1Min, width - panel2Min);
+            split.SplitterDistance = Math.Clamp(390, panel1Min, maxDistance);
         };
         AddJsonPane(split.Panel1, "Tu versión (local)", info.Operation.PayloadJson,
             Color.FromArgb(235, 250, 235), theme);
@@ -110,7 +124,7 @@ public sealed class ConflictResolutionDialog : Form
         var lbl = new Label
         {
             Text      = title,
-            Font      = new Font("Segoe UI", 9f, FontStyle.Bold),
+            Font      = PoppinsFont.New("Poppins", 9f, FontStyle.Bold),
             ForeColor = theme.Colors.TextPrimary,
             BackColor = headerBg,
             Dock      = DockStyle.Top,

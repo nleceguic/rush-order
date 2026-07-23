@@ -1,7 +1,10 @@
 using RushOrder.Desktop.Models;
+using RushOrder.Desktop.Navigation;
 using RushOrder.Desktop.Services;
 using RushOrder.Desktop.Theme;
 using RushOrder.Desktop.Views.Dashboard.Widgets;
+using RushOrder.Desktop.Views.Menu;
+using RushOrder.Desktop.Views.Orders;
 
 namespace RushOrder.Desktop.Views.Dashboard;
 
@@ -10,6 +13,7 @@ public sealed class DashboardView : UserControl
     private readonly DashboardDataService _data;
     private readonly RealTimeService      _realTime;
     private readonly ThemeManager         _theme;
+    private readonly NavigationService    _nav;
 
     private RevenueWidget      _wRevenue     = null!;
     private ActiveOrdersWidget _wOrders      = null!;
@@ -20,11 +24,12 @@ public sealed class DashboardView : UserControl
 
     private readonly System.Windows.Forms.Timer _refreshTimer;
 
-    public DashboardView(DashboardDataService data, RealTimeService realTime, ThemeManager theme)
+    public DashboardView(DashboardDataService data, RealTimeService realTime, ThemeManager theme, NavigationService nav)
     {
         _data     = data;
         _realTime = realTime;
         _theme    = theme;
+        _nav      = nav;
 
         Dock           = DockStyle.Fill;
         BackColor      = theme.Colors.Background;
@@ -72,6 +77,27 @@ public sealed class DashboardView : UserControl
         grid.Controls.Add(_wReservations, 2, 1);
 
         Controls.Add(grid);
+
+        _wAlerts.AlertClicked += OnAlertClicked;
+    }
+
+    // Each alert already carries a ResourceType from the backend (or MockAlerts) telling us
+    // what it's about — route to the screen that's actually relevant instead of the click
+    // just doing nothing, which is all it did before (AlertsWidget already set Cursor.Hand and
+    // raised this event, but nothing was listening).
+    private void OnAlertClicked(AlertDto alert)
+    {
+        switch (alert.ResourceType)
+        {
+            case "Product":
+                _nav.ClearAndNavigateTo<MenuManagementControl>(alert.ResourceId);
+                break;
+            case "Order":
+                _nav.ClearAndNavigateTo<OrdersView>(alert.ResourceId);
+                break;
+            // "Reservation" and "mise_en_place" have no dedicated screen yet — "Reservas" in
+            // the sidebar is still a no-op placeholder, so there's nowhere to send these.
+        }
     }
 
     private void WireRealTime()
@@ -117,6 +143,17 @@ public sealed class DashboardView : UserControl
     {
         await LoadDataAsync();
         _refreshTimer.Start();
+
+        // DEBUG: force a full repaint shortly after everything has settled, to test
+        // whether the broken widgets are a stale/incomplete paint from during layout.
+        var debugTimer = new System.Windows.Forms.Timer { Interval = 800 };
+        debugTimer.Tick += (_, _) =>
+        {
+            debugTimer.Stop();
+            debugTimer.Dispose();
+            Invalidate(true);
+        };
+        debugTimer.Start();
     }
 
     private async Task LoadDataAsync()

@@ -1,4 +1,5 @@
 using System.Drawing.Drawing2D;
+using RushOrder.Desktop.Theme;
 
 namespace RushOrder.Desktop.Notifications;
 
@@ -37,7 +38,7 @@ internal sealed class ToastForm : Form
         var lblMessage = new Label
         {
             Text      = message,
-            Font      = new Font("Segoe UI", 9f),
+            Font      = PoppinsFont.New("Poppins", 9f),
             ForeColor = Color.White,
             Size      = new Size(230, 60),
             Location  = new Point(52, 4),
@@ -47,7 +48,7 @@ internal sealed class ToastForm : Form
         var btnClose = new Label
         {
             Text      = "✕",
-            Font      = new Font("Segoe UI", 9f),
+            Font      = PoppinsFont.New("Poppins", 9f),
             ForeColor = Color.FromArgb(200, 255, 255, 255),
             Size      = new Size(24, 24),
             Location  = new Point(289, 4),

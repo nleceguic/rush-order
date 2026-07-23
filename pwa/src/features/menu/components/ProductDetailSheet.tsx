@@ -186,13 +186,19 @@ export function ProductDetailSheet({ product, onClose }: ProductDetailSheetProps
         aria-modal="true"
         aria-label={displayProduct.name}
         aria-hidden={!open}
-        className={`fixed inset-x-0 bottom-0 z-50 flex flex-col rounded-t-3xl bg-white shadow-2xl max-h-[92dvh] ${
+        className={`fixed inset-x-0 z-50 flex flex-col rounded-t-3xl bg-white shadow-2xl overflow-hidden max-h-[92dvh] ${
           open ? '' : 'pointer-events-none'
         }`}
         style={{
-          transform:  `translateY(calc(${open ? 0 : 100}% + ${dragY}px))`,
+          // `bottom` (not `transform`) on purpose — animating a GPU-composited
+          // transform on an element that also has border-radius +
+          // overflow-hidden can rasterize the two top corners with visibly
+          // different anti-aliasing in Chromium. The live drag offset still
+          // needs to track the finger instantly, which `bottom` does just as
+          // well as `transform` since transitions are off while dragging.
+          bottom:     open ? `${-dragY}px` : '-100%',
           opacity:    open ? 1 : 0,
-          transition: dragY === 0 ? 'transform 300ms ease-out, opacity 300ms ease-out' : 'none',
+          transition: dragY === 0 ? 'bottom 300ms ease-out, opacity 300ms ease-out' : 'none',
         }}
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
@@ -204,7 +210,7 @@ export function ProductDetailSheet({ product, onClose }: ProductDetailSheetProps
         </div>
 
         {/* Scrollable body */}
-        <div className="overflow-y-auto flex-1 overscroll-contain">
+        <div className="overflow-y-auto flex-1 overscroll-contain scrollbar-hide">
           {/* Hero image */}
           {displayProduct.imageUrl !== undefined && (
             <BlurImage
@@ -299,7 +305,8 @@ export function ProductDetailSheet({ product, onClose }: ProductDetailSheetProps
               <div className="flex items-center gap-4">
                 <button
                   onClick={() => setOpts((p) => ({ ...p, quantity: Math.max(1, p.quantity - 1) }))}
-                  className="h-9 w-9 rounded-full border-2 border-gray-200 flex items-center justify-center text-xl hover:border-rush-red hover:text-rush-red transition-colors"
+                  disabled={opts.quantity <= 1}
+                  className="h-9 w-9 rounded-full border-2 border-gray-200 flex items-center justify-center text-xl hover:border-rush-red hover:text-rush-red disabled:opacity-40 disabled:hover:border-gray-200 disabled:hover:text-current transition-colors"
                   aria-label="Reducir cantidad"
                 >
                   −

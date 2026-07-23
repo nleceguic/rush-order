@@ -20,18 +20,21 @@ internal abstract class KpiWidget : UserControl
         _lblTitle = new Label
         {
             Text      = title.ToUpperInvariant(),
-            Font      = new Font("Segoe UI", 7.5f, FontStyle.Bold),
+            Font      = PoppinsFont.New("Poppins", 7.5f, FontStyle.Bold),
             ForeColor = theme.Colors.TextSecondary,
             Dock      = DockStyle.Top,
             Height    = 28,
-            Padding   = new Padding(4, 8, 0, 0),
-            BackColor = Color.Transparent,
+            // 10px, not 4 — at 4 the title sat visibly left of the value/delta text below it
+            // (measured ~6-8px further left on screen), since those use their own larger
+            // Padding.Left plus extra glyph bearing from their bigger fonts.
+            Padding   = new Padding(10, 8, 0, 0),
+            BackColor = theme.Colors.Surface,
         };
 
         _content = new Panel
         {
             Dock      = DockStyle.Fill,
-            BackColor = Color.Transparent,
+            BackColor = theme.Colors.Surface,
         };
 
         _lblLoading = new Label
@@ -44,7 +47,11 @@ internal abstract class KpiWidget : UserControl
             Visible   = false,
         };
 
-        Controls.AddRange([_lblTitle, _content]);
+        // Dock=Fill sibling must be added BEFORE Dock=Top ones, or it computes its bounds as
+        // if it had no siblings — confirmed via EnumChildWindows: _content was claiming the
+        // widget's full rect (including _lblTitle's 28px band) instead of starting below it,
+        // so its opaque fill painted over the title.
+        Controls.AddRange([_content, _lblTitle]);
 
         // Card paint
         SetStyle(ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer |
@@ -52,6 +59,19 @@ internal abstract class KpiWidget : UserControl
 
         BuildContent(_content);
         _content.Controls.Add(_lblLoading);
+
+        // OnPaint below draws a rounded card, but _lblTitle/_content fill their own square
+        // rectangles right up to the edges, covering that rounding — clip the whole control
+        // to the same rounded shape so their sharp corners never show past it.
+        Resize += (_, _) => ApplyRoundedRegion();
+        ApplyRoundedRegion();
+    }
+
+    private void ApplyRoundedRegion()
+    {
+        if (Width <= 0 || Height <= 0) return;
+        using var path = GdiExtensions.CreateRoundedRect(new RectangleF(0, 0, Width, Height), 10);
+        Region = new Region(path);
     }
 
     protected abstract void BuildContent(Panel container);

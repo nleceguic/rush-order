@@ -1,6 +1,5 @@
 import type { MenuProduct, ProductTag } from '../types'
 import { BlurImage } from './BlurImage'
-import { AllergenIcons } from './AllergenIcons'
 import { useCartStore } from '@shared/store/cartStore'
 import { formatCurrency } from '@shared/utils/format'
 
@@ -60,14 +59,14 @@ export function ProductCard({ product, onViewDetails }: ProductCardProps) {
       onKeyDown={(e) => { if (e.key === 'Enter') onViewDetails(product) }}
       className="relative flex gap-3 rounded-xl border border-gray-100 bg-white p-3 shadow-sm cursor-pointer hover:shadow-md transition-shadow focus:outline-none focus:ring-2 focus:ring-rush-red"
     >
-      {/* Image */}
+      {/* Image — stretches to match the height of the text column */}
       {product.imageUrl !== undefined && (
-        <div className="relative flex-shrink-0">
+        <div className="relative flex-shrink-0 w-24">
           <BlurImage
             src={product.imageUrl}
             alt={`Foto de ${product.name}`}
             placeholder={product.imagePlaceholder}
-            className="h-24 w-24 rounded-lg"
+            className="h-full w-24 rounded-lg"
             sizes="96px"
           />
           {!product.isAvailable && (
@@ -98,21 +97,14 @@ export function ProductCard({ product, onViewDetails }: ProductCardProps) {
         {/* Name */}
         <h3 className="font-semibold text-rush-dark text-sm line-clamp-2 leading-snug">{product.name}</h3>
 
-        {/* Short description */}
-        {product.shortDescription !== undefined && (
-          <p className="mt-0.5 text-xs text-gray-500 line-clamp-2">{product.shortDescription}</p>
-        )}
-
-        {/* Allergens */}
-        {product.allergens !== undefined && product.allergens.length > 0 && (
-          <div className="mt-1.5">
-            <AllergenIcons allergens={product.allergens} size="sm" />
-          </div>
+        {/* Description */}
+        {product.description !== undefined && (
+          <p className="mt-0.5 text-xs text-gray-500 line-clamp-2">{product.description}</p>
         )}
 
         {/* Price + Add */}
         <div className="flex items-center justify-between mt-auto pt-2">
-          <span className="font-bold text-green-600 text-sm">{formatCurrency(product.price)}</span>
+          <span className="font-bold text-rush-dark text-sm">{formatCurrency(product.price)}</span>
           {quantity === 0 ? (
             <button
               onClick={handleIncrement}

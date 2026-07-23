@@ -13,8 +13,8 @@ export function ConfirmationStep({ order, onNewRound }: ConfirmationStepProps) {
   const totalItems = order.items.reduce((n, i) => n + i.quantity, 0)
 
   return (
-    <div className="flex flex-col items-center justify-center h-full px-6 py-8 text-center overflow-y-auto">
-      <div className="mb-5" style={{ animation: 'scale-in 0.4s cubic-bezier(0.34,1.56,0.64,1) both' }}>
+    <div className="flex flex-col items-center justify-center h-full px-6 py-8 text-center overflow-y-auto scrollbar-hide">
+      <div className="mb-5" style={{ animation: 'scale-in 0.35s ease-out both' }}>
         <SuccessCheckmark />
       </div>
 
@@ -64,17 +64,11 @@ function SuccessCheckmark() {
       <circle
         cx="32" cy="32" r="29"
         fill="none" stroke="#E63946" strokeWidth="2.5"
-        strokeDasharray="1" strokeDashoffset="1"
-        pathLength="1"
-        style={{ animation: 'check-circle 0.5s ease 0.1s both' }}
       />
       <path
         d="M 20 32 l 9 9 l 16 -16"
         fill="none" stroke="#E63946" strokeWidth="3.5"
         strokeLinecap="round" strokeLinejoin="round"
-        strokeDasharray="1" strokeDashoffset="1"
-        pathLength="1"
-        style={{ animation: 'check-draw 0.35s ease 0.65s both' }}
       />
     </svg>
   )

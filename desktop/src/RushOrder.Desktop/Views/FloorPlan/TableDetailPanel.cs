@@ -87,7 +87,7 @@ internal sealed class TableDetailPanel : Panel
             Dock      = DockStyle.Top,
             Height    = 30,
             Padding   = new Padding(12, 10, 0, 0),
-            Font      = new Font("Segoe UI", 7.5f, FontStyle.Bold),
+            Font      = PoppinsFont.New("Poppins", 7.5f, FontStyle.Bold),
             ForeColor = _theme.Colors.TextSecondary,
             BackColor = Color.Transparent,
         };

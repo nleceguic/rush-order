@@ -67,7 +67,7 @@ public sealed class KitchenDisplayForm : Form
         _state   = state;
         _toasts  = toasts;
 
-        Text            = "RushOrder — Kitchen Display System";
+        Text            = "Rush Order — Kitchen Display System";
         Size            = new Size(1920, 1080);
         MinimumSize     = new Size(1024, 600);
         BackColor       = KdsBg;
@@ -141,7 +141,7 @@ public sealed class KitchenDisplayForm : Form
         _lblRestaurant = new Label
         {
             Text      = _state.CurrentRestaurant?.Name ?? "Kitchen Display",
-            Font      = new Font("Segoe UI", 16f, FontStyle.Bold),
+            Font      = PoppinsFont.New("Poppins", 16f, FontStyle.Bold),
             ForeColor = KdsText,
             Location  = new Point(20, 20),
             AutoSize  = true,
@@ -151,7 +151,7 @@ public sealed class KitchenDisplayForm : Form
         _lblClock = new Label
         {
             Text      = DateTime.Now.ToString("HH:mm:ss"),
-            Font      = new Font("Segoe UI", 20f, FontStyle.Bold),
+            Font      = PoppinsFont.New("Poppins", 20f, FontStyle.Bold),
             ForeColor = Color.FromArgb(100, 200, 100),
             AutoSize  = true,
         };
@@ -160,7 +160,7 @@ public sealed class KitchenDisplayForm : Form
         _lblConnect = new Label
         {
             Text      = "● Online",
-            Font      = new Font("Segoe UI", 9f),
+            Font      = PoppinsFont.New("Poppins", 9f),
             ForeColor = Color.FromArgb(34, 197, 94),
             AutoSize  = true,
         };
@@ -232,7 +232,7 @@ public sealed class KitchenDisplayForm : Form
         {
             Dock      = DockStyle.Fill,
             TextAlign = ContentAlignment.MiddleCenter,
-            Font      = new Font("Segoe UI", 13f, FontStyle.Bold),
+            Font      = PoppinsFont.New("Poppins", 13f, FontStyle.Bold),
             ForeColor = Color.White,
         };
         _pnlAlert.Controls.Add(_lblAlertText);
@@ -641,7 +641,7 @@ public sealed class KitchenDisplayForm : Form
         BackColor = bg,
         ForeColor = KdsText,
         FlatStyle = FlatStyle.Flat,
-        Font      = new Font("Segoe UI", 9f),
+        Font      = PoppinsFont.New("Poppins", 9f),
         Cursor    = Cursors.Hand,
         FlatAppearance = { BorderColor = KdsBorder, BorderSize = 1 },
     };
@@ -654,7 +654,7 @@ public sealed class KitchenDisplayForm : Form
         BackColor = active ? Color.FromArgb(230, 57, 70) : Color.FromArgb(40, 40, 40),
         ForeColor = Color.White,
         FlatStyle = FlatStyle.Flat,
-        Font      = new Font("Segoe UI", 9f, FontStyle.Bold),
+        Font      = PoppinsFont.New("Poppins", 9f, FontStyle.Bold),
         Cursor    = Cursors.Hand,
         FlatAppearance = { BorderColor = active ? Color.FromArgb(230, 57, 70) : KdsBorder, BorderSize = 1 },
     };
@@ -662,7 +662,7 @@ public sealed class KitchenDisplayForm : Form
     private static Label MakeStatLabel(string text) => new()
     {
         Text      = text,
-        Font      = new Font("Segoe UI", 10f),
+        Font      = PoppinsFont.New("Poppins", 10f),
         ForeColor = KdsSubtext,
         AutoSize  = true,
     };

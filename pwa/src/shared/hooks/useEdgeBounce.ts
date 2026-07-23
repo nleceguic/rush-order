@@ -86,12 +86,24 @@ export function useEdgeBounce(ref: RefObject<HTMLElement>, axis: 'x' | 'y'): voi
     const atStart = () => pos() <= 0
     const atEnd = () => pos() >= max() - 1
 
+    // Edges are "arrived at", not "sat at" — once wasAtStart/wasAtEnd is
+    // true, further pushes against the same edge don't replay the nudge
+    // until the content scrolls away and comes back. Without this, a short
+    // list (little/no scrollable range) fires the bounce on nearly every
+    // wheel/touch tick, since it's permanently sitting at one edge or both —
+    // a rapid, stuttering re-trigger that reads as the page glitching rather
+    // than a single rubber-band cue.
+    let wasAtStart = atStart()
+    let wasAtEnd = atEnd()
+
     const onWheel = (e: WheelEvent) => {
       e.stopPropagation()
       const delta = axis === 'x' ? e.deltaX : e.deltaY
       if (delta === 0) return
-      if (delta < 0 && atStart()) nudge(1)
-      else if (delta > 0 && atEnd()) nudge(-1)
+      if (delta < 0 && atStart() && !wasAtStart) nudge(1)
+      else if (delta > 0 && atEnd() && !wasAtEnd) nudge(-1)
+      wasAtStart = atStart()
+      wasAtEnd = atEnd()
     }
 
     const onTouchStart = (e: TouchEvent) => {
@@ -106,9 +118,11 @@ export function useEdgeBounce(ref: RefObject<HTMLElement>, axis: 'x' | 'y'): voi
       if (t === undefined) return
       const p = axis === 'x' ? t.clientX : t.clientY
       const delta = touchPos - p // positive = dragging content toward the end
-      if (delta > 0 && atEnd()) nudge(-1)
-      else if (delta < 0 && atStart()) nudge(1)
+      if (delta > 0 && atEnd() && !wasAtEnd) nudge(-1)
+      else if (delta < 0 && atStart() && !wasAtStart) nudge(1)
       touchPos = p
+      wasAtStart = atStart()
+      wasAtEnd = atEnd()
     }
 
     // Fires continuously during native momentum scrolling too, unlike
@@ -120,6 +134,8 @@ export function useEdgeBounce(ref: RefObject<HTMLElement>, axis: 'x' | 'y'): voi
       if (p <= 0 && prevPos > 0) nudge(1)
       else if (p >= m - 1 && prevPos < m - 1) nudge(-1)
       prevPos = p
+      wasAtStart = atStart()
+      wasAtEnd = atEnd()
     }
 
     el.addEventListener('wheel', onWheel, { passive: true })
@@ -152,9 +168,17 @@ export function useWindowEdgeBounceY(ref: RefObject<HTMLElement>): void {
     const maxY = () => document.documentElement.scrollHeight - window.innerHeight
     const atBottom = () => window.scrollY >= maxY() - 1
 
+    // See useEdgeBounce for why this only fires on arrival, not on every
+    // event while already sitting at an edge — short categories barely
+    // taller than the viewport otherwise bounce on nearly every scroll tick.
+    let wasAtTop = atTop()
+    let wasAtBottom = atBottom()
+
     const onWheel = (e: WheelEvent) => {
-      if (e.deltaY < 0 && atTop()) nudge(1)
-      else if (e.deltaY > 0 && atBottom()) nudge(-1)
+      if (e.deltaY < 0 && atTop() && !wasAtTop) nudge(1)
+      else if (e.deltaY > 0 && atBottom() && !wasAtBottom) nudge(-1)
+      wasAtTop = atTop()
+      wasAtBottom = atBottom()
     }
 
     const onTouchStart = (e: TouchEvent) => { touchY = e.touches[0]?.clientY ?? 0 }
@@ -162,9 +186,11 @@ export function useWindowEdgeBounceY(ref: RefObject<HTMLElement>): void {
       const t = e.touches[0]
       if (t === undefined) return
       const delta = touchY - t.clientY // positive = dragging content up (toward the end)
-      if (delta > 0 && atBottom()) nudge(-1)
-      else if (delta < 0 && atTop()) nudge(1)
+      if (delta > 0 && atBottom() && !wasAtBottom) nudge(-1)
+      else if (delta < 0 && atTop() && !wasAtTop) nudge(1)
       touchY = t.clientY
+      wasAtTop = atTop()
+      wasAtBottom = atBottom()
     }
 
     let prevY = window.scrollY
@@ -174,6 +200,8 @@ export function useWindowEdgeBounceY(ref: RefObject<HTMLElement>): void {
       if (y <= 0 && prevY > 0) nudge(1)
       else if (y >= m - 1 && prevY < m - 1) nudge(-1)
       prevY = y
+      wasAtTop = atTop()
+      wasAtBottom = atBottom()
     }
 
     window.addEventListener('wheel', onWheel, { passive: true })

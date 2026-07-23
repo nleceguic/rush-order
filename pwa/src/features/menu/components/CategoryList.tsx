@@ -22,7 +22,7 @@ export function CategoryList({ categories, selected, onSelect }: CategoryListPro
             'flex-shrink-0 rounded-full px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap',
             selected === cat.id
               ? 'bg-rush-red text-white'
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200',
+              : 'text-gray-700 hover:text-gray-900',
           ].join(' ')}
           aria-pressed={selected === cat.id}
         >

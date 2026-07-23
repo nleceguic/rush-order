@@ -74,14 +74,18 @@ public sealed class OrdersView : UserControl
             e.Graphics.DrawLine(pen, 0, pnlToolbar.Height - 1, pnlToolbar.Width, pnlToolbar.Height - 1);
         };
 
-        _cmbWaiter = MakeCombo(120, "Todos los camareros");
-        _cmbTable  = MakeCombo(100, "Todas las mesas");
+        // Widths must fit the placeholder text plus the native dropdown arrow button (~20px) —
+        // 120/100 clipped "Todos los camareros"/"Todas las mesas" mid-word with no ellipsis.
+        _cmbWaiter = MakeCombo(160, "Todos los camareros");
+        _cmbTable  = MakeCombo(135, "Todas las mesas");
         _txtSearch = new TextBox
         {
             Width           = 160,
             Font            = _theme.Fonts.Regular,
             PlaceholderText = "Buscar #pedido…",
             BorderStyle     = BorderStyle.FixedSingle,
+            BackColor       = _theme.Colors.Input,
+            ForeColor       = _theme.Colors.TextPrimary,
         };
         _txtSearch.TextChanged += (_, _) => { _filterSearch = _txtSearch.Text; ApplyFilters(); };
 
@@ -97,7 +101,19 @@ public sealed class OrdersView : UserControl
         var btnRefresh = MakeToolButton("⟳ Actualizar");
         btnRefresh.Click += async (_, _) => await LoadOrdersAsync();
 
-        int x = 0;
+        // Fully rounded (pill-shaped) — but NOT the combos: their native dropdown-arrow button
+        // is a separate square Windows draws on top and refuses to color or reshape (see the
+        // earlier white patch), and clipping the whole control to a pill just made that patch
+        // bulge out past the rounded edge as a broken-looking white blob instead of hiding it.
+        // The search box and button have no such native sub-element, so rounding them is clean.
+        foreach (var c in new Control[] { _txtSearch, btnRefresh })
+            RoundControl(c);
+
+        // Starts at Padding.Left, not 0 — these are Location-positioned children, so the
+        // panel's own Padding never applied to them, leaving the first control flush at the
+        // view's left edge instead of lined up with the cards in the kanban board below
+        // (table Padding 4 + column Margin.Left 4 = 8).
+        int x = pnlToolbar.Padding.Left;
         foreach (Control c in new Control[] { _cmbWaiter, _cmbTable, _txtSearch, _chkMine, btnRefresh })
         {
             c.Location = new Point(x, 8);
@@ -123,7 +139,11 @@ public sealed class OrdersView : UserControl
         // ── FAB ───────────────────────────────────────────────────────────
         _btnFab = BuildFab();
 
-        Controls.AddRange([pnlToolbar, _kanban, _btnFab]);
+        // _kanban (Dock=Fill) must be added BEFORE pnlToolbar (Dock=Top), or it claims the
+        // full client area ignoring the toolbar's reserved 48px band — the column headers sat
+        // right underneath the (opaque) toolbar as a result, invisible even though the cards
+        // below them, positioned past that overlap, rendered fine.
+        Controls.AddRange([_kanban, pnlToolbar, _btnFab]);
         Resize += (_, _) => PositionFab();
         PositionFab();
     }
@@ -284,7 +304,7 @@ public sealed class OrdersView : UserControl
             ForeColor = Color.White,
             FlatStyle = FlatStyle.Flat,
             Text      = "+",
-            Font      = new Font("Segoe UI", 22f, FontStyle.Bold),
+            Font      = PoppinsFont.New("Poppins", 22f, FontStyle.Bold),
             Cursor    = Cursors.Hand,
         };
         btn.FlatAppearance.BorderSize = 0;
@@ -297,7 +317,7 @@ public sealed class OrdersView : UserControl
             using var b = new SolidBrush(_theme.Colors.Primary);
             g.FillEllipse(b, 0, 0, btn.Width - 1, btn.Height - 1);
             using var tb = new SolidBrush(Color.White);
-            using var f  = new Font("Segoe UI", 22f, FontStyle.Bold);
+            using var f  = PoppinsFont.New("Poppins", 22f, FontStyle.Bold);
             g.DrawString("+", f, tb, new RectangleF(0, -3, btn.Width, btn.Height),
                 new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center });
         };
@@ -342,6 +362,10 @@ public sealed class OrdersView : UserControl
         {
             Width         = width,
             DropDownStyle = ComboBoxStyle.DropDownList,
+            // Default FlatStyle.Standard renders a DropDownList's closed box via OS visual
+            // styles, which ignores BackColor/ForeColor entirely — the combo looked plain
+            // white regardless of the colors set below until this was added.
+            FlatStyle     = FlatStyle.Flat,
             Font          = _theme.Fonts.Small,
             BackColor     = _theme.Colors.Surface,
             ForeColor     = _theme.Colors.TextPrimary,
@@ -369,6 +393,21 @@ public sealed class OrdersView : UserControl
         Cursor    = Cursors.Hand,
         FlatAppearance = { BorderColor = _theme.Colors.Border, BorderSize = 1 },
     };
+
+    // Radius = half the height → fully rounded (pill) ends, not just rounded corners —
+    // recomputed from the control's own current height so it stays a true pill even if that
+    // changes later, instead of a fixed radius that would look under- or over-rounded.
+    private static void RoundControl(Control c)
+    {
+        void Apply()
+        {
+            if (c.Width <= 0 || c.Height <= 0) return;
+            using var path = GdiExtensions.CreateRoundedRect(new RectangleF(0, 0, c.Width, c.Height), c.Height / 2f);
+            c.Region = new Region(path);
+        }
+        c.Resize += (_, _) => Apply();
+        Apply();
+    }
 
     private static void PopulateCombo(ComboBox cb, IEnumerable<string> items, string placeholder)
     {

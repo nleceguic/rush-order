@@ -33,13 +33,13 @@ public static class RawPrinterHelper
         [MarshalAs(UnmanagedType.LPStr)] public string pDataType;
     }
 
-    public static bool SendToDefaultPrinter(byte[] data, string docName = "RushOrder")
+    public static bool SendToDefaultPrinter(byte[] data, string docName = "Rush Order")
     {
         var printerName = GetDefaultPrinterName();
         return printerName is not null && SendToPrinter(printerName, data, docName);
     }
 
-    public static bool SendToPrinter(string printerName, byte[] data, string docName = "RushOrder")
+    public static bool SendToPrinter(string printerName, byte[] data, string docName = "Rush Order")
     {
         if (!OpenPrinter(printerName, out var hPrinter, IntPtr.Zero)) return false;
 

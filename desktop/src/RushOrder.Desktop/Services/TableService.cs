@@ -36,6 +36,15 @@ public sealed class TableService
                 if (rows is not null)
                     return rows.Select((t, i) => MapFloorPlan(t, i)).ToList();
             }
+            else
+            {
+                // A non-success response doesn't throw, so it silently fell through to mock
+                // with no trace at all before — e.g. every call is a 401 while there's no
+                // logged-in session (no AccessToken/CurrentRestaurant set), which otherwise
+                // looks indistinguishable from the backend just being unreachable.
+                _logger.LogWarning(
+                    "Fetching tables returned {StatusCode}; using mock", res.StatusCode);
+            }
         }
         catch (Exception ex) { _logger.LogWarning(ex, "Could not fetch tables; using mock"); }
         return MockTables();
@@ -81,22 +90,36 @@ public sealed class TableService
         return MockOrders();
     }
 
+    // Was try/catch-and-swallow around the whole loop — a failed PUT (401 with no session,
+    // 404, 500, ...) never threw, so FloorPlanView's own try/catch always took the "success"
+    // path and told the user the layout saved even when nothing actually persisted. Now each
+    // response's status is checked, and any failure propagates so the caller's error toast is
+    // accurate.
     public async Task SavePositionsAsync(IEnumerable<SavePositionRequest> positions, CancellationToken ct = default)
     {
-        try
+        SetAuth();
+        var failedIds = new List<Guid>();
+
+        foreach (var req in positions)
         {
-            SetAuth();
-            foreach (var req in positions)
+            // Backend's PUT {id} is a general table-update endpoint (Name/Capacity/
+            // Zone/PositionX/PositionY, all optional) — no dedicated /position route.
+            var body = JsonConvert.SerializeObject(new { positionX = (double)req.X, positionY = (double)req.Y });
+            var response = await _http.PutAsync(
+                $"{BaseUrl}/{req.Id}",
+                new System.Net.Http.StringContent(body, System.Text.Encoding.UTF8, "application/json"), ct);
+
+            if (!response.IsSuccessStatusCode)
             {
-                // Backend's PUT {id} is a general table-update endpoint (Name/Capacity/
-                // Zone/PositionX/PositionY, all optional) — no dedicated /position route.
-                var body = JsonConvert.SerializeObject(new { positionX = (double)req.X, positionY = (double)req.Y });
-                await _http.PutAsync(
-                    $"{BaseUrl}/{req.Id}",
-                    new System.Net.Http.StringContent(body, System.Text.Encoding.UTF8, "application/json"), ct);
+                _logger.LogWarning("Saving position for table {TableId} failed with {StatusCode}",
+                    req.Id, response.StatusCode);
+                failedIds.Add(req.Id);
             }
         }
-        catch (Exception ex) { _logger.LogWarning(ex, "Could not save table positions"); }
+
+        if (failedIds.Count > 0)
+            throw new InvalidOperationException(
+                $"No se pudo guardar la posición de {failedIds.Count} mesa(s): {string.Join(", ", failedIds)}");
     }
 
     // NOTE: backend's UpdateTableRequest has no status/state field at all — table
@@ -140,7 +163,9 @@ public sealed class TableService
             new(_mockIds[7],  8, 4, TableState.Cleaning,  TableShapeType.Circular,    40,  350, 100,100, false, null,                null),
             new(_mockIds[8],  9, 2, TableState.Occupied,  TableShapeType.Circular,   170,  350,  80, 80, false, now.AddMinutes(-12), "María"),
             new(_mockIds[9], 10, 6, TableState.Free,       TableShapeType.Rectangular, 280, 350, 140, 90, false, null,               null),
-            new(_mockIds[10],11, 4, TableState.Occupied,  TableShapeType.Circular,    450, 190, 100,100, false, now.AddMinutes(-30), "María"),
+            // X was 450 — table 7 is a 160-wide rectangle starting at 310, so its right edge
+            // (470) actually sat 20px past this table's left edge, overlapping it.
+            new(_mockIds[10],11, 4, TableState.Occupied,  TableShapeType.Circular,    500, 190, 100,100, false, now.AddMinutes(-30), "María"),
             new(_mockIds[11],12, 8, TableState.Reserved,  TableShapeType.Rectangular, 40,  500, 160, 90, false, null,                null),
         ];
     }

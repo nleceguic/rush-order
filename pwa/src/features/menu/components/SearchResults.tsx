@@ -49,9 +49,9 @@ export function SearchResults({ groups, query, onProductClick }: SearchResultsPr
                   <p className="font-medium text-sm text-rush-dark leading-snug">
                     {highlightMatch(product.name, query)}
                   </p>
-                  {product.shortDescription !== undefined && (
+                  {product.description !== undefined && (
                     <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">
-                      {highlightMatch(product.shortDescription, query)}
+                      {highlightMatch(product.description, query)}
                     </p>
                   )}
                   <p className="text-sm font-bold text-green-600 mt-1">{formatCurrency(product.price)}</p>

@@ -6,7 +6,7 @@ import { ProductCard } from './components/ProductCard'
 import { ProductDetailSheet } from './components/ProductDetailSheet'
 import { Spinner } from '@shared/components/Spinner'
 import { useCartStore } from '@shared/store/cartStore'
-import { useWindowEdgeBounceY } from '@shared/hooks/useEdgeBounce'
+import { useEdgeBounce } from '@shared/hooks/useEdgeBounce'
 import { formatCurrency } from '@shared/utils/format'
 import { CartFlow } from '@features/cart/CartFlow'
 import type { MenuProduct } from './types'
@@ -25,8 +25,8 @@ export default function MenuPage() {
   const [cartOpen, setCartOpen] = useState(false)
   const itemCount = useCartStore((s) => s.items.reduce((n, i) => n + i.quantity, 0))
   const subtotal  = useCartStore((s) => s.total())
-  const productsRef = useRef<HTMLDivElement>(null)
-  useWindowEdgeBounceY(productsRef)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  useEdgeBounce(scrollRef, 'y')
 
   const categories   = data?.categories ?? []
   const firstCatId   = categories[0]?.id ?? null
@@ -39,14 +39,33 @@ export default function MenuPage() {
     : undefined
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Header */}
-      <header className="sticky top-0 z-30 bg-white border-b px-4 py-3 flex items-center shadow-sm">
-        <h1 className="text-xl font-bold text-rush-red">Rush Order</h1>
+    <div className="h-dvh bg-gray-50 flex flex-col overflow-hidden">
+      {/* Header — fixed, never scrolls */}
+      <header className="shrink-0 z-30 bg-gray-50 px-4 pt-8 pb-3 flex flex-col">
+        <h1 className="text-xl font-bold text-rush-red">
+          {qrData?.restaurantName}
+        </h1>
+        <p className="text-xs font-medium text-gray-500 tracking-wide">
+          {qrData?.name ?? ''}
+        </p>
       </header>
 
-      {/* Content */}
-      <main className="flex-1 px-4 py-4 space-y-4">
+      {/* Category tabs — fixed, scroll horizontally within themselves only */}
+      {categories.length > 0 && (
+        <div className="shrink-0 bg-gray-50 px-4 pt-3">
+          <CategoryList
+            categories={categories}
+            selected={activeId}
+            onSelect={setSelectedCategory}
+          />
+        </div>
+      )}
+
+      {/* Products — the only vertically scrollable region */}
+      <main
+        ref={scrollRef}
+        className={`flex-1 overflow-y-auto px-4 pt-1 ${itemCount > 0 ? 'pb-24' : 'pb-4'}`}
+      >
         {isLoading && (
           <div className="flex justify-center py-16">
             <Spinner size="lg" />
@@ -60,32 +79,23 @@ export default function MenuPage() {
         )}
 
         {!isLoading && !isError && (
-          <>
-            {categories.length > 0 && (
-              <CategoryList
-                categories={categories}
-                selected={activeId}
-                onSelect={setSelectedCategory}
-              />
+          <div className="grid grid-cols-1 gap-3">
+            {products.map((product) => (
+              <ProductCard key={product.id} product={product} onViewDetails={setSelectedProduct} />
+            ))}
+            {products.length === 0 && (
+              <p className="text-center text-gray-400 py-10 text-sm">
+                No hay productos en esta categoría.
+              </p>
             )}
-            <div ref={productsRef} className="grid grid-cols-1 gap-3">
-              {products.map((product) => (
-                <ProductCard key={product.id} product={product} onViewDetails={setSelectedProduct} />
-              ))}
-              {products.length === 0 && (
-                <p className="text-center text-gray-400 py-10 text-sm">
-                  No hay productos en esta categoría.
-                </p>
-              )}
-            </div>
-          </>
+          </div>
         )}
       </main>
 
-      {/* Sticky CTA */}
+      {/* Floating CTA — overlays the product cards instead of reserving its own row */}
       <div
-        className={`sticky bottom-0 p-4 transition-all duration-300 ease-out ${
-          itemCount > 0 ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0 pointer-events-none'
+        className={`fixed inset-x-4 bottom-4 z-40 transition-all duration-300 ease-out ${
+          itemCount > 0 ? 'translate-y-0 opacity-100' : 'translate-y-24 opacity-0 pointer-events-none'
         }`}
         aria-hidden={itemCount === 0}
       >
