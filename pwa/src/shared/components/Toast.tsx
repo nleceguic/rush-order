@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { useEffect } from 'react'
+import { generateUUID } from '../utils/deviceFingerprint'
 
 type ToastType = 'success' | 'error' | 'info' | 'warning'
 
@@ -20,7 +21,7 @@ const useToastStore = create<ToastStore>()((set) => ({
   toasts: [],
   push:   (message, type = 'info', duration = 3500) =>
     set((s) => ({
-      toasts: [...s.toasts, { id: crypto.randomUUID(), message, type, duration }],
+      toasts: [...s.toasts, { id: generateUUID(), message, type, duration }],
     })),
   remove: (id) => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
 }))
