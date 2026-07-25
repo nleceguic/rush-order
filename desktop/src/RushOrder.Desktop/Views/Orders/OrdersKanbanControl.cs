@@ -92,26 +92,16 @@ public sealed class OrdersKanbanControl : UserControl
 
     private void RebuildAllColumns(IReadOnlyList<OrderDto> orders)
     {
+        SuspendLayout();
         foreach (var (status, col) in _columns)
         {
             var statusOrders = orders.Where(o => o.Status == status).ToList();
-            col.SuspendLayout();
-            InternalClearColumn(col);
-            foreach (var order in statusOrders)
-                col.AddCard(order);
-            col.ResumeLayout();
+            col.ClearCards();
+            col.AddCards(statusOrders);
         }
+        ResumeLayout(true);
 
         UpdateWorkloadBars();
-    }
-
-    private static void InternalClearColumn(KanbanColumn col)
-    {
-        // Get the FlowLayoutPanel inside the column
-        var flow = col.Controls.OfType<FlowLayoutPanel>().FirstOrDefault();
-        if (flow is null) return;
-        var cards = flow.Controls.OfType<OrderCardControl>().ToList();
-        foreach (var c in cards) { flow.Controls.Remove(c); c.Dispose(); }
     }
 
     public void AddOrUpdateOrder(OrderDto order)

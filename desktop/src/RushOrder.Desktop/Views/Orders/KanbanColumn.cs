@@ -146,19 +146,67 @@ internal sealed class KanbanColumn : UserControl
         _flow.DragOver  += OnDragOver;
         _flow.DragLeave += OnDragLeave;
         _flow.DragDrop  += OnDragDrop;
+
+        // One subscription for the flow's whole lifetime, not one per card — this used to be
+        // added again inside AddCard on every single call, so after a handful of reloads the
+        // column had dozens of stale handlers (several already pointing at disposed cards)
+        // all firing on every resize. That compounding cost, more than anything else, was what
+        // made the board feel like it got slower and choppier the longer the app stayed open.
+        _flow.Resize += (_, _) => ResizeAllCards();
     }
+
+    private void ResizeAllCards()
+    {
+        var width = CardWidth();
+        foreach (OrderCardControl card in _flow.Controls.OfType<OrderCardControl>())
+            card.Width = width;
+    }
+
+    // Right side still reserves flow.Padding.Right(4) + card.Margin.Right(6) = 10 — going wider
+    // than that (e.g. the old "-2" left over from a first pass) pushed the card past the flow's
+    // content area and triggered a spurious horizontal scrollbar.
+    private int CardWidth() => Math.Max(180, _flow.ClientSize.Width - 10);
 
     // ── Card management ───────────────────────────────────────────────────
 
     public void AddCard(OrderDto order)
     {
         var card = CreateCard(order);
+        card.Width = CardWidth();
         _flow.Controls.Add(card);
-        // Right side still reserves flow.Padding.Right(4) + card.Margin.Right(6) = 10 — going
-        // wider than that (e.g. the old "-2" left over from a first pass) pushed the card past
-        // the flow's content area and triggered a spurious horizontal scrollbar.
-        card.Width = _flow.ClientSize.Width - 10;
-        _flow.Resize += (_, _) => card.Width = Math.Max(180, _flow.ClientSize.Width - 10);
+        UpdateHeader();
+    }
+
+    // Bulk variant for a full board reload: adding N cards one at a time each triggers the
+    // FlowLayoutPanel's own layout pass (SuspendLayout on this KanbanColumn does NOT suspend
+    // it — layout suspension isn't inherited by children, only by the control it's called on)
+    // — for a column with a dozen-plus cards that's a dozen-plus visible layout/paint passes
+    // instead of one, which is what actually made loading look like it was crawling in one card
+    // at a time. Suspending the flow panel itself and adding everything before one resume fixes
+    // that. No per-card reveal animation here on purpose — a staggered entrance was tried and
+    // it's exactly what added back perceptible load time; the board should just be there.
+    public void AddCards(IReadOnlyList<OrderDto> orders)
+    {
+        _flow.SuspendLayout();
+        foreach (var order in orders)
+        {
+            var card = CreateCard(order);
+            card.Width = CardWidth();
+            _flow.Controls.Add(card);
+        }
+        _flow.ResumeLayout(true);
+        UpdateHeader();
+    }
+
+    public void ClearCards()
+    {
+        _flow.SuspendLayout();
+        foreach (var card in _flow.Controls.OfType<OrderCardControl>().ToList())
+        {
+            _flow.Controls.Remove(card);
+            card.Dispose();
+        }
+        _flow.ResumeLayout(true);
         UpdateHeader();
     }
 

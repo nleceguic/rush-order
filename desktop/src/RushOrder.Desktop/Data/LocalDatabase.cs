@@ -103,6 +103,48 @@ public sealed class LocalDatabase : IDisposable
         }
     }
 
+    // Snapshotting a full order list one UpsertOrder() call at a time meant one SQLite commit
+    // (a real disk sync) per order — for ~10 orders that's ~10 sequential fsyncs on the UI
+    // thread on every single load, which is exactly the kind of thing that reads as "slow and
+    // arriving in stages" even though the UI-side rendering has nothing to do with it. Wrapping
+    // the whole batch in one transaction turns that into a single commit.
+    public void UpsertOrders(IEnumerable<OrderDto> orders)
+    {
+        lock (_lock)
+        {
+            using var tx  = _conn.BeginTransaction();
+            using var cmd = _conn.CreateCommand();
+            cmd.Transaction = tx;
+            cmd.CommandText = """
+                INSERT INTO local_orders (id, status, is_offline, placed_at, order_json, updated_at)
+                VALUES ($id, $status, $offline, $placed, $json, datetime('now'))
+                ON CONFLICT(id) DO UPDATE SET
+                    status     = excluded.status,
+                    is_offline = excluded.is_offline,
+                    order_json = excluded.order_json,
+                    updated_at = datetime('now');
+                """;
+            var pId      = cmd.Parameters.Add("$id",      Microsoft.Data.Sqlite.SqliteType.Text);
+            var pStatus  = cmd.Parameters.Add("$status",  Microsoft.Data.Sqlite.SqliteType.Text);
+            var pOffline = cmd.Parameters.Add("$offline", Microsoft.Data.Sqlite.SqliteType.Integer);
+            var pPlaced  = cmd.Parameters.Add("$placed",  Microsoft.Data.Sqlite.SqliteType.Text);
+            var pJson    = cmd.Parameters.Add("$json",    Microsoft.Data.Sqlite.SqliteType.Text);
+            cmd.Prepare();
+
+            foreach (var order in orders)
+            {
+                pId.Value      = order.Id.ToString();
+                pStatus.Value  = order.Status.ToString();
+                pOffline.Value = order.IsOffline ? 1 : 0;
+                pPlaced.Value  = order.PlacedAt.ToString("O");
+                pJson.Value    = JsonConvert.SerializeObject(order);
+                cmd.ExecuteNonQuery();
+            }
+
+            tx.Commit();
+        }
+    }
+
     public List<OrderDto> GetOrders()
     {
         lock (_lock)

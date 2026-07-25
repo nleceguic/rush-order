@@ -67,8 +67,9 @@ public sealed class OrderService
                             _cache.Insert(0, offline);
                     }
 
-                    // Snapshot for offline use
-                    foreach (var o in _cache) _db.UpsertOrder(o);
+                    // Snapshot for offline use — one transaction for the whole batch, not one
+                    // commit per order (see UpsertOrders for why that mattered).
+                    _db.UpsertOrders(_cache);
                     return _cache;
                 }
             }

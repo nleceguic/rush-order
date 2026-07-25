@@ -1,4 +1,5 @@
 using RushOrder.Desktop.Core.Hubs;
+using RushOrder.Desktop.Forms.Controls;
 using RushOrder.Desktop.Helpers;
 using RushOrder.Desktop.Models;
 using RushOrder.Desktop.Notifications;
@@ -19,13 +20,14 @@ public sealed class OrdersView : UserControl
     private readonly RealTimeService          _realTime;
     private readonly ToastNotificationManager _toasts;
     private readonly AppState                 _state;
+    private readonly ToolTip                  _toolTip = new();
 
     private OrdersKanbanControl _kanban    = null!;
-    private ComboBox  _cmbWaiter  = null!;
-    private ComboBox  _cmbTable   = null!;
-    private TextBox   _txtSearch  = null!;
-    private CheckBox  _chkMine    = null!;
-    private Button    _btnFab     = null!;
+    private PillComboBox _cmbWaiter = null!;
+    private PillComboBox _cmbTable  = null!;
+    private TextBox     _txtSearch = null!;
+    private ToggleSwitch _swMine   = null!;
+    private Button      _btnFab    = null!;
 
     private string? _filterWaiter;
     private string? _filterTable;
@@ -80,45 +82,55 @@ public sealed class OrdersView : UserControl
         _cmbTable  = MakeCombo(135, "Todas las mesas");
         _txtSearch = new TextBox
         {
-            Width           = 160,
-            Font            = _theme.Fonts.Regular,
-            PlaceholderText = "Buscar #pedido…",
-            BorderStyle     = BorderStyle.FixedSingle,
+            // Small, not Regular — matches the combos and the refresh button so every piece of
+            // text in this toolbar shares one font; mixing sizes was what actually made them
+            // look vertically misaligned even though every control sits in the same 30px row.
+            Font            = _theme.Fonts.Small,
+            PlaceholderText = "Buscar pedido…",
+            BorderStyle     = BorderStyle.None,
             BackColor       = _theme.Colors.Input,
             ForeColor       = _theme.Colors.TextPrimary,
         };
         _txtSearch.TextChanged += (_, _) => { _filterSearch = _txtSearch.Text; ApplyFilters(); };
 
-        _chkMine = new CheckBox
-        {
-            Text      = "Solo mis mesas",
-            Font      = _theme.Fonts.Regular,
-            ForeColor = _theme.Colors.TextPrimary,
-            AutoSize  = true,
-        };
-        _chkMine.CheckedChanged += (_, _) => { _filterMine = _chkMine.Checked; ApplyFilters(); };
+        // A native single-line TextBox has no Padding that affects its own text — the left
+        // inset and vertical position Windows gives it aren't ours to adjust directly. Wrapping
+        // it in a same-colored Panel and inset-positioning the (now borderless) TextBox inside
+        // gives real control over both: left padding via Location.X, and true vertical centering
+        // computed from the TextBox's own font-driven Height against the panel's fixed Height.
+        var pnlSearch = new Panel { Width = 160, Height = 30, BackColor = _theme.Colors.Input };
+        pnlSearch.Controls.Add(_txtSearch);
+        const int searchLeftPad = 12;
+        _txtSearch.Width    = pnlSearch.Width - searchLeftPad - 8;
+        _txtSearch.Location = new Point(searchLeftPad, (pnlSearch.Height - _txtSearch.Height) / 2);
 
-        var btnRefresh = MakeToolButton("⟳ Actualizar");
+        // No label by design — the toolbar already reads cleanly as icon-less pill controls,
+        // and a tooltip covers discoverability without adding visible text.
+        _swMine = new ToggleSwitch(_theme);
+        _toolTip.SetToolTip(_swMine, "Solo mis mesas");
+        _swMine.CheckedChanged += (_, _) => { _filterMine = _swMine.Checked; ApplyFilters(); };
+
+        var btnRefresh = new PillButton(_theme, "⟳ Actualizar");
         btnRefresh.Click += async (_, _) => await LoadOrdersAsync();
 
         // Fully rounded (pill-shaped) — but NOT the combos: their native dropdown-arrow button
         // is a separate square Windows draws on top and refuses to color or reshape (see the
         // earlier white patch), and clipping the whole control to a pill just made that patch
         // bulge out past the rounded edge as a broken-looking white blob instead of hiding it.
-        // The search box and button have no such native sub-element, so rounding them is clean.
-        foreach (var c in new Control[] { _txtSearch, btnRefresh })
-            RoundControl(c);
+        // The search box's outer panel has no such native sub-element, so rounding it is clean.
+        // btnRefresh paints its own pill (PillButton) so it isn't in this list.
+        RoundControl(pnlSearch);
 
         // Starts at Padding.Left, not 0 — these are Location-positioned children, so the
         // panel's own Padding never applied to them, leaving the first control flush at the
         // view's left edge instead of lined up with the cards in the kanban board below
         // (table Padding 4 + column Margin.Left 4 = 8).
         int x = pnlToolbar.Padding.Left;
-        foreach (Control c in new Control[] { _cmbWaiter, _cmbTable, _txtSearch, _chkMine, btnRefresh })
+        foreach (Control c in new Control[] { _cmbWaiter, _cmbTable, pnlSearch, _swMine, btnRefresh })
         {
-            c.Location = new Point(x, 8);
-            if (c is Button)   { c.Size = new Size(c.Width, 30); }
-            if (c is CheckBox) { c.Location = new Point(x, 14); }
+            // Centered against the row's own 30px height (matching every other tool here)
+            // rather than a hand-picked offset, so it stays centered regardless of its own size.
+            c.Location = new Point(x, 8 + (30 - c.Height) / 2);
             pnlToolbar.Controls.Add(c);
             x += c.Width + 8;
         }
@@ -356,43 +368,19 @@ public sealed class OrdersView : UserControl
 
     // ── Helpers ───────────────────────────────────────────────────────────
 
-    private ComboBox MakeCombo(int width, string placeholder)
+    private PillComboBox MakeCombo(int width, string placeholder)
     {
-        var cb = new ComboBox
-        {
-            Width         = width,
-            DropDownStyle = ComboBoxStyle.DropDownList,
-            // Default FlatStyle.Standard renders a DropDownList's closed box via OS visual
-            // styles, which ignores BackColor/ForeColor entirely — the combo looked plain
-            // white regardless of the colors set below until this was added.
-            FlatStyle     = FlatStyle.Flat,
-            Font          = _theme.Fonts.Small,
-            BackColor     = _theme.Colors.Surface,
-            ForeColor     = _theme.Colors.TextPrimary,
-        };
+        var cb = new PillComboBox(_theme) { Width = width };
         cb.Items.Add(placeholder);
         cb.SelectedIndex = 0;
         cb.SelectedIndexChanged += (_, _) =>
         {
-            var val = cb.SelectedIndex == 0 ? null : cb.SelectedItem?.ToString();
+            var val = cb.SelectedIndex == 0 ? null : cb.SelectedItem;
             if (cb == _cmbWaiter) { _filterWaiter = val; ApplyFilters(); }
             else                  { _filterTable  = val; ApplyFilters(); }
         };
         return cb;
     }
-
-    private Button MakeToolButton(string text) => new()
-    {
-        Text      = text,
-        Width     = text.Length * 7 + 16,
-        Height    = 30,
-        FlatStyle = FlatStyle.Flat,
-        BackColor = _theme.Colors.Surface,
-        ForeColor = _theme.Colors.TextPrimary,
-        Font      = _theme.Fonts.Small,
-        Cursor    = Cursors.Hand,
-        FlatAppearance = { BorderColor = _theme.Colors.Border, BorderSize = 1 },
-    };
 
     // Radius = half the height → fully rounded (pill) ends, not just rounded corners —
     // recomputed from the control's own current height so it stays a true pill even if that
@@ -409,9 +397,9 @@ public sealed class OrdersView : UserControl
         Apply();
     }
 
-    private static void PopulateCombo(ComboBox cb, IEnumerable<string> items, string placeholder)
+    private static void PopulateCombo(PillComboBox cb, IEnumerable<string> items, string placeholder)
     {
-        var selected = cb.SelectedIndex > 0 ? cb.SelectedItem?.ToString() : null;
+        var selected = cb.SelectedIndex > 0 ? cb.SelectedItem : null;
         cb.BeginUpdate();
         cb.Items.Clear();
         cb.Items.Add(placeholder);
