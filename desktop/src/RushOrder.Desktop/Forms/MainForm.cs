@@ -5,7 +5,6 @@ using RushOrder.Desktop.Services;
 using RushOrder.Desktop.State;
 using RushOrder.Desktop.Theme;
 using RushOrder.Desktop.Views.Sync;
-using Microsoft.Extensions.DependencyInjection;
 using RushOrder.Desktop.Views.Dashboard;
 using RushOrder.Desktop.Views.FloorPlan;
 using RushOrder.Desktop.Views.Kitchen;
@@ -31,7 +30,6 @@ public sealed class MainForm : Form
     private readonly ConnectivityMonitor      _connectivity; // holds reference so DI keeps it alive
     private readonly PrintService             _print;
     private readonly UpdateService            _update;
-    private readonly IServiceProvider         _sp;
 
     // Update banner
     private Panel   _pnlUpdateBanner = null!;
@@ -81,8 +79,7 @@ public sealed class MainForm : Form
         ThemeManager theme, NavigationService nav,
         ToastNotificationManager toasts, AppState state,
         SyncService sync, ConnectivityMonitor connectivity,
-        PrintService print, UpdateService update,
-        IServiceProvider sp)
+        PrintService print, UpdateService update)
     {
         _theme        = theme;
         _nav          = nav;
@@ -92,7 +89,6 @@ public sealed class MainForm : Form
         _connectivity = connectivity;
         _print        = print;
         _update       = update;
-        _sp           = sp;
 
         InitializeComponent();
         WireUpEvents();
@@ -150,7 +146,7 @@ public sealed class MainForm : Form
             ("⊞",  "Dashboard",    () => _nav.ClearAndNavigateTo<DashboardView>()),
             ("⬛",  "Mesas",        () => _nav.ClearAndNavigateTo<FloorPlanView>()),
             ("≡",  "Pedidos",      () => _nav.ClearAndNavigateTo<OrdersView>()),
-            ("◈",  "Cocina",       () => KitchenDisplayForm.Launch(_sp.GetRequiredService<KitchenDisplayForm>(), this)),
+            ("◈",  "Cocina",       () => _nav.ClearAndNavigateTo<KitchenDisplayView>()),
             ("☰",  "Menú",         () => _nav.ClearAndNavigateTo<MenuManagementControl>()),
             ("♟",  "Camareros",    () => { }),
             ("◻",  "Reservas",     () => { }),

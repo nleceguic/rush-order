@@ -98,7 +98,7 @@ static class Program
                     services.AddTransient<DashboardView>();
                     services.AddTransient<FloorPlanView>();
                     services.AddTransient<OrdersView>();
-                    services.AddTransient<KitchenDisplayForm>();
+                    services.AddTransient<KitchenDisplayView>();
                     services.AddTransient<MenuManagementControl>();
                     services.AddTransient<StatisticsView>();
                     services.AddTransient<Views.Forecast.DemandForecastControl>();

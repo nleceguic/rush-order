@@ -1,8 +1,14 @@
+using RushOrder.Desktop.Forms.Controls;
 using RushOrder.Desktop.Models;
 using RushOrder.Desktop.Theme;
 
 namespace RushOrder.Desktop.Views.Kitchen;
 
+// Same visual language as Pedidos' OrderCardControl — rounded corners, a thin status-colored
+// stripe down the left edge instead of a solid-color header block, a subtle border that
+// highlights on hover, and rounded pill action buttons — adapted to keep Cocina's own
+// functional pieces (per-item checkboxes, the urgent flag/flash, swipe-to-archive) that
+// Pedidos' cards don't need.
 public sealed class KitchenOrderCard : UserControl
 {
     // ── Events ────────────────────────────────────────────────────────────
@@ -14,16 +20,18 @@ public sealed class KitchenOrderCard : UserControl
     private KitchenOrderDto _order;
     private readonly ThemeManager    _theme;
     private KitchenStation           _stationFilter;
+    private bool                     _hovered;
 
     // Controls
-    private Panel  _pnlHeader  = null!;
-    private Label  _lblNum     = null!;
-    private Label  _lblTable   = null!;
-    private Label  _lblTimer   = null!;
-    private Label  _lblUrgent  = null!;
-    private Panel  _pnlItems   = null!;
-    private Button _btnPrepare = null!;
-    private Button _btnReady   = null!;
+    private Panel      _pnlHeader  = null!;
+    private Label      _lblNum     = null!;
+    private Label      _lblTable   = null!;
+    private Label      _lblTimer   = null!;
+    private Label      _lblUrgent  = null!;
+    private Panel      _pnlItems   = null!;
+    private Panel      _pnlBtns    = null!;
+    private PillButton _btnPrepare = null!;
+    private PillButton _btnReady   = null!;
 
     // Per-item completion state
     private readonly Dictionary<Guid, bool> _itemChecked = [];
@@ -44,7 +52,19 @@ public sealed class KitchenOrderCard : UserControl
     public KitchenOrderDto Order => _order;
     public bool AllItemsChecked  => _itemChecked.Count > 0 && _itemChecked.Values.All(v => v);
 
-    // ── Colors ────────────────────────────────────────────────────────────
+    // ── Style ─────────────────────────────────────────────────────────────
+    private const float CornerRadius      = 8f;
+    private const int   AccentStripeWidth = 5;
+
+    // Card chrome stays explicitly dark regardless of the app's light/dark theme — same
+    // reasoning as KitchenDisplayView's Kds* constants ("always dark, regardless of theme").
+    private static readonly Color KdsCardBg    = Color.FromArgb(28,  28,  28);
+    private static readonly Color KdsRowText   = Color.FromArgb(230, 230, 230);
+    private static readonly Color KdsRowSub    = Color.FromArgb(150, 150, 150);
+    private static readonly Color KdsRowBorder = Color.FromArgb(70,  70,  70);
+    private static readonly Color BorderIdle   = Color.FromArgb(60,  60,  60);
+    private static readonly Color BorderHover  = Color.FromArgb(100, 100, 100);
+
     private static readonly Color GreenTime  = Color.FromArgb(34,  197, 94);
     private static readonly Color YellowTime = Color.FromArgb(234, 179,  8);
     private static readonly Color RedTime    = Color.FromArgb(239, 68,  68);
@@ -58,15 +78,25 @@ public sealed class KitchenOrderCard : UserControl
         _theme         = theme;
         _stationFilter = stationFilter;
 
+        SetStyle(ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint |
+                  ControlStyles.ResizeRedraw, true);
         DoubleBuffered = true;
-        Width          = 420;
+        Width          = 300;
         Cursor         = Cursors.Default;
+        BackColor      = KdsCardBg;
+        // A parent's Region clips its OWN rendering but not child controls' (each is a real
+        // HWND painted independently) — so header/items/buttons must stay inset from the
+        // rounded edge, or their square corners poke past the curve. AccentStripeWidth on the
+        // left (the stripe itself is self-painted in OnPaint, not a child, so it doesn't need
+        // this) and a small gutter on the other three sides for the border stroke to show in.
+        Padding        = new Padding(AccentStripeWidth, 2, 2, 2);
 
         foreach (var item in order.Items)
             _itemChecked[item.ItemId] = false;
 
         BuildLayout();
         CalculateHeight();
+        Resize += (_, _) => ApplyCardRegion();
 
         // Slide-in: start height at 1, animate to target
         _animH  = 1;
@@ -78,7 +108,7 @@ public sealed class KitchenOrderCard : UserControl
         // Must exist before the first UpdateTimerLabel() call below, which can reach into
         // it (Stop/Start) immediately if this order is already old when the card is built.
         _flashTimer = new System.Windows.Forms.Timer { Interval = 600 };
-        _flashTimer.Tick += (_, _) => { _flashOn = !_flashOn; _pnlHeader.Invalidate(); };
+        _flashTimer.Tick += (_, _) => { _flashOn = !_flashOn; Invalidate(); };
 
         _clockTimer = new System.Windows.Forms.Timer { Interval = 1000 };
         _clockTimer.Tick += (_, _) => UpdateTimerLabel();
@@ -104,33 +134,32 @@ public sealed class KitchenOrderCard : UserControl
         _pnlHeader = new Panel
         {
             Dock      = DockStyle.Top,
-            Height    = 72,
-            BackColor = HeaderBg(),
+            Height    = 52,
+            BackColor = KdsCardBg,
         };
-        _pnlHeader.Paint += OnHeaderPaint;
 
         _lblNum = new Label
         {
             Text      = _order.OrderNumber,
-            Font      = PoppinsFont.New("Poppins", 18f, FontStyle.Bold),
+            Font      = PoppinsFont.New("Poppins", 13f, FontStyle.Bold),
             ForeColor = Color.White,
-            Location  = new Point(12, 10),
+            Location  = new Point(10, 7),
             AutoSize  = true,
         };
 
         _lblTable = new Label
         {
             Text      = $"{_order.TableName}  ·  {_order.GuestCount} pax",
-            Font      = PoppinsFont.New("Poppins", 11f),
-            ForeColor = Color.FromArgb(210, 210, 210),
-            Location  = new Point(12, 46),
+            Font      = PoppinsFont.New("Poppins", 8.5f),
+            ForeColor = KdsRowSub,
+            Location  = new Point(10, 32),
             AutoSize  = true,
         };
 
         _lblTimer = new Label
         {
             Text      = "0:00",
-            Font      = PoppinsFont.New("Poppins", 15f, FontStyle.Bold),
+            Font      = PoppinsFont.New("Poppins", 11f, FontStyle.Bold),
             ForeColor = GreenTime,
             AutoSize  = true,
         };
@@ -138,19 +167,19 @@ public sealed class KitchenOrderCard : UserControl
         _lblUrgent = new Label
         {
             Text      = "⚡ URGENTE",
-            Font      = PoppinsFont.New("Poppins", 9f, FontStyle.Bold),
+            Font      = PoppinsFont.New("Poppins", 7f, FontStyle.Bold),
             ForeColor = Color.White,
             BackColor = Color.FromArgb(239, 68, 68),
             Visible   = _order.IsUrgent,
             AutoSize  = true,
-            Padding   = new Padding(4, 2, 4, 2),
+            Padding   = new Padding(3, 1, 3, 1),
         };
 
         _pnlHeader.Controls.AddRange([_lblNum, _lblTable, _lblTimer, _lblUrgent]);
         _pnlHeader.Resize += (_, _) =>
         {
-            _lblTimer.Location  = new Point(_pnlHeader.Width - _lblTimer.Width - 12, 14);
-            _lblUrgent.Location = new Point(_pnlHeader.Width - _lblUrgent.Width - 12, 46);
+            _lblTimer.Location  = new Point(_pnlHeader.Width - _lblTimer.Width - 10, 10);
+            _lblUrgent.Location = new Point(_pnlHeader.Width - _lblUrgent.Width - 10, 32);
         };
 
         // Double-click header to toggle urgent
@@ -162,43 +191,48 @@ public sealed class KitchenOrderCard : UserControl
         {
             Dock      = DockStyle.Top,
             AutoScroll = false,
-            BackColor = _theme.Colors.Surface,
+            BackColor = KdsCardBg,
         };
 
         BuildItemRows();
 
         // ── Buttons ───────────────────────────────────────────────────────
-        var pnlBtns = new Panel
+        _pnlBtns = new Panel
         {
             Dock      = DockStyle.Top,
-            Height    = 56,
-            BackColor = _theme.Colors.Surface,
-            Padding   = new Padding(8, 8, 8, 0),
+            Height    = 42,
+            BackColor = KdsCardBg,
+            Padding   = new Padding(6, 6, 6, 0),
         };
-        pnlBtns.Paint += (_, e) =>
+        _pnlBtns.Paint += (_, e) =>
         {
-            using var pen = new Pen(_theme.Colors.Border, 1f);
-            e.Graphics.DrawLine(pen, 0, 0, pnlBtns.Width, 0);
+            using var pen = new Pen(KdsRowBorder, 1f);
+            e.Graphics.DrawLine(pen, 0, 0, _pnlBtns.Width, 0);
         };
 
-        _btnPrepare = MakeActionButton("▶  EN PREPARACIÓN", Color.FromArgb(234, 179, 8), Color.Black);
+        _btnPrepare = new PillButton(_theme, "▶  EN PREPARACIÓN",
+            idleBackColor: Color.FromArgb(234, 179, 8), idleBorderColor: Color.Transparent, idleTextColor: Color.Black);
         _btnPrepare.Visible = _order.Status == OrderStatus.New;
         _btnPrepare.Click  += (_, _) => MarkPreparingClicked?.Invoke(this);
 
-        _btnReady = MakeActionButton("✓  TODO LISTO", Color.FromArgb(34, 197, 94), Color.White);
+        _btnReady = new PillButton(_theme, "✓  TODO LISTO",
+            idleBackColor: Color.FromArgb(34, 197, 94), idleBorderColor: Color.Transparent, idleTextColor: Color.White);
         _btnReady.Visible = _order.Status == OrderStatus.Preparing;
         _btnReady.Click  += (_, _) => MarkReadyClicked?.Invoke(this);
 
-        pnlBtns.Controls.AddRange([_btnPrepare, _btnReady]);
-        pnlBtns.Resize += (_, _) =>
+        _pnlBtns.Controls.AddRange([_btnPrepare, _btnReady]);
+        _pnlBtns.Resize += (_, _) =>
         {
-            _btnPrepare.Size = _btnReady.Size = new Size(pnlBtns.Width - 16, 40);
+            _btnPrepare.Size = _btnReady.Size = new Size(_pnlBtns.Width - 12, 32);
         };
 
         // Bottom border line (card separator)
-        var pnlSep = new Panel { Dock = DockStyle.Top, Height = 4, BackColor = _theme.Colors.Background };
+        var pnlSep = new Panel { Dock = DockStyle.Top, Height = 3, BackColor = KdsCardBg };
 
-        Controls.AddRange([pnlSep, pnlBtns, _pnlItems, _pnlHeader]);
+        // Top-docked children are all inset from the left by Padding.Left (=AccentStripeWidth,
+        // set in the constructor), which is what leaves room for the self-painted accent stripe
+        // in OnPaint without needing a dedicated child panel for it.
+        Controls.AddRange([pnlSep, _pnlBtns, _pnlItems, _pnlHeader]);
     }
 
     private void BuildItemRows()
@@ -212,7 +246,7 @@ public sealed class KitchenOrderCard : UserControl
 
         foreach (var item in visibleItems)
         {
-            var row = new ItemRow(item, _itemChecked[item.ItemId], _theme);
+            var row = new ItemRow(item, _itemChecked[item.ItemId], KdsCardBg, KdsRowText, KdsRowSub, KdsRowBorder);
             row.Location = new Point(0, y);
             row.Width    = _pnlItems.Width > 0 ? _pnlItems.Width : 420;
             row.Anchor   = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
@@ -233,11 +267,11 @@ public sealed class KitchenOrderCard : UserControl
             {
                 Text      = "Sin ítems en esta estación",
                 Font      = _theme.Fonts.Small,
-                ForeColor = _theme.Colors.TextSecondary,
-                Location  = new Point(12, 10),
+                ForeColor = KdsRowSub,
+                Location  = new Point(10, 8),
                 AutoSize  = true,
             });
-            y += 30;
+            y += 24;
         }
 
         _pnlItems.Height = y + 6;
@@ -250,36 +284,57 @@ public sealed class KitchenOrderCard : UserControl
 
     private void CalculateHeight()
     {
-        int h = _pnlHeader.Height + _pnlItems.Height + 56 + 4; // header + items + buttons + sep
+        int h = _pnlHeader.Height + _pnlItems.Height + 42 + 3; // header + items + buttons + sep
         _targetH = h;
+    }
+
+    private void ApplyCardRegion()
+    {
+        if (Width <= 0 || Height <= 0) return;
+        using var path = GdiExtensions.CreateRoundedRect(new RectangleF(0, 0, Width, Height), CornerRadius);
+        Region = new Region(path);
     }
 
     // ── Painting ──────────────────────────────────────────────────────────
 
-    private void OnHeaderPaint(object? sender, PaintEventArgs e)
-    {
-        var g  = e.Graphics;
-        var bg = (_flashOn && _order.Age.TotalMinutes >= 12)
-            ? RedFlash
-            : HeaderBg();
-        using var b = new SolidBrush(bg);
-        g.FillRectangle(b, 0, 0, _pnlHeader.Width, _pnlHeader.Height);
-
-        // Urgent left stripe
-        if (_order.IsUrgent)
-        {
-            using var stripe = new SolidBrush(UrgentBorder);
-            g.FillRectangle(stripe, 0, 0, 5, _pnlHeader.Height);
-        }
-    }
+    // Suppress the default square-corner background fill — everything visible is painted
+    // below, in the exact rounded shape, same reasoning as OrderCardControl.
+    protected override void OnPaintBackground(PaintEventArgs e) { }
 
     protected override void OnPaint(PaintEventArgs e)
     {
-        base.OnPaint(e);
-        // Outer card border
-        using var pen = new Pen(_order.IsUrgent ? UrgentBorder : _theme.Colors.Border, _order.IsUrgent ? 2f : 1f);
-        e.Graphics.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
+        var g = e.Graphics;
+        g.SetQuality();
+
+        var full = new RectangleF(0, 0, Width, Height);
+        var bg = _dimmed ? Color.FromArgb(20, 20, 20) : KdsCardBg;
+        var stripeColor = _dimmed ? Color.FromArgb(50, 50, 50)
+            : (_flashOn && _order.Age.TotalMinutes >= 12) ? RedFlash
+            : AccentColor();
+
+        // Accent stripe: fill the whole rounded shape with the stripe color, then cover all but
+        // a thin left sliver with the card's own background — the sliver curves smoothly around
+        // the same corner because both fills share the exact same rounded-rect path, offset only
+        // in X. Same technique Pedidos' OrderCardControl uses for its own status stripe; a plain
+        // rectangular child panel there instead left square corners poking past the card's
+        // rounded shape, since a parent's Region does not clip child window rendering.
+        using (var stripeBrush = new SolidBrush(stripeColor))
+            g.FillRoundedRectangle(stripeBrush, full, CornerRadius);
+        var inner = new RectangleF(AccentStripeWidth, 0, Width - AccentStripeWidth, Height);
+        using (var bgBrush = new SolidBrush(bg))
+            g.FillRoundedRectangle(bgBrush, inner, CornerRadius);
+
+        // Inset 0.5px so the anti-aliased stroke has room to blend into the rounded region's
+        // edge instead of getting clipped into a jagged stairstep (same reasoning as
+        // OrderCardControl's own border).
+        var rect = new RectangleF(0.5f, 0.5f, Width - 1, Height - 1);
+        var borderColor = _order.IsUrgent ? UrgentBorder : (_hovered ? BorderHover : BorderIdle);
+        using var pen = new Pen(borderColor, _order.IsUrgent ? 2f : 1f);
+        g.DrawRoundedRectangle(pen, rect, CornerRadius);
     }
+
+    protected override void OnMouseEnter(EventArgs e) { _hovered = true;  Invalidate(); base.OnMouseEnter(e); }
+    protected override void OnMouseLeave(EventArgs e) { _hovered = false; Invalidate(); base.OnMouseLeave(e); }
 
     // ── Timer logic ───────────────────────────────────────────────────────
 
@@ -294,13 +349,12 @@ public sealed class KitchenOrderCard : UserControl
         if (age.TotalMinutes < 8)
         {
             _lblTimer.ForeColor = GreenTime;
-            _flashTimer.Stop();
-            _pnlHeader.BackColor = HeaderBg();
+            if (_flashTimer.Enabled) { _flashTimer.Stop(); Invalidate(); }
         }
         else if (age.TotalMinutes < 12)
         {
             _lblTimer.ForeColor = YellowTime;
-            _flashTimer.Stop();
+            if (_flashTimer.Enabled) { _flashTimer.Stop(); Invalidate(); }
         }
         else
         {
@@ -309,7 +363,7 @@ public sealed class KitchenOrderCard : UserControl
         }
 
         // Reposition timer label
-        _lblTimer.Location = new Point(_pnlHeader.Width - _lblTimer.Width - 12, 14);
+        _lblTimer.Location = new Point(_pnlHeader.Width - _lblTimer.Width - 10, 10);
     }
 
     // ── Slide-in animation ────────────────────────────────────────────────
@@ -336,8 +390,7 @@ public sealed class KitchenOrderCard : UserControl
         _lblNum.Text   = updated.OrderNumber;
         _lblTable.Text = $"{updated.TableName}  ·  {updated.GuestCount} pax";
         _lblUrgent.Visible = updated.IsUrgent;
-        _pnlHeader.BackColor = HeaderBg();
-        _pnlHeader.Invalidate();
+        Invalidate();
 
         _btnPrepare.Visible = updated.Status == OrderStatus.New;
         _btnReady.Visible   = updated.Status == OrderStatus.Preparing;
@@ -361,34 +414,28 @@ public sealed class KitchenOrderCard : UserControl
         {
             if (_dimmed == value) return;
             _dimmed = value;
-            _pnlHeader.BackColor = value ? Color.FromArgb(20, 20, 20) : HeaderBg();
-            BackColor            = value ? Color.FromArgb(20, 20, 20) : _theme.Colors.Surface;
+            var bg = value ? Color.FromArgb(20, 20, 20) : KdsCardBg;
+            _pnlHeader.BackColor = bg;
+            _pnlItems.BackColor  = bg;
+            _pnlBtns.BackColor   = bg;
+            BackColor            = bg;
             Invalidate(true);
         }
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────
 
-    private Color HeaderBg() => _order.Status switch
+    // Matches Pedidos' OrderCardControl.GetStatusColor palette — same status colors, just
+    // carried on a thin stripe here instead of a full header fill. Urgent overrides it with red.
+    private Color StatusColor() => _order.Status switch
     {
-        OrderStatus.New       => Color.FromArgb(30,  58, 138),  // deep blue
-        OrderStatus.Preparing => Color.FromArgb(80,  50,  10),  // dark amber
-        OrderStatus.Ready     => Color.FromArgb(20,  83,  45),  // dark green
-        _                     => Color.FromArgb(40,  40,  40),
+        OrderStatus.New       => Color.FromArgb(33,  150, 243),
+        OrderStatus.Preparing => Color.FromArgb(255, 152,  0),
+        OrderStatus.Ready     => Color.FromArgb(76,  175,  80),
+        _                     => Color.FromArgb(120, 120, 120),
     };
 
-    private static Button MakeActionButton(string text, Color bg, Color fg) => new()
-    {
-        Text      = text,
-        Height    = 40,
-        Dock      = DockStyle.None,
-        BackColor = bg,
-        ForeColor = fg,
-        FlatStyle = FlatStyle.Flat,
-        Font      = PoppinsFont.New("Poppins", 11f, FontStyle.Bold),
-        Cursor    = Cursors.Hand,
-        FlatAppearance = { BorderSize = 0 },
-    };
+    private Color AccentColor() => _order.IsUrgent ? UrgentBorder : StatusColor();
 
     protected override void Dispose(bool disposing)
     {
@@ -407,18 +454,27 @@ public sealed class KitchenOrderCard : UserControl
         private bool _checked;
         public event Action<bool>? CheckedChanged;
 
-        public ItemRow(KitchenItemDto item, bool initialChecked, ThemeManager theme)
+        private readonly Color _textPrimary;
+        private readonly Color _textSecondary;
+        private readonly Color _border;
+
+        public ItemRow(
+            KitchenItemDto item, bool initialChecked,
+            Color bg, Color textPrimary, Color textSecondary, Color border)
         {
-            _checked      = initialChecked;
-            BackColor     = theme.Colors.Surface;
+            _checked       = initialChecked;
+            _textPrimary   = textPrimary;
+            _textSecondary = textSecondary;
+            _border        = border;
+            BackColor      = bg;
             DoubleBuffered = true;
 
-            int rowH = 48;
-            if (item.Modifiers.Count > 0)  rowH += 18;
-            if (!string.IsNullOrEmpty(item.Notes)) rowH += 18;
+            int rowH = 36;
+            if (item.Modifiers.Count > 0)  rowH += 14;
+            if (!string.IsNullOrEmpty(item.Notes)) rowH += 14;
             Height = rowH;
 
-            Paint += (_, e) => DrawRow(e.Graphics, item, theme);
+            Paint += (_, e) => DrawRow(e.Graphics, item);
 
             // Entire row is the touch target
             Cursor = Cursors.Hand;
@@ -430,14 +486,14 @@ public sealed class KitchenOrderCard : UserControl
             };
         }
 
-        private void DrawRow(Graphics g, KitchenItemDto item, ThemeManager theme)
+        private void DrawRow(Graphics g, KitchenItemDto item)
         {
             g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
             g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
 
-            // Checkbox (48x48 touch target)
-            var cbRect = new Rectangle(8, (48 - 28) / 2, 28, 28);
-            using (var cbBorder = new Pen(_checked ? Color.FromArgb(34, 197, 94) : theme.Colors.Border, 2f))
+            // Checkbox (36x36 touch target)
+            var cbRect = new Rectangle(6, (36 - 20) / 2, 20, 20);
+            using (var cbBorder = new Pen(_checked ? Color.FromArgb(34, 197, 94) : _border, 2f))
                 g.DrawRectangle(cbBorder, cbRect);
 
             if (_checked)
@@ -454,19 +510,19 @@ public sealed class KitchenOrderCard : UserControl
             }
 
             // Product name
-            int textX = 48;
-            int textY = 10;
+            int textX = 36;
+            int textY = 7;
             bool hasAllergens = item.Allergens.Count > 0;
-            var nameForeColor = _checked ? theme.Colors.TextSecondary : theme.Colors.TextPrimary;
+            var nameForeColor = _checked ? _textSecondary : _textPrimary;
             using var nameBrush = new SolidBrush(nameForeColor);
-            using var nameFont  = PoppinsFont.New("Poppins", 12f, FontStyle.Bold);
+            using var nameFont  = PoppinsFont.New("Poppins", 9.5f, FontStyle.Bold);
             var quantityText = $"{item.Quantity}×  {item.ProductName}";
             if (_checked)
             {
                 // Strikethrough via DrawLine
                 var sz = g.MeasureString(quantityText, nameFont);
                 g.DrawString(quantityText, nameFont, nameBrush, textX, textY);
-                using var strikeP = new Pen(theme.Colors.TextSecondary, 1.5f);
+                using var strikeP = new Pen(_textSecondary, 1.5f);
                 g.DrawLine(strikeP, textX, textY + sz.Height / 2 + 2, textX + sz.Width, textY + sz.Height / 2 + 2);
             }
             else
@@ -477,42 +533,42 @@ public sealed class KitchenOrderCard : UserControl
             // Allergen badges
             if (hasAllergens && !_checked)
             {
-                using var allergenFont  = PoppinsFont.New("Poppins", 7.5f, FontStyle.Bold);
+                using var allergenFont  = PoppinsFont.New("Poppins", 6.5f, FontStyle.Bold);
                 using var allergenBrush = new SolidBrush(AllergenFg);
-                int ax = Width - 8;
+                int ax = Width - 6;
                 foreach (var allergen in item.Allergens.Reverse())
                 {
                     var abbr = allergen.Length > 3 ? allergen[..3].ToUpper() : allergen.ToUpper();
                     var aSize = g.MeasureString(abbr, allergenFont);
-                    ax -= (int)aSize.Width + 10;
-                    var aBounds = new RectangleF(ax, textY + 2, aSize.Width + 6, 16);
+                    ax -= (int)aSize.Width + 8;
+                    var aBounds = new RectangleF(ax, textY + 1, aSize.Width + 6, 13);
                     using var aBorder = new Pen(AllergenFg, 1.5f);
                     g.DrawRectangle(aBorder, aBounds.X, aBounds.Y, aBounds.Width, aBounds.Height);
-                    g.DrawString(abbr, allergenFont, allergenBrush, ax + 3, textY + 3);
+                    g.DrawString(abbr, allergenFont, allergenBrush, ax + 3, textY + 2);
                 }
             }
 
             // Modifiers (italic, below name)
-            int subY = textY + 24;
+            int subY = textY + 18;
             if (item.Modifiers.Count > 0 && !_checked)
             {
-                using var modFont  = PoppinsFont.New("Poppins", 9.5f, FontStyle.Italic);
-                using var modBrush = new SolidBrush(theme.Colors.TextSecondary);
+                using var modFont  = PoppinsFont.New("Poppins", 8f, FontStyle.Italic);
+                using var modBrush = new SolidBrush(_textSecondary);
                 g.DrawString("  " + string.Join("  ·  ", item.Modifiers), modFont, modBrush, textX, subY);
-                subY += 18;
+                subY += 14;
             }
 
             // Notes
             if (!string.IsNullOrEmpty(item.Notes) && !_checked)
             {
-                using var noteFont  = PoppinsFont.New("Poppins", 9f, FontStyle.Italic);
+                using var noteFont  = PoppinsFont.New("Poppins", 7.5f, FontStyle.Italic);
                 using var noteBrush = new SolidBrush(Color.FromArgb(234, 179, 8));
                 g.DrawString($"  ★ {item.Notes}", noteFont, noteBrush, textX, subY);
             }
 
             // Bottom divider
             using var divPen = new Pen(Color.FromArgb(40, 40, 40), 1f);
-            g.DrawLine(divPen, 8, Height - 1, Width - 8, Height - 1);
+            g.DrawLine(divPen, 6, Height - 1, Width - 6, Height - 1);
         }
     }
 }

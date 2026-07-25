@@ -13,12 +13,25 @@ namespace RushOrder.Desktop.Forms.Controls;
 internal sealed class PillButton : Control
 {
     private readonly ThemeManager _theme;
+    private readonly Color _idleBackColor;
+    private readonly Color _idleBorderColor;
+    private readonly Color? _idleTextColor;
     private bool _hovered;
     private bool _pressed;
+    private bool _active;
 
-    public PillButton(ThemeManager theme, string text)
+    // idleBackColor/idleBorderColor accept Color.Transparent (alpha 0) as an explicit "don't
+    // draw this in the idle state" sentinel — e.g. the KDS header buttons want no border at
+    // rest. idleTextColor overrides colors.TextPrimary for callers (like KDS) that force a dark
+    // background regardless of the app's light/dark theme, where TextPrimary would be unreadable.
+    public PillButton(
+        ThemeManager theme, string text,
+        Color? idleBackColor = null, Color? idleBorderColor = null, Color? idleTextColor = null)
     {
-        _theme = theme;
+        _theme           = theme;
+        _idleBackColor   = idleBackColor   ?? theme.Colors.Surface;
+        _idleBorderColor = idleBorderColor ?? theme.Colors.Border;
+        _idleTextColor   = idleTextColor;
         SetStyle(ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer |
                   ControlStyles.AllPaintingInWmPaint | ControlStyles.ResizeRedraw, true);
         Font   = theme.Fonts.Small;
@@ -26,6 +39,14 @@ internal sealed class PillButton : Control
         Cursor = Cursors.Hand;
         base.Text = text;
         AutoSizeToText();
+    }
+
+    // Persistent selected/toggled look — same full pink-red fill as a mouse-down press, but
+    // sticks until explicitly cleared. Used for station filters and the mute toggle.
+    public bool IsActive
+    {
+        get => _active;
+        set { if (_active == value) return; _active = value; Invalidate(); }
     }
 
     [AllowNull]
@@ -63,14 +84,22 @@ internal sealed class PillButton : Control
         var rect   = new RectangleF(0.5f, 0.5f, Width - 1, Height - 1);
         var radius = Height / 2f;
 
-        using var bg = new SolidBrush(_pressed ? colors.Primary : colors.Surface);
-        g.FillRoundedRectangle(bg, rect, radius);
+        bool filled  = _pressed || _active;
+        var bgColor  = filled ? colors.Primary : _idleBackColor;
+        if (bgColor.A > 0)
+        {
+            using var bg = new SolidBrush(bgColor);
+            g.FillRoundedRectangle(bg, rect, radius);
+        }
 
-        var borderColor = _pressed || _hovered ? colors.Primary : colors.Border;
-        using var border = new Pen(borderColor, 1f);
-        g.DrawRoundedRectangle(border, rect, radius);
+        var borderColor = filled || _hovered ? colors.Primary : _idleBorderColor;
+        if (borderColor.A > 0)
+        {
+            using var border = new Pen(borderColor, 1f);
+            g.DrawRoundedRectangle(border, rect, radius);
+        }
 
-        using var textBrush = new SolidBrush(_pressed ? Color.White : colors.TextPrimary);
+        using var textBrush = new SolidBrush(filled ? Color.White : (_idleTextColor ?? colors.TextPrimary));
         g.DrawString(Text, Font, textBrush, new RectangleF(0, 0, Width, Height), new StringFormat
         {
             Alignment     = StringAlignment.Center,
