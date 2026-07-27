@@ -41,9 +41,10 @@ public sealed class KitchenOrderCard : UserControl
     private readonly System.Windows.Forms.Timer _flashTimer;
     private readonly System.Windows.Forms.Timer _animTimer;
 
-    private bool _flashOn   = false;
-    private int  _animH     = 0;
-    private int  _targetH   = 0;
+    private bool _flashOn     = false;
+    private int  _animH       = 0;
+    private int  _targetH     = 0;
+    private bool _slideInDone = false;
 
     // Swipe
     private int _swipeStartX;
@@ -55,6 +56,8 @@ public sealed class KitchenOrderCard : UserControl
     // ── Style ─────────────────────────────────────────────────────────────
     private const float CornerRadius      = 8f;
     private const int   AccentStripeWidth = 5;
+    private const int   HeaderMinHeight   = 52;
+    private const int   ButtonsPanelHeight = 42;
 
     // Card chrome stays explicitly dark regardless of the app's light/dark theme — same
     // reasoning as KitchenDisplayView's Kds* constants ("always dark, regardless of theme").
@@ -134,7 +137,7 @@ public sealed class KitchenOrderCard : UserControl
         _pnlHeader = new Panel
         {
             Dock      = DockStyle.Top,
-            Height    = 52,
+            Height    = HeaderMinHeight,
             BackColor = KdsCardBg,
         };
 
@@ -152,7 +155,6 @@ public sealed class KitchenOrderCard : UserControl
             Text      = $"{_order.TableName}  ·  {_order.GuestCount} pax",
             Font      = PoppinsFont.New("Poppins", 8.5f),
             ForeColor = KdsRowSub,
-            Location  = new Point(10, 32),
             AutoSize  = true,
         };
 
@@ -176,15 +178,13 @@ public sealed class KitchenOrderCard : UserControl
         };
 
         _pnlHeader.Controls.AddRange([_lblNum, _lblTable, _lblTimer, _lblUrgent]);
-        _pnlHeader.Resize += (_, _) =>
-        {
-            _lblTimer.Location  = new Point(_pnlHeader.Width - _lblTimer.Width - 10, 10);
-            _lblUrgent.Location = new Point(_pnlHeader.Width - _lblUrgent.Width - 10, 32);
-        };
+        _pnlHeader.Resize += (_, _) => RepositionHeaderRight();
 
         // Double-click header to toggle urgent
         _pnlHeader.DoubleClick += (_, _) => ToggleUrgentClicked?.Invoke(this);
         _lblNum.DoubleClick    += (_, _) => ToggleUrgentClicked?.Invoke(this);
+
+        RepositionHeaderRight();
 
         // ── Items ─────────────────────────────────────────────────────────
         _pnlItems = new Panel
@@ -200,7 +200,7 @@ public sealed class KitchenOrderCard : UserControl
         _pnlBtns = new Panel
         {
             Dock      = DockStyle.Top,
-            Height    = 42,
+            Height    = ButtonsPanelHeight,
             BackColor = KdsCardBg,
             Padding   = new Padding(6, 6, 6, 0),
         };
@@ -210,21 +210,20 @@ public sealed class KitchenOrderCard : UserControl
             e.Graphics.DrawLine(pen, 0, 0, _pnlBtns.Width, 0);
         };
 
-        _btnPrepare = new PillButton(_theme, "▶  EN PREPARACIÓN",
+        _btnPrepare = new PillButton(_theme, "▶  En preparación",
             idleBackColor: Color.FromArgb(234, 179, 8), idleBorderColor: Color.Transparent, idleTextColor: Color.Black);
         _btnPrepare.Visible = _order.Status == OrderStatus.New;
         _btnPrepare.Click  += (_, _) => MarkPreparingClicked?.Invoke(this);
 
-        _btnReady = new PillButton(_theme, "✓  TODO LISTO",
+        _btnReady = new PillButton(_theme, "✓  Todo listo",
             idleBackColor: Color.FromArgb(34, 197, 94), idleBorderColor: Color.Transparent, idleTextColor: Color.White);
         _btnReady.Visible = _order.Status == OrderStatus.Preparing;
         _btnReady.Click  += (_, _) => MarkReadyClicked?.Invoke(this);
 
         _pnlBtns.Controls.AddRange([_btnPrepare, _btnReady]);
-        _pnlBtns.Resize += (_, _) =>
-        {
-            _btnPrepare.Size = _btnReady.Size = new Size(_pnlBtns.Width - 12, 32);
-        };
+        _pnlBtns.Resize += (_, _) => LayoutButtons();
+        LayoutButtons();
+        UpdateButtonsPanelHeight();
 
         // Bottom border line (card separator)
         var pnlSep = new Panel { Dock = DockStyle.Top, Height = 3, BackColor = KdsCardBg };
@@ -284,8 +283,22 @@ public sealed class KitchenOrderCard : UserControl
 
     private void CalculateHeight()
     {
-        int h = _pnlHeader.Height + _pnlItems.Height + 42 + 3; // header + items + buttons + sep
+        int h = _pnlHeader.Height + _pnlItems.Height + _pnlBtns.Height + 3; // header + items + buttons + sep
         _targetH = h;
+    }
+
+    // No status has both buttons hidden AND the panel still taking up space — a "Listo" order
+    // (past both New and Preparing) has neither _btnPrepare nor _btnReady visible, so the panel
+    // that exists solely to host them collapses to 0 instead of leaving a dead gap above the
+    // separator line.
+    private void UpdateButtonsPanelHeight()
+    {
+        var wanted = _btnPrepare.Visible || _btnReady.Visible ? ButtonsPanelHeight : 0;
+        if (_pnlBtns.Height == wanted) return;
+
+        _pnlBtns.Height = wanted;
+        CalculateHeight();
+        if (_slideInDone) Height = _targetH;
     }
 
     private void ApplyCardRegion()
@@ -362,8 +375,54 @@ public sealed class KitchenOrderCard : UserControl
             if (!_flashTimer.Enabled) _flashTimer.Start();
         }
 
-        // Reposition timer label
-        _lblTimer.Location = new Point(_pnlHeader.Width - _lblTimer.Width - 10, 10);
+        RepositionHeaderRight();
+    }
+
+    // Right-aligned timer + urgent badge stack. Urgent's Y is derived from the timer's actual
+    // Bottom (not a fixed constant) so it never gets clipped when the label renders taller than
+    // expected — e.g. at higher Windows DPI scaling, where AutoSize height grows accordingly.
+    // The header panel's own Height is grown to match (instead of staying at a fixed constant),
+    // otherwise that same taller stack would get its bottom sliced off by the items panel docked
+    // right below it.
+    private void RepositionHeaderRight()
+    {
+        // Same reasoning as the timer/urgent stack below: _lblTable's Y used to be a fixed 32,
+        // which _lblNum's actual rendered Bottom (13pt Bold — routinely taller than the 25px
+        // gap that constant assumed) could reach into, clipping the top of "Mesa X" under it.
+        _lblTable.Location  = new Point(10, _lblNum.Bottom + 2);
+
+        _lblTimer.Location  = new Point(_pnlHeader.Width - _lblTimer.Width - 10, 10);
+        _lblUrgent.Location = new Point(_pnlHeader.Width - _lblUrgent.Width - 10, _lblTimer.Bottom + 4);
+
+        var rightBottom = _lblUrgent.Visible ? _lblUrgent.Bottom : _lblTimer.Bottom;
+        var leftBottom  = _lblTable.Bottom;
+        var wanted      = Math.Max(HeaderMinHeight, Math.Max(rightBottom, leftBottom) + 8);
+        if (_pnlHeader.Height != wanted)
+        {
+            _pnlHeader.Height = wanted;
+            // _pnlItems doesn't exist yet on the very first call (made mid-BuildLayout, before
+            // the items panel is built) — BuildLayout's own trailing CalculateHeight() call
+            // covers that initial sizing instead.
+            if (_pnlItems != null)
+            {
+                CalculateHeight();
+                // Once the slide-in animation has finished, nothing else re-applies _targetH to
+                // Height, so a later header growth/shrink (urgent toggling, DPI-driven resize)
+                // needs to push it through directly instead of only updating the target.
+                if (_slideInDone) Height = _targetH;
+            }
+        }
+    }
+
+    // Size never used Location — both buttons defaulted to (0,0), which left them flush against
+    // the panel's top-left instead of centered in the space Padding carved out for them.
+    private void LayoutButtons()
+    {
+        const int btnHeight = 32;
+        var size = new Size(_pnlBtns.Width - _pnlBtns.Padding.Horizontal, btnHeight);
+        var loc  = new Point(_pnlBtns.Padding.Left, (_pnlBtns.Height - btnHeight) / 2);
+        _btnPrepare.Size = _btnReady.Size = size;
+        _btnPrepare.Location = _btnReady.Location = loc;
     }
 
     // ── Slide-in animation ────────────────────────────────────────────────
@@ -376,6 +435,7 @@ public sealed class KitchenOrderCard : UserControl
             Height = _targetH;
             _animTimer.Stop();
             _animTimer.Dispose();
+            _slideInDone = true;
             return;
         }
         _animH += (int)Math.Max(1, diff * 0.35);
@@ -390,10 +450,12 @@ public sealed class KitchenOrderCard : UserControl
         _lblNum.Text   = updated.OrderNumber;
         _lblTable.Text = $"{updated.TableName}  ·  {updated.GuestCount} pax";
         _lblUrgent.Visible = updated.IsUrgent;
+        RepositionHeaderRight();
         Invalidate();
 
         _btnPrepare.Visible = updated.Status == OrderStatus.New;
         _btnReady.Visible   = updated.Status == OrderStatus.Preparing;
+        UpdateButtonsPanelHeight();
     }
 
     public void ApplyStationFilter(KitchenStation station)

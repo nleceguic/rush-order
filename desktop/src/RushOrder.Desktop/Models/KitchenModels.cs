@@ -16,12 +16,12 @@ public static class KitchenStationHelper
 {
     public static string DisplayName(this KitchenStation s) => s switch
     {
-        KitchenStation.All         => "TODOS",
-        KitchenStation.HotKitchen  => "COCINA CALIENTE",
-        KitchenStation.ColdKitchen => "COCINA FRÍA",
-        KitchenStation.Grill       => "PLANCHA",
-        KitchenStation.Dessert     => "POSTRE",
-        KitchenStation.Bar         => "BARRA",
+        KitchenStation.All         => "Todos",
+        KitchenStation.HotKitchen  => "Cocina caliente",
+        KitchenStation.ColdKitchen => "Cocina fría",
+        KitchenStation.Grill       => "Plancha",
+        KitchenStation.Dessert     => "Postre",
+        KitchenStation.Bar         => "Barra",
         _                          => s.ToString(),
     };
 
