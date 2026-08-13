@@ -15,6 +15,7 @@ public sealed class GetPublicMenuQueryHandlerTests
     private readonly Mock<IRestaurantRepository> _restaurantRepo = new();
     private readonly Mock<ICategoryRepository> _categoryRepo = new();
     private readonly Mock<IProductRepository> _productRepo = new();
+    private readonly Mock<IPromotionRepository> _promotionRepo = new();
     private readonly Mock<IMenuCacheService> _cacheService = new();
 
     private readonly GetPublicMenuQueryHandler _handler;
@@ -29,6 +30,7 @@ public sealed class GetPublicMenuQueryHandlerTests
             _restaurantRepo.Object,
             _categoryRepo.Object,
             _productRepo.Object,
+            _promotionRepo.Object,
             _cacheService.Object);
     }
 
@@ -98,15 +100,47 @@ public sealed class GetPublicMenuQueryHandlerTests
             .ReturnsAsync(new List<Category>());
         _productRepo.Setup(r => r.GetByRestaurantPublicAsync(It.IsAny<Guid>(), true, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<Product>());
+        _promotionRepo.Setup(r => r.GetActiveByRestaurantAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<Promotion>());
 
         var result = await _handler.Handle(new GetPublicMenuQuery(table.QrCode), CancellationToken.None);
 
         result.Should().NotBeNull();
         result!.Restaurant.Name.Should().Be("El Restaurante");
+        result.ActivePromotions.Should().BeEmpty();
         _cacheService.Verify(c => c.SetMenuAsync(
             table.QrCode,
             It.IsAny<PublicMenuDto>(),
             TimeSpan.FromSeconds(30),
             It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_ValidQrToken_PopulatesActivePromotionsFromRepository()
+    {
+        var table = Table.Create(TenantId, RestaurantId, "Mesa 1", 4);
+        var restaurant = Restaurant.Create(TenantId, "El Restaurante", "Calle 1", "+34600000000", "test@r.com");
+        var promotion = Promotion.Create(
+            TenantId, RestaurantId, "2x1 en cañas", "Toda la tarde",
+            DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(1));
+
+        _cacheService.Setup(c => c.GetMenuAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((PublicMenuDto?)null);
+        _tableRepo.Setup(r => r.GetByQrCodeAsync(table.QrCode, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(table);
+        _restaurantRepo.Setup(r => r.GetByIdPublicAsync(RestaurantId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(restaurant);
+        _categoryRepo.Setup(r => r.GetByRestaurantPublicAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<Category>());
+        _productRepo.Setup(r => r.GetByRestaurantPublicAsync(It.IsAny<Guid>(), true, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<Product>());
+        _promotionRepo.Setup(r => r.GetActiveByRestaurantAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<Promotion> { promotion });
+
+        var result = await _handler.Handle(new GetPublicMenuQuery(table.QrCode), CancellationToken.None);
+
+        result.Should().NotBeNull();
+        result!.ActivePromotions.Should().ContainSingle(p =>
+            p.Id == promotion.Id && p.Name == "2x1 en cañas" && p.Description == "Toda la tarde");
     }
 }

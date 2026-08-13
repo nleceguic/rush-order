@@ -64,16 +64,13 @@ export type OrderStatus = 'New' | 'Preparing' | 'Ready' | 'Served' | 'Paid' | 'C
 
 export type LoyaltyLevel = 'Bronze' | 'Silver' | 'Gold' | 'Platinum'
 
-export type PromotionType = 'PERCENT_OFF' | 'BUY_X_GET_Y' | 'PRODUCT_PRICE'
-
+// Free-text promotion (name + description) — matches backend PromotionDto. No
+// product/category association, discount type, or end date yet (design decision:
+// see Promotion.cs on the backend).
 export interface Promotion {
   id:          string
-  title:       string
+  name:        string
   description: string
-  type:        PromotionType
-  value:       number
-  productId?:  string
-  endsAt?:     string
 }
 
 export interface SavedPaymentMethod {

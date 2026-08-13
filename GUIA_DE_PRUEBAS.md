@@ -350,13 +350,17 @@ Estos son huecos reales detectados durante el desarrollo — no son errores de t
 (`/`, `MenuPage.tsx`) sí funciona, pero solo si le pasas como `VITE_RESTAURANT_ID` el `QrCode`
 de una **mesa** (no el `restaurantId` del restaurante) — es lo que se indica en §3.
 
-### 7.2 Algunos hooks de la PWA no desenvuelven el envelope real de la API
+### 7.2 Promociones: diseño mínimo (texto libre, sin segmentación)
 
-El backend envuelve todas las respuestas en `{ status, data, meta }`
-(`ApiResponse<T>`). `useMenu.ts` y `usePromotions.ts` (entre otros) leen `query.data`
-directamente en vez de `query.data.data`, así que esos dos hooks específicos no van a mostrar
-datos reales aunque el backend responda bien. `useRecommendations`/`useExperiment` (añadidos
-después) sí lo hacen correctamente — úsalos como referencia si vas a arreglar los otros.
+`Promotion` (dominio + `PromotionDto`) es solo `Name` + `Description` — sin asociación a
+productos/categorías, sin cupones ni reglas de descuento. Es una decisión de diseño deliberada
+para la primera versión, a revisar más adelante si el negocio lo pide. `GetPublicMenuQueryHandler`
+puebla `ActivePromotions` consultando `IPromotionRepository.GetActiveByRestaurantAsync`
+(filtra por `IsActive` y por fecha actual dentro de `[StartDate, EndDate]`).
+
+(Nota histórica: esta sección documentaba un supuesto bug de desenvuelto de envelope en
+`useMenu.ts`/`usePromotions.ts` — se confirmó que el interceptor de axios ya desenvuelve
+`{ status, data }` correctamente y no hacía falta ningún cambio ahí.)
 
 ### 7.3 `StatisticsDataService` (escritorio) siempre usa datos mock
 

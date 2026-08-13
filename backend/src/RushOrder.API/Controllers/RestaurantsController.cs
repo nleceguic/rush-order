@@ -1,6 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RushOrder.API.Common;
+using RushOrder.Application.Menu.DTOs;
+using RushOrder.Application.Promotions.Commands;
+using RushOrder.Application.Promotions.Queries;
 using RushOrder.Application.Restaurants.Commands;
 using RushOrder.Application.Restaurants.DTOs;
 using RushOrder.Application.Restaurants.Queries;
@@ -82,6 +85,37 @@ public sealed class RestaurantsController : ApiController
             return NoContent();
         });
 
+    // ── Promotions ───────────────────────────────────────────────────────────
+    // Free-text promotions (name + description), no product/category association or
+    // discount rules yet — see Promotion.cs for the design-decision note.
+
+    // GET /api/v1/restaurants/{restaurantId}/promotions
+    [HttpGet("{restaurantId:guid}/promotions")]
+    [AllowAnonymous]
+    [ProducesResponseType(typeof(ApiResponse<IReadOnlyList<PromotionDto>>), StatusCodes.Status200OK)]
+    public Task<IActionResult> GetActivePromotions(Guid restaurantId, CancellationToken ct) =>
+        ExecuteAsync(async () =>
+        {
+            var result = await Mediator.Send(new GetActivePromotionsQuery(restaurantId), ct);
+            return OkData(result);
+        });
+
+    // POST /api/v1/restaurants/{restaurantId}/promotions
+    [HttpPost("{restaurantId:guid}/promotions")]
+    [Authorize(Roles = "Admin,Owner,Manager")]
+    [ProducesResponseType(typeof(ApiResponse<Guid>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status422UnprocessableEntity)]
+    public Task<IActionResult> CreatePromotion(
+        Guid restaurantId,
+        [FromBody] CreatePromotionRequest req,
+        CancellationToken ct) =>
+        ExecuteAsync(async () =>
+        {
+            var id = await Mediator.Send(new CreatePromotionCommand(
+                restaurantId, req.Name, req.Description, req.StartDate, req.EndDate), ct);
+            return CreatedData(id, $"/api/v1/restaurants/{restaurantId}/promotions/{id}");
+        });
+
     // ── Request DTOs ─────────────────────────────────────────────────────────
 
     public sealed record CreateRestaurantRequest(
@@ -113,4 +147,10 @@ public sealed class RestaurantsController : ApiController
         bool PrintReceiptByDefault,
         bool KitchenDisplayEnabled,
         int OrderAlertAfterMinutes);
+
+    public sealed record CreatePromotionRequest(
+        string Name,
+        string? Description,
+        DateTimeOffset StartDate,
+        DateTimeOffset EndDate);
 }

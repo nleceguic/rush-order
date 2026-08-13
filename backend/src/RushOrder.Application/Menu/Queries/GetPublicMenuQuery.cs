@@ -12,6 +12,7 @@ public sealed class GetPublicMenuQueryHandler : IRequestHandler<GetPublicMenuQue
     private readonly IRestaurantRepository _restaurantRepository;
     private readonly ICategoryRepository _categoryRepository;
     private readonly IProductRepository _productRepository;
+    private readonly IPromotionRepository _promotionRepository;
     private readonly IMenuCacheService _cacheService;
 
     public GetPublicMenuQueryHandler(
@@ -19,12 +20,14 @@ public sealed class GetPublicMenuQueryHandler : IRequestHandler<GetPublicMenuQue
         IRestaurantRepository restaurantRepository,
         ICategoryRepository categoryRepository,
         IProductRepository productRepository,
+        IPromotionRepository promotionRepository,
         IMenuCacheService cacheService)
     {
         _tableRepository = tableRepository;
         _restaurantRepository = restaurantRepository;
         _categoryRepository = categoryRepository;
         _productRepository = productRepository;
+        _promotionRepository = promotionRepository;
         _cacheService = cacheService;
     }
 
@@ -67,11 +70,17 @@ public sealed class GetPublicMenuQueryHandler : IRequestHandler<GetPublicMenuQue
             .ToList()
             .AsReadOnly();
 
+        var activePromotions = await _promotionRepository.GetActiveByRestaurantAsync(restaurant.Id, cancellationToken);
+        var promotionDtos = activePromotions
+            .Select(p => new PromotionDto(p.Id, p.Name, p.Description ?? string.Empty))
+            .ToList()
+            .AsReadOnly();
+
         var menu = new PublicMenuDto(
             restaurant.Id,
             new RestaurantInfoDto(restaurant.Name, restaurant.LogoUrl, restaurant.CoverUrl, null, restaurant.Settings.UpsellingEnabled),
             menuCategories,
-            []);
+            promotionDtos);
 
         await _cacheService.SetMenuAsync(request.QrToken, menu, TimeSpan.FromSeconds(30), cancellationToken);
 

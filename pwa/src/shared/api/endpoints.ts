@@ -31,7 +31,7 @@ export const ENDPOINTS = {
     history: '/loyalty/history',
   },
   promotions: {
-    active: (restaurantId: string) => `/restaurants/${restaurantId}/promotions`,
+    active: (restaurantId: string) => `/v1/restaurants/${restaurantId}/promotions`,
   },
   recommendations: {
     list: '/v1/recommendations',

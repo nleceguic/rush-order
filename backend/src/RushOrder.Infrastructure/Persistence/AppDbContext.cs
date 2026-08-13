@@ -41,6 +41,7 @@ public sealed class AppDbContext : DbContext, IUnitOfWork
     public DbSet<OrderStatusHistory> OrderStatusHistories => Set<OrderStatusHistory>();
     public DbSet<OrderRating> OrderRatings => Set<OrderRating>();
     public DbSet<DemandForecast> DemandForecasts => Set<DemandForecast>();
+    public DbSet<Promotion> Promotions => Set<Promotion>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -62,6 +63,7 @@ public sealed class AppDbContext : DbContext, IUnitOfWork
         modelBuilder.Entity<OrderStatusHistory>().HasQueryFilter(e => e.TenantId == _currentTenant.TenantId);
         modelBuilder.Entity<OrderRating>().HasQueryFilter(e => e.TenantId == _currentTenant.TenantId);
         modelBuilder.Entity<DemandForecast>().HasQueryFilter(e => e.TenantId == _currentTenant.TenantId);
+        modelBuilder.Entity<Promotion>().HasQueryFilter(e => e.TenantId == _currentTenant.TenantId);
     }
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
