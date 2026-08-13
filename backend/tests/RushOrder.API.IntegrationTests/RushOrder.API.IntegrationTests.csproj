@@ -9,18 +9,24 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="coverlet.collector" Version="6.0.0" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
-    <PackageReference Include="xunit" Version="2.5.3" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="2.5.3" />
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
 
-    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.0" />
-    <PackageReference Include="Testcontainers.PostgreSql" Version="3.10.0" />
-    <PackageReference Include="Testcontainers.Redis" Version="3.10.0" />
-    <PackageReference Include="Respawn" Version="6.2.1" />
-    <PackageReference Include="FluentAssertions" Version="6.12.2" />
-    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="8.0.0" />
-    <PackageReference Include="Npgsql" Version="9.0.3" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <!-- Direct reference so CPM pins this project's own resolution to the same
+         Microsoft.EntityFrameworkCore.Relational version as the rest of the
+         solution (see Directory.Packages.props) — this project only reaches it
+         transitively via ProjectReference chains, which previously resolved to
+         a different (lower) version than RushOrder.API's own build (MSB3277). -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
+    <PackageReference Include="Testcontainers.PostgreSql" />
+    <PackageReference Include="Testcontainers.Redis" />
+    <PackageReference Include="Respawn" />
+    <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" />
+    <PackageReference Include="Npgsql" />
   </ItemGroup>
 
   <ItemGroup>

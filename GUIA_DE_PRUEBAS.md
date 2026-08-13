@@ -214,7 +214,8 @@ dotnet test
 ```
 
 Esto levanta contenedores Postgres/Redis efímeros por sesión de test (Testcontainers) y los
-resetea entre tests con Respawn — no toca tu Postgres de desarrollo del §1.
+resetea entre tests con Respawn — no toca tu Postgres de desarrollo del §1. **Actualmente esto
+no funciona así en la práctica — ver §7.8.**
 
 ### 5.3 PWA — unitarios (Vitest)
 
@@ -391,6 +392,31 @@ demanda va a mostrar confianza baja (🔴) en casi todos los productos, porque e
 necesita hasta 4 semanas de historial por franja horaria para tener confianza alta. Genera
 pedidos de prueba repetidamente durante varios "días" (o edita `CreatedAt` directamente en la
 tabla `orders` vía SQL) si quieres ver confianza media/alta.
+
+### 7.8 `RushOrder.API.IntegrationTests` conecta a tu Postgres de desarrollo, no al contenedor
+
+`dotnet test` en `API.IntegrationTests` falla hoy con `"No tables found... Consider
+initializing the database and/or running migrations"` en cuanto tu Postgres de desarrollo del
+§1 ya tiene las migraciones aplicadas (el caso normal tras seguir esta guía una vez).
+
+Causa: `RushOrder.Infrastructure/DependencyInjection.cs` lee `Database:ConnectionString` de
+forma **eager** (`var connectionString = configuration.GetSection(...)[...]`) en el momento en
+que `AddInfrastructure` se registra en el contenedor de DI, en vez de leerlo de forma perezosa
+dentro del lambda de `UseNpgsql`. `ApiFactory` (el `WebApplicationFactory` de los tests) inyecta
+la cadena de conexión del contenedor Testcontainers vía `ConfigureAppConfiguration`, pero esa
+fuente de configuración se añade **después** de que `Program.cs` ya llamó a `AddInfrastructure`
+y capturó la cadena de conexión de `appsettings.Development.json` (tu Postgres real). El
+`AppDbContext` de los tests termina apuntando a tu base de datos de desarrollo, no al contenedor
+efímero — que por eso "ya tiene todo aplicado" y Respawn no encuentra nada que resetear en el
+contenedor real.
+
+No es un problema de versiones de paquetes NuGet (se investigó a fondo en la migración a
+Central Package Management — ver `Directory.Packages.props` — que sí arregló un conflicto real
+de ensamblados de EF Core, pero es un problema distinto). El fix es cambiar la lectura de la
+cadena de conexión en `DependencyInjection.cs` a perezosa (leerla dentro del lambda de
+`options.UseNpgsql(...)`, con acceso al `IConfiguration` inyectado en vez de una variable
+capturada). No se aplicó aquí por quedar fuera del alcance de esa tarea (solo configuración de
+paquetes, no lógica de negocio).
 
 ---
 

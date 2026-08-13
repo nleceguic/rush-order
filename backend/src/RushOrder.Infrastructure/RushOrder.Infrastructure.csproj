@@ -5,26 +5,26 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Azure.Messaging.ServiceBus" Version="7.*" />
-    <PackageReference Include="ClosedXML" Version="0.104.*" />
-    <PackageReference Include="Dapper" Version="2.*" />
-    <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
-    <PackageReference Include="Microsoft.AspNetCore.SignalR.StackExchangeRedis" Version="8.*" />
-    <PackageReference Include="QuestPDF" Version="2024.*" />
-    <PackageReference Include="Stripe.net" Version="46.*" />
-    <PackageReference Include="MailKit" Version="4.7.1" />
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0" />
-    <PackageReference Include="Otp.NET" Version="1.4.1" />
-    <PackageReference Include="QRCoder" Version="1.6.0" />
-    <PackageReference Include="MediatR" Version="12.*" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.*" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="9.*">
+    <PackageReference Include="Azure.Messaging.ServiceBus" />
+    <PackageReference Include="ClosedXML" />
+    <PackageReference Include="Dapper" />
+    <PackageReference Include="BCrypt.Net-Next" />
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.StackExchangeRedis" />
+    <PackageReference Include="QuestPDF" />
+    <PackageReference Include="Stripe.net" />
+    <PackageReference Include="MailKit" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+    <PackageReference Include="Otp.NET" />
+    <PackageReference Include="QRCoder" />
+    <PackageReference Include="MediatR" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="8.0.3" />
-    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.*" />
-    <PackageReference Include="SendGrid" Version="9.*" />
+    <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="SendGrid" />
   </ItemGroup>
 
   <ItemGroup>
