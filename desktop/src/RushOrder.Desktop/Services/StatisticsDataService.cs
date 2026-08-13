@@ -115,18 +115,3 @@ public sealed class StatisticsDataService
             TotalOrders:  553);
     }
 }
-
-// Matches backend's SalesDto (Analytics/DTOs/SalesDto.cs).
-internal sealed record BackendSalesDto(IReadOnlyList<BackendSalesSeriesPoint> Series, BackendSalesTotals Totals);
-internal sealed record BackendSalesSeriesPoint(DateTimeOffset Date, decimal Revenue, int Orders, int Covers);
-internal sealed record BackendSalesTotals(decimal Revenue, int Orders, decimal AvgTicket, DateTimeOffset? BestDay, DateTimeOffset? WorstDay);
-
-// Matches backend's ProductPerformanceDto (Analytics/DTOs/ProductPerformanceDto.cs).
-internal sealed record BackendProductPerformanceDto(
-    Guid ProductId, string Name, string Category, int QuantitySold, decimal Revenue,
-    decimal? AvgRating, string Trend, decimal? MarginEstimate);
-
-// Matches backend's WaiterPerformanceDto (Analytics/DTOs/WaiterPerformanceDto.cs) —
-// no avg-service-time field, so WaiterStatsRow.AvgMinutes is always 0 from this path.
-internal sealed record BackendWaiterPerformanceDto(
-    Guid WaiterId, string Name, int OrdersServed, decimal? AvgRating, decimal Revenue, decimal AvgTicket);
