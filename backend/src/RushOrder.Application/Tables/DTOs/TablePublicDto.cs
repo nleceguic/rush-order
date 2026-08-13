@@ -11,4 +11,7 @@ public record TablePublicDto(
     string? LogoUrl,
     string? CoverImageUrl,
     bool UpsellingEnabled,
-    IReadOnlyList<string> AvailableLocales);
+    IReadOnlyList<string> AvailableLocales,
+    decimal VatRate,
+    bool OnlinePaymentEnabled,
+    string? WelcomeMessage);

@@ -36,6 +36,9 @@ public sealed class GetTableByQrCodeQueryHandler : IRequestHandler<GetTableByQrC
             restaurant.LogoUrl,
             restaurant.CoverUrl,
             restaurant.Settings.UpsellingEnabled,
-            AvailableLocales: ["es"]);
+            AvailableLocales: ["es"],
+            restaurant.TaxRate,
+            OnlinePaymentEnabled: restaurant.StripeAccountId is not null,
+            WelcomeMessage: null);
     }
 }
