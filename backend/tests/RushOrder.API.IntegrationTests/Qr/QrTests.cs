@@ -70,7 +70,7 @@ public sealed class QrTests : IntegrationTestBase
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         response.Headers.CacheControl.Should().NotBeNull();
-        response.Headers.CacheControl!.MaxAge.Should().BeGreaterThan(TimeSpan.Zero);
+        response.Headers.CacheControl!.NoStore.Should().Be(true);
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────────

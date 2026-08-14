@@ -22,7 +22,7 @@ public sealed class QrController : ApiController
         var result = await Mediator.Send(new GetTableByQrCodeQuery(qrCode), ct);
         if (result is null) return NotFound();
 
-        Response.Headers.CacheControl = "public, max-age=30";
+        Response.Headers.CacheControl = "no-store";
         return OkData(result);
     }
 }
