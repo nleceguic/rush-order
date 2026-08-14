@@ -226,7 +226,7 @@ jobs:
       - name: Production smoke tests (critical path only)
         id: playwright
         working-directory: pwa
-        run: npx playwright test tests/e2e/smoke.spec.ts --grep @critical --reporter=html
+        run: npx playwright test --config=tests/e2e/playwright.config.ts --grep @critical --reporter=html
         env:
           BASE_URL:            ${{ vars.PROD_APP_URL }}
           E2E_TEST_EMAIL:      ${{ secrets.E2E_TEST_EMAIL }}
@@ -240,7 +240,7 @@ jobs:
         if: always()
         with:
           name: playwright-report-prod-${{ github.sha }}
-          path: pwa/playwright-report/
+          path: pwa/tests/e2e/playwright-report/
           retention-days: 30
 
       # ── PWA deployment verification ───────────────────────────────────────

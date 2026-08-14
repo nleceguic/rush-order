@@ -88,6 +88,11 @@ build/
 .eslintcache
 .stylelintcache
 
+# Playwright
+playwright-report/
+test-results/
+blob-report/
+
 ## IDE
 # JetBrains
 .idea/

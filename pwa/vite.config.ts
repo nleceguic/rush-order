@@ -1,4 +1,5 @@
 import { defineConfig, type Plugin } from 'vite'
+import { configDefaults } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 import { visualizer } from 'rollup-plugin-visualizer'
@@ -173,5 +174,8 @@ export default defineConfig(({ mode }) => ({
     globals:     true,
     environment: 'jsdom',
     setupFiles:  './src/app/test-setup.ts',
+    // Playwright's E2E suite lives under tests/e2e — it has its own runner
+    // and would otherwise be picked up by Vitest's default *.spec.ts glob.
+    exclude:     [...configDefaults.exclude, 'tests/e2e/**'],
   },
 }))

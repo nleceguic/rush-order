@@ -1,24 +1,26 @@
 import { defineConfig, devices } from '@playwright/test'
 
-const BASE_URL = process.env.BASE_URL ?? 'http://localhost:5173'
+const baseURL = process.env.BASE_URL ?? 'http://localhost:5173'
 
 export default defineConfig({
-  testDir: '.',
+  testDir: './tests',
+  outputDir: 'test-results/',
   timeout: 30_000,
   expect: { timeout: 5_000 },
   fullyParallel: true,
-  forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  forbidOnly: !!process.env.CI,
+  workers: process.env.CI ? 2 : undefined,
+
   reporter: process.env.CI
-    ? [['html', { open: 'never' }], ['github']]
-    : [['html', { open: 'on-failure' }]],
+    ? [['html', { open: 'never', outputFolder: 'playwright-report' }], ['github']]
+    : [['html', { outputFolder: 'playwright-report', open: 'on-failure' }]],
 
   use: {
-    baseURL: BASE_URL,
-    trace: 'on-first-retry',
+    baseURL,
     screenshot: 'only-on-failure',
-    video: 'on-first-retry',
+    video: 'retain-on-failure',
+    trace: process.env.CI ? 'on-first-retry' : 'off',
     locale: 'es-ES',
     timezoneId: 'Europe/Madrid',
   },
@@ -29,9 +31,23 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
     },
     {
-      name: 'mobile',
-      use: { ...devices['Pixel 7'] },
-      testMatch: /smoke\.spec\.ts/,
+      name: 'firefox',
+      use: { ...devices['Desktop Firefox'] },
+    },
+    {
+      name: 'webkit',
+      use: { ...devices['Desktop Safari'] },
+    },
+    // Mobile viewport for customer-facing PWA tests
+    {
+      name: 'mobile-chrome',
+      use: { ...devices['Pixel 5'] },
+      testMatch: /customer-journey|pwa-installable/,
+    },
+    {
+      name: 'mobile-safari',
+      use: { ...devices['iPhone 13'] },
+      testMatch: /customer-journey/,
     },
   ],
 })

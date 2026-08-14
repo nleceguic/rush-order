@@ -11,9 +11,9 @@
 import { test, expect } from '../fixtures/app.fixture'
 
 test.describe('PWA is installable', () => {
-  test('manifest.json is valid and contains required fields', async ({ page, request }) => {
+  test('manifest.json is valid and contains required fields', async ({ request }) => {
     // Fetch the manifest relative to the PWA base URL
-    const baseURL = process.env.E2E_BASE_URL ?? 'http://localhost:5173'
+    const baseURL = process.env.BASE_URL ?? 'http://localhost:5173'
     const res = await request.get(`${baseURL}/manifest.json`)
 
     expect(res.ok(), `GET /manifest.json returned ${res.status()}`).toBe(true)

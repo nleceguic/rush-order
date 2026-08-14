@@ -29,12 +29,10 @@ test.describe('Payment flow — Stripe test card', () => {
       test.skip(true, 'API server is not reachable — skipping payment E2E test')
     }
 
-    // Verify Stripe key is configured in the app
+    // Warm the app so Stripe's config is loaded before the test navigates to
+    // the payment page — actual detection happens via the stripeError check
+    // inside the test itself.
     await page.goto('/')
-    const stripeConfigured = await page.evaluate(() =>
-      Boolean((window as unknown as Record<string, string>).__STRIPE_KEY__ ??
-        document.querySelector('[data-stripe]')),
-    ).catch(() => false)
 
     // Set up: create an order via API so we have a valid orderId for the payment page
     ownerToken = await api.login(OWNER_EMAIL, DEMO_PASSWORD)

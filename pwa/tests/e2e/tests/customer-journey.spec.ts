@@ -1,7 +1,7 @@
 /**
  * E2E — Complete customer journey: QR scan → menu → filter → cart → confirm → tracking.
  *
- * Requires: PWA dev server on E2E_BASE_URL (default http://localhost:5173)
+ * Requires: PWA dev server on BASE_URL (default http://localhost:5173)
  *           API server on API_BASE_URL (default http://localhost:5000)
  */
 import { test, expect, TEST_QR_TOKEN, OWNER_EMAIL, DEMO_PASSWORD } from '../fixtures/app.fixture'
@@ -52,7 +52,7 @@ test.describe('Complete customer journey — QR to order confirmation', () => {
     await menu.filterBy('Vegetariano')
     await menu.waitForMenuLoaded()
 
-    const product1 = await menu.addFirstAvailableProduct()
+    await menu.addFirstAvailableProduct()
     // Add a second time to get quantity 2, or add another product
     await menu.addFirstAvailableProduct()
 
