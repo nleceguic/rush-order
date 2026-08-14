@@ -114,6 +114,18 @@ ORDER BY mean_exec_time DESC
 LIMIT 10;
 ```
 
+> El módulo Terraform de PostgreSQL (`infrastructure/terraform/modules/postgresql/main.tf`)
+> no configura `azure.extensions` ni `shared_preload_libraries`, así que si la query de
+> arriba falla con `relation "pg_stat_statements" does not exist`, hay que habilitar la
+> extensión primero (requiere reinicio del servidor):
+> ```bash
+> az postgres flexible-server parameter set \
+>   --name azure.extensions --value pg_stat_statements \
+>   --server-name <PG_SERVER_NAME> --resource-group <RG>
+> # luego, conectado a la BD:
+> # CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+> ```
+
 ### Forzar refresco de estadísticas
 
 ```sql
@@ -128,12 +140,22 @@ ORDER BY n_dead_tup DESC;
 
 ### Añadir índice de emergencia (sin bloqueo)
 
+> Antes de crear uno nuevo: `orders` ya tiene `IX_orders_TenantId_RestaurantId_Status_CreatedAt`
+> (`TenantId, RestaurantId, Status, CreatedAt`) y un índice parcial de pedidos activos,
+> `ix_orders_table_status_active` (`TableId, Status`, excluyendo `Paid`/`Cancelled` — esos
+> son los únicos dos estados terminales del enum `OrderStatus`, no existe un estado
+> `Completed`). Confirma con `EXPLAIN ANALYZE` que la query lenta no puede ya usar alguno
+> de esos dos antes de añadir uno más — si el cuello de botella está en otra tabla, ajusta
+> nombre de tabla/columnas al esquema real (recuerda: sin `HasColumnName` explícito, EF usa
+> el nombre C# en PascalCase entre comillas, como `"RestaurantId"`, no `restaurant_id`).
+
 ```sql
--- Crear índice concurrente (no bloquea escrituras)
+-- Ejemplo — índice concurrente (no bloquea escrituras) para un patrón de consulta
+-- distinto al que ya cubren los índices existentes:
 CREATE INDEX CONCURRENTLY IF NOT EXISTS
-  idx_orders_restaurant_status
-  ON orders(restaurant_id, status)
-  WHERE status NOT IN ('Completed', 'Cancelled');
+  idx_orders_emergency
+  ON orders ("RestaurantId", "Status")
+  WHERE "Status" NOT IN ('Paid', 'Cancelled');
 ```
 
 ---

@@ -18,7 +18,7 @@ curl -s https://<PROD_URL>/health | jq .
 az webapp show --name <APP_NAME> --resource-group <RG> --query "state"
 
 # Comprobar últimos deployments
-az webapp deployment list-publishing-profiles --name <APP_NAME> --resource-group <RG>
+az webapp deployment list --name <APP_NAME> --resource-group <RG> --query "[].{id:id,status:status,message:message,receivedTime:receivedTime}"
 ```
 
 ### 2. Revisar logs en tiempo real
@@ -124,6 +124,17 @@ az monitor autoscale update \
   --resource-group <RG> \
   --count 5
 ```
+
+---
+
+## Verificación (tras cualquiera de las acciones anteriores)
+
+```bash
+curl -f https://<PROD_URL>/health | jq .
+```
+- [ ] `status` es `Healthy` y todos los `checks` individuales también
+- [ ] La tasa de errores 5xx vuelve a niveles normales (consulta KQL de la sección de diagnóstico)
+- [ ] La alerta de disponibilidad en Azure Monitor se resuelve (deja de estar en estado "Fired")
 
 ---
 

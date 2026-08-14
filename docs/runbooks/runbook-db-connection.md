@@ -8,7 +8,8 @@
 
 ## Síntomas
 
-- Health check `/health` devuelve `"database": "Unhealthy"`
+- Health check `/health` devuelve el check `"postgres"` en estado `"Unhealthy"` dentro de `checks[]`
+  (no hay un campo `"database"` a nivel raíz — filtrar con `jq '.checks[] | select(.name=="postgres")'`)
 - Logs con `Npgsql.NpgsqlException: Failed to connect`
 - Latencia de queries > 5s en Application Insights
 - Alert: PostgreSQL CPU > 90%
@@ -112,7 +113,14 @@ En connection string, verificar `Maximum Pool Size`:
 
 ### CPU alto — identificar queries lentas
 
-Conectarse a la BD (con `psql` vía Bastion o Cloud Shell):
+El servidor está en una subnet delegada sin acceso público (`delegated_subnet_id` +
+Private DNS zone en `infrastructure/terraform/shared/main.tf`) — no hay Azure Bastion
+ni jump host provisionado todavía en el Terraform actual, así que conectarte con `psql`
+requiere estar en la VNet: Azure Cloud Shell con VNet integration configurada contra la
+subnet, una VPN punto a sitio, o un Bastion/jump host que haya que levantar ad-hoc. Si
+ninguna de esas opciones existe cuando la necesites, es un hueco de infraestructura a
+resolver antes de que este runbook sea 100% ejecutable en un incidente real.
+
 ```sql
 -- Queries activas ahora mismo
 SELECT pid, now() - pg_stat_activity.query_start AS duration, query, state
@@ -163,6 +171,17 @@ az network nsg rule list \
   --resource-group <RG> \
   --output table
 ```
+
+---
+
+## Verificación tras la acción
+
+```bash
+curl -f https://<PROD_URL>/health | jq '.checks[] | select(.name == "postgres")'
+```
+- [ ] El check de base de datos en `/health` vuelve a `Healthy`
+- [ ] `active_connections` está por debajo de `max_connections` con margen
+- [ ] No hay nuevas excepciones `Npgsql`/`DbException` en Application Insights en los últimos 5 min
 
 ---
 
