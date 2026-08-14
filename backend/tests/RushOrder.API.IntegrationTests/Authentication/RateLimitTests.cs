@@ -5,10 +5,17 @@ using RushOrder.API.IntegrationTests.Infrastructure;
 namespace RushOrder.API.IntegrationTests.Authentication;
 
 /// <summary>
-/// Uses a dedicated factory that enables the global rate limiter (100 req/min per IP).
-/// Isolated from the shared "Integration" collection to avoid cross-test interference.
+/// Uses a dedicated factory that enables the global rate limiter (100 req/min per IP),
+/// kept as its own IClassFixture (distinct DisableRateLimit config) rather than sharing
+/// ApiFactory. Still placed in the "Integration" collection — not for fixture sharing,
+/// but because xUnit runs different collections in parallel by default, and two
+/// WebApplicationFactory&lt;Program&gt; instances building hosts for the same entry point
+/// concurrently race inside HostFactoryResolver ("entry point exited without ever
+/// building an IHost" for whichever one loses). Same collection means sequential
+/// execution relative to the rest of this assembly's integration tests.
 /// xUnit calls RateLimitApiFactory.InitializeAsync/DisposeAsync automatically via IAsyncLifetime.
 /// </summary>
+[Collection("Integration")]
 public sealed class RateLimitTests : IClassFixture<RateLimitApiFactory>
 {
     private readonly RateLimitApiFactory _factory;

@@ -30,11 +30,18 @@ public static class DependencyInjection
         services.AddScoped<ICurrentTenantService, CurrentTenantService>();
         services.AddScoped<TenantDbCommandInterceptor>();
 
-        var connectionString = configuration.GetSection("Database")["ConnectionString"]
-            ?? throw new InvalidOperationException("Database:ConnectionString is not configured.");
-
         services.AddDbContext<AppDbContext>((sp, options) =>
         {
+            // Connection string is resolved lazily from sp's IConfiguration (not
+            // captured eagerly at AddInfrastructure call time) — WebApplicationFactory's
+            // ConfigureWebHost/ConfigureAppConfiguration overrides (e.g. the Testcontainers
+            // connection string in integration tests) are only merged into configuration
+            // right before the host is built, which is *after* AddInfrastructure runs but
+            // *before* AppDbContext is first constructed. An eager read here would silently
+            // capture the pre-override value.
+            var connectionString = sp.GetRequiredService<IConfiguration>().GetSection("Database")["ConnectionString"]
+                ?? throw new InvalidOperationException("Database:ConnectionString is not configured.");
+
             options.UseNpgsql(connectionString, npgsql =>
             {
                 npgsql.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName);
