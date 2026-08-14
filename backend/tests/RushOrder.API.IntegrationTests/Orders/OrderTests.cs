@@ -103,6 +103,32 @@ public sealed class OrderTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task RateOrder_WithoutAuth_Returns401()
+    {
+        var ownerClient = await Auth.GetOwnerClientAsync();
+        var (_, tableId, productId) = await GetSeededIdsAsync();
+
+        var createResp = await ownerClient.PostAsJsonAsync("/api/v1/orders", new
+        {
+            tableId,
+            customerId = (Guid?)null,
+            items = new[] { new { productId, quantity = 1, notes = (string?)null, modifiers = Array.Empty<string>() } },
+            notes = (string?)null,
+            source = "QR"
+        });
+        var orderId = (await createResp.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("data").GetProperty("orderId").GetString();
+
+        var anonClient = Factory.CreateClient();
+        var response = await anonClient.PostAsJsonAsync($"/api/v1/orders/{orderId}/rating", new
+        {
+            food = 5, speed = 5, service = 5, comment = (string?)null
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
     public async Task GetOrders_AsOwner_ReturnsSeededOrders()
     {
         var ownerClient = await Auth.GetOwnerClientAsync();

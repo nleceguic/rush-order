@@ -125,7 +125,6 @@ public sealed class OrdersController : ApiController
 
     // POST /api/v1/orders/{id}/rating
     [HttpPost("{id:guid}/rating")]
-    [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status422UnprocessableEntity)]

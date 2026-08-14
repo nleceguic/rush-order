@@ -7,8 +7,9 @@ using RushOrder.Domain.Entities;
 namespace RushOrder.Application.Orders.Commands;
 
 // Matches the PWA's RatingSheet exactly: food/speed/service, 1-5 each,
-// optional comment. AllowAnonymous on the controller — guests rate without
-// an account, same as CreateOrder.
+// optional comment. Requires a QR session token (or staff auth) — the
+// caller's table must match the order's table; see
+// docs/product/qr-session-design.md.
 public record RateOrderCommand(
     Guid OrderId, int Food, int Speed, int Service, string? Comment) : ICommand<Unit>;
 
@@ -29,18 +30,27 @@ public sealed class RateOrderCommandHandler : IRequestHandler<RateOrderCommand, 
     private readonly IOrderRepository _orders;
     private readonly IOrderRatingRepository _ratings;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ICurrentTenantService _tenantService;
 
-    public RateOrderCommandHandler(IOrderRepository orders, IOrderRatingRepository ratings, IUnitOfWork unitOfWork)
+    public RateOrderCommandHandler(
+        IOrderRepository orders,
+        IOrderRatingRepository ratings,
+        IUnitOfWork unitOfWork,
+        ICurrentTenantService tenantService)
     {
         _orders = orders;
         _ratings = ratings;
         _unitOfWork = unitOfWork;
+        _tenantService = tenantService;
     }
 
     public async Task<Unit> Handle(RateOrderCommand request, CancellationToken cancellationToken)
     {
         var order = await _orders.GetByIdAsync(request.OrderId, cancellationToken)
             ?? throw new NotFoundException(nameof(Order), request.OrderId);
+
+        if (_tenantService.IsQrSession && _tenantService.QrSessionTableId != order.TableId)
+            throw new UnauthorizedAccessException("QR session does not match the order's table.");
 
         var existing = await _ratings.GetByOrderIdAsync(request.OrderId, cancellationToken);
         if (existing is not null) return Unit.Value; // idempotent — one rating per order
