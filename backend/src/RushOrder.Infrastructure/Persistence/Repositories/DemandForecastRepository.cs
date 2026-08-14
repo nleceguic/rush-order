@@ -62,7 +62,7 @@ public sealed class DemandForecastRepository : IDemandForecastRepository
                 (o."CreatedAt" AT TIME ZONE @timezone)::date                         AS LocalDate,
                 EXTRACT(DOW  FROM (o."CreatedAt" AT TIME ZONE @timezone))::int       AS DayOfWeek,
                 EXTRACT(HOUR FROM (o."CreatedAt" AT TIME ZONE @timezone))::int       AS Hour,
-                SUM((item->>'Quantity')::int)                                       AS Quantity
+                SUM((item->>'Quantity')::int)::int                                  AS Quantity
             FROM orders o, jsonb_array_elements(o.items) AS item
             WHERE o."TenantId"     = @tenantId
               AND o."RestaurantId" = @restaurantId
@@ -116,8 +116,15 @@ public sealed class DemandForecastRepository : IDemandForecastRepository
             ORDER BY f."ForecastHour"
             """;
 
+        // Dapper (2.1.x here) has no built-in DbType mapping for DateOnly
+        // parameters ("member date of type System.DateOnly cannot be used
+        // as a parameter value") — pass it as DateTime instead; Postgres
+        // implicitly compares that against the `date` column fine.
         var rows = await conn.QueryAsync<ForecastReadRow>(
-            new CommandDefinition(sql, new { tenantId, restaurantId, date, productId }, cancellationToken: cancellationToken));
+            new CommandDefinition(
+                sql,
+                new { tenantId, restaurantId, date = date.ToDateTime(TimeOnly.MinValue), productId },
+                cancellationToken: cancellationToken));
 
         return rows.ToList().AsReadOnly();
     }

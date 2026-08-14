@@ -4,8 +4,14 @@ namespace RushOrder.Application.Common.Interfaces;
 
 // One historical (product, local day, hour) sales data point, used by
 // DemandForecastEngine to compute base_forecast / seasonality_factor.
+//
+// LocalDate is DateTime (not DateOnly) because Npgsql/Dapper materialize a
+// Postgres `date` column as DateTime through GetHistoricalSalesAsync's raw
+// SQL — Dapper needs the record's constructor to match that exactly (it
+// doesn't widen/narrow types for constructor-based mapping), so DateOnly
+// here made every call throw before it could return a single row.
 public sealed record HistoricalSaleRow(
-    Guid ProductId, DateOnly LocalDate, int DayOfWeek, int Hour, int Quantity);
+    Guid ProductId, DateTime LocalDate, int DayOfWeek, int Hour, int Quantity);
 
 public sealed record ForecastProductRow(Guid ProductId, string Name);
 
