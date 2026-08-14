@@ -9,6 +9,7 @@ public interface IJwtTokenService
 {
     AccessTokenResult GenerateAccessToken(User user, Guid tenantId);
     AccessTokenResult GenerateImpersonationToken(Guid adminUserId, string adminEmail, Guid targetTenantId);
+    AccessTokenResult GenerateQrSessionToken(Guid tableId, Guid restaurantId, Guid tenantId);
     string GenerateRefreshToken();
     ClaimsPrincipal? ValidateToken(string token);
 }

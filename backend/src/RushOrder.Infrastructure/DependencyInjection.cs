@@ -151,6 +151,7 @@ public static class DependencyInjection
             opts.Audience = jwtSettings.Audience;
             opts.AccessTokenExpirationMinutes = jwtSettings.AccessTokenExpirationMinutes;
             opts.RefreshTokenExpirationDays = jwtSettings.RefreshTokenExpirationDays;
+            opts.QrSessionExpirationHours = jwtSettings.QrSessionExpirationHours;
             opts.PrivateKeyPath = jwtSettings.PrivateKeyPath;
             opts.PublicKeyPath = jwtSettings.PublicKeyPath;
         });

@@ -85,6 +85,37 @@ public sealed class JwtTokenService : IJwtTokenService
         return new AccessTokenResult(token, jti, expires);
     }
 
+    public AccessTokenResult GenerateQrSessionToken(Guid tableId, Guid restaurantId, Guid tenantId)
+    {
+        var jti = Guid.NewGuid().ToString();
+        var now = DateTimeOffset.UtcNow;
+        var expires = now.AddHours(_settings.QrSessionExpirationHours);
+
+        var claims = new List<Claim>
+        {
+            new(JwtRegisteredClaimNames.Jti, jti),
+            new(JwtRegisteredClaimNames.Iat, now.ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64),
+            new("tid", tenantId.ToString()),
+            new("table_id", tableId.ToString()),
+            new("restaurant_id", restaurantId.ToString()),
+            new("token_use", "qr_session")
+        };
+
+        var signingKey = new RsaSecurityKey(_rsaKeyProvider.GetPrivateKey());
+        var credentials = new SigningCredentials(signingKey, SecurityAlgorithms.RsaSha256);
+
+        var tokenDescriptor = new JwtSecurityToken(
+            issuer: _settings.Issuer,
+            audience: _settings.Audience,
+            claims: claims,
+            notBefore: now.UtcDateTime,
+            expires: expires.UtcDateTime,
+            signingCredentials: credentials);
+
+        var token = new JwtSecurityTokenHandler().WriteToken(tokenDescriptor);
+        return new AccessTokenResult(token, jti, expires);
+    }
+
     public string GenerateRefreshToken()
     {
         var bytes = new byte[64];
