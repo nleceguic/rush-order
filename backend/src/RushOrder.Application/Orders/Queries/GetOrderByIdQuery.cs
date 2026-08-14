@@ -16,21 +16,27 @@ public sealed class GetOrderByIdQueryHandler : IRequestHandler<GetOrderByIdQuery
     private readonly IOrderRepository _orderRepository;
     private readonly ITableRepository _tableRepository;
     private readonly IUserRepository _userRepository;
+    private readonly ICurrentTenantService _tenantService;
 
     public GetOrderByIdQueryHandler(
         IOrderRepository orderRepository,
         ITableRepository tableRepository,
-        IUserRepository userRepository)
+        IUserRepository userRepository,
+        ICurrentTenantService tenantService)
     {
         _orderRepository = orderRepository;
         _tableRepository = tableRepository;
         _userRepository = userRepository;
+        _tenantService = tenantService;
     }
 
     public async Task<OrderDetailDto?> Handle(GetOrderByIdQuery request, CancellationToken cancellationToken)
     {
         var order = await _orderRepository.GetByIdAsync(request.OrderId, cancellationToken);
         if (order is null) return null;
+
+        if (_tenantService.IsQrSession && _tenantService.QrSessionTableId != order.TableId)
+            throw new UnauthorizedAccessException("QR session does not match the order's table.");
 
         var table = await _tableRepository.GetByIdAsync(order.TableId, cancellationToken);
 
