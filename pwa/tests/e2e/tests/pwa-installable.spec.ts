@@ -44,21 +44,31 @@ test.describe('PWA is installable', () => {
     await page.goto('/')
     await page.waitForLoadState('networkidle')
 
-    // Evaluate SW registration state in the browser context
+    // With an ~852 KiB precache the worker can still be 'installing' right after
+    // networkidle — poll in-page (single round-trip) until it progresses past that
+    // transient state, instead of widening the set of states this test accepts.
     const swState = await page.evaluate(async () => {
       if (!('serviceWorker' in navigator)) return { supported: false }
 
-      const registrations = await navigator.serviceWorker.getRegistrations()
-      if (registrations.length === 0) return { supported: true, registered: false }
+      const deadline = Date.now() + 15_000
+      let registered = false
+      let state = 'unknown'
+      let scope = ''
 
-      const reg = registrations[0]
-      const worker = reg.active ?? reg.installing ?? reg.waiting
-      return {
-        supported:  true,
-        registered: true,
-        state:      worker?.state ?? 'unknown',
-        scope:      reg.scope,
+      while (Date.now() < deadline) {
+        const registrations = await navigator.serviceWorker.getRegistrations()
+        if (registrations.length > 0) {
+          registered = true
+          const reg = registrations[0]
+          const worker = reg.active ?? reg.installing ?? reg.waiting
+          state = worker?.state ?? 'unknown'
+          scope = reg.scope
+          if (state !== 'installing' && state !== 'unknown') break
+        }
+        await new Promise((resolve) => setTimeout(resolve, 250))
       }
+
+      return { supported: true, registered, state, scope }
     })
 
     expect(swState.supported, 'Service Worker API must be supported').toBe(true)
@@ -66,18 +76,21 @@ test.describe('PWA is installable', () => {
     expect(['activated', 'activating', 'installed']).toContain(swState.state)
   })
 
-  test('beforeinstallprompt event is dispatchable (Chromium only)', async ({
+  test('beforeinstallprompt is intercepted to show the custom install banner (Chromium only)', async ({
     page,
     browserName,
   }) => {
     test.skip(browserName !== 'chromium', 'beforeinstallprompt is Chromium-only')
 
+    // usePwaInstall.ts only shows PwaInstallBanner once REQUIRED_USES (2) mounts have
+    // happened and there's no active dismiss cooldown — seed the use counter so this
+    // single page load satisfies that gate (usesCount = stored value + 1 on mount).
+    await page.addInitScript(() => localStorage.setItem('pwa-uses', '1'))
+
     await page.goto('/')
     await page.waitForLoadState('networkidle')
 
     // Inject a listener before the event would fire (it may fire on first load)
-    // We verify the app does not suppress the event by checking if it was captured
-    // or by checking that the page has the required PWA criteria in its manifest.
     const manifestLinked = await page.evaluate(() => {
       const link = document.querySelector<HTMLLinkElement>('link[rel="manifest"]')
       return link?.href ?? null
@@ -85,16 +98,19 @@ test.describe('PWA is installable', () => {
 
     expect(manifestLinked, 'A <link rel="manifest"> must be present in the document').toBeTruthy()
 
-    // Dispatch a synthetic beforeinstallprompt to verify the app does not block it
-    const handled = await page.evaluate(() =>
+    // Dispatch a synthetic beforeinstallprompt — usePwaInstall.ts deliberately calls
+    // preventDefault() to defer the native prompt in favor of its own install UI.
+    const prevented = await page.evaluate(() =>
       new Promise<boolean>((resolve) => {
         const event = new Event('beforeinstallprompt', { bubbles: true, cancelable: true })
-        const prevented = !document.dispatchEvent(event)
-        resolve(!prevented) // resolve true if the event was NOT prevented (app allows install)
+        resolve(!document.dispatchEvent(event))
       }),
     )
 
-    // The app should not call preventDefault() to block the install prompt
-    expect(handled, 'App must not suppress the install prompt event').toBe(true)
+    expect(prevented, 'App must intercept beforeinstallprompt to show its own install UI').toBe(true)
+
+    // PwaInstallBanner (role="banner") should now render with the deferred prompt —
+    // scoped to a <div>, since the page's <header> also carries the landmark role.
+    await expect(page.locator('div[role="banner"]')).toBeVisible({ timeout: 5_000 })
   })
 })

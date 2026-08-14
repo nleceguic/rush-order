@@ -457,20 +457,30 @@ El `PAGEERROR` ya no aparece y el Service Worker registra correctamente.
 
 **Dos problemas nuevos, distintos y sin relación con el bundling, quedaron al descubierto al
 arreglar lo anterior** — antes ni siquiera se llegaba a ejecutar el código que los dispara,
-porque la página se rompía antes. Ninguno de los dos se ha tocado:
+porque la página se rompía antes. Ambos eran bugs en las aserciones del propio test, no del
+producto, y también están **arreglados (2026-08-14)**:
 
-- `Service Worker registers and becomes active` (línea 66) sigue fallando:
-  `expect(['activated', 'activating', 'installed']).toContain(swState.state)` recibe
-  `swState.state === 'installing'` — un estado real y válido de Service Worker que la lista de
-  la aserción no contempla (o, alternativamente, al test le falta esperar/reintentar antes de
-  leer el estado — con un precache de 852 KiB es plausible que siga en `installing` en el
-  instante exacto en que se consulta).
-- `beforeinstallprompt event is dispatchable` (línea 98) sigue fallando con "App must not
-  suppress the install prompt event" — pero `pwa/src/shared/hooks/usePwaInstall.ts:28` llama a
-  `e.preventDefault()` en el handler de `beforeinstallprompt` **a propósito**, para diferir el
-  prompt nativo y mostrar su propia UI de instalación (gateada por número de usos y cooldown de
-  descarte). La premisa del test —que la app no debe suprimir el evento— es incompatible con
-  este patrón, deliberado, de la app.
+- `Service Worker registers and becomes active` fallaba porque
+  `expect(['activated', 'activating', 'installed']).toContain(swState.state)` recibía
+  `swState.state === 'installing'` — un estado real y válido de Service Worker, capturado
+  demasiado pronto: con un precache de 852 KiB es normal que el worker siga instalando justo
+  tras `networkidle`. Arreglado con un sondeo (poll cada 250ms, hasta 15s) dentro del propio
+  `page.evaluate` que espera a que el estado deje de ser `installing`/`unknown` antes de leerlo,
+  en vez de ampliar la lista de estados aceptados.
+- `beforeinstallprompt event is dispatchable` asumía que la app no debía suprimir el evento,
+  pero `pwa/src/shared/hooks/usePwaInstall.ts:28` llama a `e.preventDefault()` **a propósito**,
+  para diferir el prompt nativo y mostrar su propia UI (`PwaInstallBanner`, gateada por
+  `usesCount >= REQUIRED_USES` y el cooldown de descarte). Renombrado a
+  `beforeinstallprompt is intercepted to show the custom install banner` y reescrito para
+  validar el comportamiento real: siembra `localStorage['pwa-uses'] = '1'` antes de navegar
+  (para que este único mount cumpla `usesCount >= REQUIRED_USES`), confirma que el evento
+  síntetico llega interceptado (`prevented === true`) y que `PwaInstallBanner` (`div[role=banner]`
+  — se desambigua del `<header>` de la página, que también es un landmark `banner`) se hace
+  visible.
+
+Verificado con `npx playwright test --config=tests/e2e/playwright.config.ts
+pwa-installable.spec.ts --project=chromium` en 4 ejecuciones consecutivas: **3/3 en las
+cuatro**. No quedan issues pendientes en este spec.
 
 ### 7.10 `api-health.spec.ts` — el contenedor `rushorder_api` sigue sin arrancar (`ECONNRESET`)
 
