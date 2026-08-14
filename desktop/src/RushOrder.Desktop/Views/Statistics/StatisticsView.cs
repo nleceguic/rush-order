@@ -23,6 +23,7 @@ public sealed class StatisticsView : UserControl
     private DateTimePicker _dtTo   = null!;
     private Label          _lblSummary = null!;
     private Label          _lblLoading = null!;
+    private Label          _lblError   = null!;
 
     private CartesianChart _revenueChart  = null!;
     private CartesianChart _productsChart = null!;
@@ -136,7 +137,16 @@ public sealed class StatisticsView : UserControl
             AutoSize  = true,
             Location  = new Point(16, 8),
         };
-        summaryBar.Controls.AddRange([_lblSummary, _lblLoading]);
+        _lblError = new Label
+        {
+            Text      = "",
+            Font      = _theme.Fonts.Regular,
+            ForeColor = _theme.Colors.Error,
+            AutoSize  = true,
+            Location  = new Point(16, 8),
+            Visible   = false,
+        };
+        summaryBar.Controls.AddRange([_lblSummary, _lblLoading, _lblError]);
 
         // ── Charts row ────────────────────────────────────────────────────
         var chartsRow = new TableLayoutPanel
@@ -255,6 +265,14 @@ public sealed class StatisticsView : UserControl
             _currentData = await _data.GetStatisticsAsync(from, to);
             UpdateCharts(_currentData);
         }
+        catch (Exception ex) when (ex is TaskCanceledException or OperationCanceledException)
+        {
+            ShowError("Tiempo de espera agotado al consultar las estadísticas. Inténtalo de nuevo.");
+        }
+        catch (Exception)
+        {
+            ShowError("No se pudieron cargar las estadísticas. Verifica tu conexión e inténtalo de nuevo.");
+        }
         finally
         {
             SetLoading(false);
@@ -264,8 +282,17 @@ public sealed class StatisticsView : UserControl
     private void SetLoading(bool loading)
     {
         if (InvokeRequired) { Invoke(() => SetLoading(loading)); return; }
-        _lblLoading.Visible  = loading;
-        _lblSummary.Visible  = !loading;
+        _lblLoading.Visible = loading;
+        if (loading) _lblError.Visible = false;
+        _lblSummary.Visible = !loading && !_lblError.Visible;
+    }
+
+    private void ShowError(string message)
+    {
+        if (InvokeRequired) { Invoke(() => ShowError(message)); return; }
+        _lblError.Text      = message;
+        _lblError.Visible   = true;
+        _lblSummary.Visible = false;
     }
 
     private void UpdateCharts(StatisticsDto dto)
@@ -273,9 +300,10 @@ public sealed class StatisticsView : UserControl
         if (InvokeRequired) { Invoke(() => UpdateCharts(dto)); return; }
 
         // Summary
-        _lblSummary.Text =
-            $"Período: {dto.From:dd/MM/yyyy} — {dto.To:dd/MM/yyyy}  ·  " +
-            $"Total: €{dto.TotalRevenue:N2}  ·  Pedidos: {dto.TotalOrders:N0}";
+        _lblSummary.Text = dto.TotalOrders == 0
+            ? $"Período: {dto.From:dd/MM/yyyy} — {dto.To:dd/MM/yyyy}  ·  Sin datos de ventas para este período."
+            : $"Período: {dto.From:dd/MM/yyyy} — {dto.To:dd/MM/yyyy}  ·  " +
+              $"Total: €{dto.TotalRevenue:N2}  ·  Pedidos: {dto.TotalOrders:N0}";
 
         // Revenue by hour (line)
         var hourValues  = dto.HourlyRevenue.Select(h => (double)h.Revenue).ToArray();
