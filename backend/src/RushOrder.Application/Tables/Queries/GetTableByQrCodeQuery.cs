@@ -10,11 +10,16 @@ public sealed class GetTableByQrCodeQueryHandler : IRequestHandler<GetTableByQrC
 {
     private readonly ITableRepository _tableRepository;
     private readonly IRestaurantRepository _restaurantRepository;
+    private readonly IJwtTokenService _jwtTokenService;
 
-    public GetTableByQrCodeQueryHandler(ITableRepository tableRepository, IRestaurantRepository restaurantRepository)
+    public GetTableByQrCodeQueryHandler(
+        ITableRepository tableRepository,
+        IRestaurantRepository restaurantRepository,
+        IJwtTokenService jwtTokenService)
     {
         _tableRepository = tableRepository;
         _restaurantRepository = restaurantRepository;
+        _jwtTokenService = jwtTokenService;
     }
 
     public async Task<TablePublicDto?> Handle(GetTableByQrCodeQuery request, CancellationToken cancellationToken)
@@ -24,6 +29,8 @@ public sealed class GetTableByQrCodeQueryHandler : IRequestHandler<GetTableByQrC
 
         var restaurant = await _restaurantRepository.GetByIdPublicAsync(table.RestaurantId, cancellationToken);
         if (restaurant is null || !restaurant.IsActive) return null;
+
+        var session = _jwtTokenService.GenerateQrSessionToken(table.Id, table.RestaurantId, table.TenantId);
 
         return new TablePublicDto(
             table.Id,
@@ -39,6 +46,8 @@ public sealed class GetTableByQrCodeQueryHandler : IRequestHandler<GetTableByQrC
             AvailableLocales: ["es"],
             restaurant.TaxRate,
             OnlinePaymentEnabled: restaurant.StripeAccountId is not null,
-            WelcomeMessage: null);
+            WelcomeMessage: null,
+            SessionToken: session.Token,
+            SessionExpiresAt: session.ExpiresAt);
     }
 }

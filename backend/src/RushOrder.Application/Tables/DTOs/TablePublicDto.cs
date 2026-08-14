@@ -14,4 +14,6 @@ public record TablePublicDto(
     IReadOnlyList<string> AvailableLocales,
     decimal VatRate,
     bool OnlinePaymentEnabled,
-    string? WelcomeMessage);
+    string? WelcomeMessage,
+    string SessionToken,
+    DateTimeOffset SessionExpiresAt);

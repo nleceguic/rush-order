@@ -1,3 +1,4 @@
+using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -28,6 +29,25 @@ public sealed class QrTests : IntegrationTestBase
         data.GetProperty("restaurantId").GetGuid().Should().NotBeEmpty();
         data.GetProperty("restaurantName").GetString().Should().NotBeNullOrEmpty();
         data.GetProperty("availableLocales").GetArrayLength().Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    public async Task GetByQrCode_WithValidQrCode_ReturnsSessionTokenBoundToThatTable()
+    {
+        var qrCode = await GetSeededQrCodeAsync();
+        var client = Factory.CreateClient();
+
+        var response = await client.GetAsync($"/api/v1/qr/{qrCode}");
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var data = body.GetProperty("data");
+        var tableId = data.GetProperty("tableId").GetGuid();
+        var sessionToken = data.GetProperty("sessionToken").GetString();
+
+        sessionToken.Should().NotBeNullOrEmpty();
+
+        var jwt = new JwtSecurityTokenHandler().ReadJwtToken(sessionToken);
+        jwt.Claims.First(c => c.Type == "table_id").Value.Should().Be(tableId.ToString());
+        jwt.Claims.First(c => c.Type == "token_use").Value.Should().Be("qr_session");
     }
 
     [Fact]

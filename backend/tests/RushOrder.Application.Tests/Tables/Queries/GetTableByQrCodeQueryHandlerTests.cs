@@ -10,6 +10,7 @@ public sealed class GetTableByQrCodeQueryHandlerTests
 {
     private readonly Mock<ITableRepository> _tableRepo = new();
     private readonly Mock<IRestaurantRepository> _restaurantRepo = new();
+    private readonly Mock<IJwtTokenService> _jwtTokenService = new();
 
     private readonly GetTableByQrCodeQueryHandler _handler;
 
@@ -18,7 +19,11 @@ public sealed class GetTableByQrCodeQueryHandlerTests
 
     public GetTableByQrCodeQueryHandlerTests()
     {
-        _handler = new GetTableByQrCodeQueryHandler(_tableRepo.Object, _restaurantRepo.Object);
+        _jwtTokenService
+            .Setup(s => s.GenerateQrSessionToken(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<Guid>()))
+            .Returns(new AccessTokenResult("test-session-token", "test-jti", DateTimeOffset.UtcNow.AddHours(3)));
+
+        _handler = new GetTableByQrCodeQueryHandler(_tableRepo.Object, _restaurantRepo.Object, _jwtTokenService.Object);
     }
 
     [Fact]
@@ -89,6 +94,8 @@ public sealed class GetTableByQrCodeQueryHandlerTests
         result.UpsellingEnabled.Should().Be(restaurant.Settings.UpsellingEnabled);
         result.AvailableLocales.Should().Contain("es");
         result.VatRate.Should().Be(0.10m);
+        result.SessionToken.Should().Be("test-session-token");
+        result.SessionExpiresAt.Should().BeCloseTo(DateTimeOffset.UtcNow.AddHours(3), TimeSpan.FromMinutes(1));
     }
 
     [Fact]
@@ -122,5 +129,23 @@ public sealed class GetTableByQrCodeQueryHandlerTests
         var result = await _handler.Handle(new GetTableByQrCodeQuery(table.QrCode), CancellationToken.None);
 
         result!.OnlinePaymentEnabled.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Handle_ValidQrCode_MintsSessionTokenForThatTableAndTenant()
+    {
+        var table = Table.Create(TenantId, RestaurantId, "Mesa 5", 4, "Terraza");
+        var restaurant = Restaurant.Create(TenantId, "El Restaurante", "Calle 1", "+34600000000", "test@r.com");
+
+        _tableRepo.Setup(r => r.GetByQrCodeAsync(table.QrCode, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(table);
+        _restaurantRepo.Setup(r => r.GetByIdPublicAsync(RestaurantId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(restaurant);
+
+        await _handler.Handle(new GetTableByQrCodeQuery(table.QrCode), CancellationToken.None);
+
+        _jwtTokenService.Verify(
+            s => s.GenerateQrSessionToken(table.Id, table.RestaurantId, table.TenantId),
+            Times.Once);
     }
 }
