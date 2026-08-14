@@ -137,12 +137,15 @@ export default defineConfig(({ mode }) => ({
           if (id.includes('react-dom'))       return 'vendor-react'
           if (id.includes('react-router'))    return 'vendor-router'
           if (id.includes('react') && !id.includes('@stripe')) return 'vendor-react'
+          // zustand's React 18 subscription hook pulls in use-sync-external-store, which
+          // needs a live reference to React — keep both in vendor-react so that reference
+          // isn't split across a chunk boundary (see GUIA_DE_PRUEBAS.md §7.9, resuelto).
+          if (id.includes('zustand') || id.includes('use-sync-external-store')) return 'vendor-react'
           if (id.includes('@tanstack'))       return 'vendor-query'
           if (id.includes('@stripe'))         return 'vendor-stripe'
           if (id.includes('@microsoft/signalr')) return 'vendor-signalr'
           if (id.includes('i18next') || id.includes('react-i18next')) return 'vendor-i18n'
           if (id.includes('canvas-confetti')) return 'vendor-misc'
-          if (id.includes('zustand'))         return 'vendor-misc'
           if (id.includes('axios'))           return 'vendor-misc'
 
           return 'vendor-misc'

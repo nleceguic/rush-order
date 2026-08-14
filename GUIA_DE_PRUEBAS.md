@@ -422,6 +422,90 @@ cadena de conexión en `DependencyInjection.cs` a perezosa (leerla dentro del la
 capturada). No se aplicó aquí por quedar fuera del alcance de esa tarea (solo configuración de
 paquetes, no lógica de negocio).
 
+### 7.9 `pwa-installable.spec.ts` — el Service Worker no llegaba a registrarse contra el build de producción — **resuelto (2026-08-14)**
+
+**Causa original y arreglo.** La página lanzaba un error de JavaScript no capturado que
+interrumpía la ejecución del bundle antes de que `registerSW()` (`pwa/src/app/main.tsx:24`)
+llegara a completar el registro:
+
+```
+PAGEERROR: Cannot read properties of undefined (reading 'useState')
+    at http://localhost:5173/assets/vendor-misc-*.js:25:133
+```
+
+Resolviendo el sourcemap de ese chunk, la posición caía dentro de
+`node_modules/use-sync-external-store/cjs/use-sync-external-store-shim.production.js:17` — el
+shim que usa `zustand` para su hook de suscripción a store externo en React 18. Causa: el
+`manualChunks` de `pwa/vite.config.ts` mandaba `zustand` al chunk `vendor-misc` mientras que
+`react`/`react-dom` iban a `vendor-react`; `use-sync-external-store` necesita una referencia
+viva a `React`, y al quedar en un chunk distinto esa referencia llegaba `undefined` al evaluarse
+el chunk.
+
+Arreglado moviendo `zustand` (y explícitamente `use-sync-external-store`) al chunk
+`vendor-react` en `manualChunks`. Verificado con `npm run build` (el resto de chunks queda
+exactamente igual en tamaño — solo `vendor-misc` baja ~7.3 kB y `vendor-react` sube lo mismo) y
+con:
+
+```bash
+cd pwa
+npm run build
+npx vite preview --port 5173
+npx playwright test --config=tests/e2e/playwright.config.ts pwa-installable.spec.ts --project=chromium
+```
+
+El `PAGEERROR` ya no aparece y el Service Worker registra correctamente.
+
+**Dos problemas nuevos, distintos y sin relación con el bundling, quedaron al descubierto al
+arreglar lo anterior** — antes ni siquiera se llegaba a ejecutar el código que los dispara,
+porque la página se rompía antes. Ninguno de los dos se ha tocado:
+
+- `Service Worker registers and becomes active` (línea 66) sigue fallando:
+  `expect(['activated', 'activating', 'installed']).toContain(swState.state)` recibe
+  `swState.state === 'installing'` — un estado real y válido de Service Worker que la lista de
+  la aserción no contempla (o, alternativamente, al test le falta esperar/reintentar antes de
+  leer el estado — con un precache de 852 KiB es plausible que siga en `installing` en el
+  instante exacto en que se consulta).
+- `beforeinstallprompt event is dispatchable` (línea 98) sigue fallando con "App must not
+  suppress the install prompt event" — pero `pwa/src/shared/hooks/usePwaInstall.ts:28` llama a
+  `e.preventDefault()` en el handler de `beforeinstallprompt` **a propósito**, para diferir el
+  prompt nativo y mostrar su propia UI de instalación (gateada por número de usos y cooldown de
+  descarte). La premisa del test —que la app no debe suprimir el evento— es incompatible con
+  este patrón, deliberado, de la app.
+
+### 7.10 `api-health.spec.ts` — el contenedor `rushorder_api` sigue sin arrancar (`ECONNRESET`)
+
+Verificado que el contenedor **sigue roto de la misma forma** que durante la consolidación de
+e2e (commit `3f49698`) — no se arregló en ningún otro punto de por medio. El contenedor
+`rushorder_api` (definido en `infrastructure/docker/docker-compose.yml`, arranca con
+`dotnet watch`) ya estaba levantado; su log real (`docker logs rushorder_api --tail 5`) es:
+
+```
+/app/src/RushOrder.Domain/Common/IDomainEvent.cs(5,33): error CS0246: The type or namespace name 'INotification' could not be found (are you missing a using directive or an assembly reference?) [/app/src/RushOrder.Domain/RushOrder.Domain.csproj]
+dotnet watch ⏳ Waiting for a file to change before restarting dotnet...
+```
+
+Con el contenedor en ese estado, `npx playwright test --config=tests/e2e/playwright.config.ts
+api-health.spec.ts` falla las 2 pruebas con `apiRequestContext.get: read ECONNRESET` contra
+`http://localhost:5000` — el proceso dentro del contenedor nunca llega a escuchar en el puerto
+porque el build previo a `dotnet watch` no compila.
+
+Causa localizada con precisión: el volumen anónimo `obj` de `RushOrder.Domain` dentro del
+contenedor (el código fuente se monta en vivo desde el host vía
+`../../backend/src:/app/src`, pero `/app/src/RushOrder.Domain/obj` es un volumen anónimo
+aislado del host — ver la sección `api.volumes` en `docker-compose.yml`) tiene cacheado un
+`project.assets.json` que resuelve `MediatR` a la versión **0.1.0** — un paquete placeholder
+histórico sin un `INotification` utilizable — mientras que `Directory.Packages.props` fija
+`MediatR` en `12.5.0`. Esa versión correcta **sí** está descargada en el caché global de NuGet
+del contenedor (`/root/.nuget/packages/mediatr/12.5.0`, comprobado con `docker exec`), pero el
+volumen `obj` nunca se volvió a restaurar contra ella tras la migración a Central Package
+Management: `dotnet watch` recompila en cada cambio de archivo, pero no fuerza un
+`dotnet restore`, así que el volumen se quedó apuntando indefinidamente a la resolución vieja.
+
+No se aplicó ningún cambio para esta entrada — solo se investigó lo necesario para describir el
+fallo con precisión. El arreglo más probable sería invalidar ese volumen (`docker compose down
+-v` seguido de `docker compose up --build`, o un `dotnet restore` forzado dentro del contenedor),
+pero queda fuera del alcance de esta tarea de documentación.
+
 ---
 
 ## 8. Checklist rápido
