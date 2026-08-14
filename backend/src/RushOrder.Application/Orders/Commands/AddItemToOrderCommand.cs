@@ -34,21 +34,27 @@ public sealed class AddItemToOrderCommandHandler : IRequestHandler<AddItemToOrde
     private readonly IOrderRepository _orderRepository;
     private readonly IProductRepository _productRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ICurrentTenantService _tenantService;
 
     public AddItemToOrderCommandHandler(
         IOrderRepository orderRepository,
         IProductRepository productRepository,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        ICurrentTenantService tenantService)
     {
         _orderRepository = orderRepository;
         _productRepository = productRepository;
         _unitOfWork = unitOfWork;
+        _tenantService = tenantService;
     }
 
     public async Task<Unit> Handle(AddItemToOrderCommand request, CancellationToken cancellationToken)
     {
         var order = await _orderRepository.GetByIdAsync(request.OrderId, cancellationToken)
             ?? throw new NotFoundException(nameof(Order), request.OrderId);
+
+        if (_tenantService.IsQrSession && _tenantService.QrSessionTableId != order.TableId)
+            throw new UnauthorizedAccessException("QR session does not match the order's table.");
 
         if (order.Status != OrderStatus.Pending && order.Status != OrderStatus.Confirmed)
             throw new BusinessRuleException(
