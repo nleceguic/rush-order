@@ -1,8 +1,12 @@
 name: CD — Production
 
 on:
-  release:
-    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag de la release ya publicada a desplegar (ej. v1.2.3)'
+        required: true
+        type: string
 
 env:
   REGISTRY: ghcr.io
@@ -309,17 +313,19 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
+            const tag = context.payload.inputs.tag;
+
             const { data: release } = await github.rest.repos.getReleaseByTag({
               owner: context.repo.owner,
               repo:  context.repo.repo,
-              tag:   context.ref.replace('refs/tags/', ''),
+              tag,
             });
 
             // Generate changelog via GitHub's auto-generate API
             const { data: generated } = await github.rest.repos.generateReleaseNotes({
               owner:    context.repo.owner,
               repo:     context.repo.repo,
-              tag_name: context.ref.replace('refs/tags/', ''),
+              tag_name: tag,
             });
 
             // Append deploy info
@@ -328,7 +334,7 @@ jobs:
               '',
               '---',
               `**Deployed:** ${new Date().toISOString()}`,
-              `**Status:** ${{ needs.post-deploy-verification.result == 'success' && '✅ Production live' || '❌ Rollback executed' }}`,
+              `**Status:** ${{ needs.post-deploy-verification.result == 'success' && '✅ Production live' || (needs.post-deploy-verification.result == 'skipped' && '⏭️ Deploy not executed (validation failed before reaching production)' || '❌ Rollback executed') }}`,
             ].join('\n');
 
             await github.rest.repos.updateRelease({
@@ -338,7 +344,7 @@ jobs:
               body,
             });
 
-            core.setOutput('tag', context.ref.replace('refs/tags/', ''));
+            core.setOutput('tag', tag);
             core.setOutput('url', release.html_url);
 
       - name: Slack — #deployments notification
@@ -351,7 +357,7 @@ jobs:
                   "type": "header",
                   "text": {
                     "type": "plain_text",
-                    "text": "${{ needs.post-deploy-verification.result == 'success' && '✅ Production deploy exitoso' || '❌ Production deploy con rollback' }}"
+                    "text": "${{ needs.post-deploy-verification.result == 'success' && '✅ Production deploy exitoso' || (needs.post-deploy-verification.result == 'skipped' && '⏭️ Production deploy no ejecutado (validación falló antes de llegar a producción)' || '❌ Production deploy con rollback') }}"
                   }
                 },
                 {
