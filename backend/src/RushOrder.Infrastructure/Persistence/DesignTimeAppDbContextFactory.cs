@@ -48,5 +48,7 @@ public sealed class DesignTimeAppDbContextFactory : IDesignTimeDbContextFactory<
     {
         public Guid? TenantId => null;
         public bool IsAuthenticated => false;
+        public bool IsQrSession => false;
+        public Guid? QrSessionTableId => null;
     }
 }

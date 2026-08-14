@@ -4,4 +4,6 @@ public interface ICurrentTenantService
 {
     Guid? TenantId { get; }
     bool IsAuthenticated { get; }
+    bool IsQrSession { get; }
+    Guid? QrSessionTableId { get; }
 }
