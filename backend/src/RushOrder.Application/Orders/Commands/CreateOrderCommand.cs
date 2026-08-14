@@ -85,6 +85,9 @@ public sealed class CreateOrderCommandHandler : IRequestHandler<CreateOrderComma
         var tenantId = _tenantService.TenantId
             ?? throw new UnauthorizedAccessException("Tenant context is required.");
 
+        if (_tenantService.IsQrSession && _tenantService.QrSessionTableId != request.TableId)
+            throw new UnauthorizedAccessException("QR session does not match the requested table.");
+
         var table = await _tableRepository.GetByIdAsync(request.TableId, cancellationToken)
             ?? throw new NotFoundException(nameof(Table), request.TableId);
 

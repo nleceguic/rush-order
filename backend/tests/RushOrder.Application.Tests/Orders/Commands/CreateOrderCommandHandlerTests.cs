@@ -135,6 +135,30 @@ public sealed class CreateOrderCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_QrSessionTableMismatch_ThrowsUnauthorizedAccessException()
+    {
+        _tenantService.Setup(s => s.TenantId).Returns(TenantId);
+        _tenantService.Setup(s => s.IsQrSession).Returns(true);
+        _tenantService.Setup(s => s.QrSessionTableId).Returns(Guid.NewGuid()); // different table
+
+        var act = () => _handler.Handle(BuildCommand(), CancellationToken.None);
+
+        await act.Should().ThrowAsync<UnauthorizedAccessException>();
+    }
+
+    [Fact]
+    public async Task Handle_QrSessionTableMatch_Succeeds()
+    {
+        SetupHappyPath();
+        _tenantService.Setup(s => s.IsQrSession).Returns(true);
+        _tenantService.Setup(s => s.QrSessionTableId).Returns(TableId);
+
+        var result = await _handler.Handle(BuildCommand(), CancellationToken.None);
+
+        result.OrderId.Should().NotBeEmpty();
+    }
+
+    [Fact]
     public async Task Handle_TableNotFound_ThrowsNotFoundException()
     {
         _tenantService.Setup(s => s.TenantId).Returns(TenantId);
