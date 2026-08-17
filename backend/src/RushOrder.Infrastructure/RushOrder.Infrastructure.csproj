@@ -10,6 +10,8 @@
     <PackageReference Include="Dapper" />
     <PackageReference Include="BCrypt.Net-Next" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.StackExchangeRedis" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" />
+    <PackageReference Include="Npgsql" />
     <PackageReference Include="QuestPDF" />
     <PackageReference Include="Stripe.net" />
     <PackageReference Include="MailKit" />
