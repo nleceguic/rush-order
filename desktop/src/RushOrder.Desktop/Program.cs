@@ -102,7 +102,7 @@ static class Program
                     services.AddTransient<MenuManagementControl>();
                     services.AddTransient<StatisticsView>();
                     services.AddTransient<Views.Forecast.DemandForecastControl>();
-                    services.AddTransient<Views.AiDashboard.AiDashboardView>();
+                    services.AddTransient<Views.Dashboard.AiDashboard.AiDashboardView>();
                 })
                 .Build();
 

@@ -1,7 +1,7 @@
 using RushOrder.Desktop.Styles;
 using RushOrder.Desktop.Views.Dashboard.Widgets;
 
-namespace RushOrder.Desktop.Views.AiDashboard.Widgets;
+namespace RushOrder.Desktop.Views.Dashboard.AiDashboard.Widgets;
 
 // The day's highest-demand product per today's forecast — the one worth
 // making sure is stocked, prepped, and featured.

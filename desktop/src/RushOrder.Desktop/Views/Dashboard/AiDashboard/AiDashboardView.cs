@@ -1,9 +1,9 @@
 using RushOrder.Desktop.Services;
 using RushOrder.Desktop.Styles;
-using RushOrder.Desktop.Views.AiDashboard.Widgets;
+using RushOrder.Desktop.Views.Dashboard.AiDashboard.Widgets;
 using RushOrder.Desktop.Views.Dashboard.Widgets;
 
-namespace RushOrder.Desktop.Views.AiDashboard;
+namespace RushOrder.Desktop.Views.Dashboard.AiDashboard;
 
 // "Dashboard de IA" — Previsión de hoy, Sugerencia del día, Alertas de IA
 // (anomaly detection — shares AlertsWidget/AlertMonitoringService with the

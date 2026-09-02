@@ -151,7 +151,7 @@ public sealed class MainForm : Form
             ("◻",  "Reservas",     () => { }),
             ("≈",  "Estadísticas", () => _nav.ClearAndNavigateTo<StatisticsView>()),
             ("◇",  "Previsión",    () => _nav.ClearAndNavigateTo<Views.Forecast.DemandForecastControl>()),
-            ("✦",  "Panel IA",     () => _nav.ClearAndNavigateTo<Views.AiDashboard.AiDashboardView>()),
+            ("✦",  "Panel IA",     () => _nav.ClearAndNavigateTo<Views.Dashboard.AiDashboard.AiDashboardView>()),
             ("$",  "Facturación",  () => { }),
             ("⚙",  "Config.",      () => { using var d = new PrinterConfigDialog(_print, _theme); d.ShowDialog(this); }),
         };

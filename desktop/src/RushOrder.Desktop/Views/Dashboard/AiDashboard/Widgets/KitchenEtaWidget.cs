@@ -1,7 +1,7 @@
 using RushOrder.Desktop.Styles;
 using RushOrder.Desktop.Views.Dashboard.Widgets;
 
-namespace RushOrder.Desktop.Views.AiDashboard.Widgets;
+namespace RushOrder.Desktop.Views.Dashboard.AiDashboard.Widgets;
 
 internal sealed class KitchenEtaWidget : KpiWidget
 {
