@@ -101,7 +101,7 @@ static class Program
                     services.AddTransient<KitchenDisplayView>();
                     services.AddTransient<MenuManagementControl>();
                     services.AddTransient<StatisticsView>();
-                    services.AddTransient<Views.Forecast.DemandForecastControl>();
+                    services.AddTransient<Views.Statistics.Forecast.DemandForecastControl>();
                     services.AddTransient<Views.Dashboard.AiDashboard.AiDashboardView>();
                 })
                 .Build();

@@ -6,7 +6,7 @@ using RushOrder.Desktop.Services;
 using RushOrder.Desktop.Styles;
 using Color = System.Drawing.Color;
 
-namespace RushOrder.Desktop.Views.Forecast;
+namespace RushOrder.Desktop.Views.Statistics.Forecast;
 
 public sealed class DemandForecastControl : UserControl
 {
