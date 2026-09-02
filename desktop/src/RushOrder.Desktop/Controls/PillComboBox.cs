@@ -1,6 +1,6 @@
 using RushOrder.Desktop.Theme;
 
-namespace RushOrder.Desktop.Forms.Controls;
+namespace RushOrder.Desktop.Controls;
 
 // Pill-shaped stand-in for a ComboBoxStyle.DropDownList. A real ComboBox can't be made
 // pill-shaped: its native dropdown-arrow button is drawn by Windows on top of any Region

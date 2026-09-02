@@ -1,7 +1,6 @@
-using RushOrder.Desktop.Forms.Controls;
+using RushOrder.Desktop.Controls;
 using RushOrder.Desktop.Helpers;
 using RushOrder.Desktop.Models;
-using RushOrder.Desktop.Notifications;
 using RushOrder.Desktop.Services;
 using RushOrder.Desktop.Theme;
 

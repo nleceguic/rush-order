@@ -1,6 +1,6 @@
 using RushOrder.Desktop.Theme;
 
-namespace RushOrder.Desktop.Forms.Controls;
+namespace RushOrder.Desktop.Controls;
 
 internal sealed class NavButton : Control
 {

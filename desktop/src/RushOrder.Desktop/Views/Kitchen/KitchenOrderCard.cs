@@ -1,4 +1,4 @@
-using RushOrder.Desktop.Forms.Controls;
+using RushOrder.Desktop.Controls;
 using RushOrder.Desktop.Models;
 using RushOrder.Desktop.Theme;
 

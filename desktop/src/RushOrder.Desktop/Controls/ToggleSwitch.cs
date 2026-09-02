@@ -1,6 +1,6 @@
 using RushOrder.Desktop.Theme;
 
-namespace RushOrder.Desktop.Forms.Controls;
+namespace RushOrder.Desktop.Controls;
 
 // Pill-shaped on/off switch with no label — a colored track when on, a grey track when off,
 // and a round knob that slides between the two ends. Same self-painted approach as

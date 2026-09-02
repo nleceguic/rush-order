@@ -1,4 +1,4 @@
-namespace RushOrder.Desktop.Notifications;
+namespace RushOrder.Desktop.Controls;
 
 public enum ToastType { Success, Warning, Error, Info }
 

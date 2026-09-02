@@ -4,7 +4,7 @@ using QuestPDF.Infrastructure;
 using RushOrder.Desktop.Data;
 using RushOrder.Desktop.Forms;
 using RushOrder.Desktop.Navigation;
-using RushOrder.Desktop.Notifications;
+using RushOrder.Desktop.Controls;
 using RushOrder.Desktop.Services;
 using RushOrder.Desktop.State;
 using RushOrder.Desktop.Theme;

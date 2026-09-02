@@ -1,7 +1,7 @@
 using System.Drawing.Drawing2D;
 using RushOrder.Desktop.Theme;
 
-namespace RushOrder.Desktop.Notifications;
+namespace RushOrder.Desktop.Controls;
 
 internal sealed class ToastForm : Form
 {

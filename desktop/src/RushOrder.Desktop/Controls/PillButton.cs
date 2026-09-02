@@ -1,7 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using RushOrder.Desktop.Theme;
 
-namespace RushOrder.Desktop.Forms.Controls;
+namespace RushOrder.Desktop.Controls;
 
 // Pill-shaped stand-in for a flat Button. A native FlatAppearance border is drawn around the
 // control's rectangular bounds; once that rectangle gets clipped down to a pill via Region
