@@ -1,7 +1,7 @@
 using RushOrder.Desktop.Models;
 using RushOrder.Desktop.Services;
 using RushOrder.Desktop.State;
-using RushOrder.Desktop.Theme;
+using RushOrder.Desktop.Styles;
 
 namespace RushOrder.Desktop.Views.Orders.Dialogs;
 

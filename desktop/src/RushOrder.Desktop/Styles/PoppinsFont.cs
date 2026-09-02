@@ -3,7 +3,7 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using Serilog;
 
-namespace RushOrder.Desktop.Theme;
+namespace RushOrder.Desktop.Styles;
 
 /// <summary>
 /// Loads the embedded Poppins weights (400/500/600/700, matching the PWA's

@@ -1,5 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
-using RushOrder.Desktop.Theme;
+using RushOrder.Desktop.Styles;
 
 namespace RushOrder.Desktop.Controls;
 

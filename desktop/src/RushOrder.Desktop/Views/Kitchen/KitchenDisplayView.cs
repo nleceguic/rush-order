@@ -2,7 +2,7 @@ using RushOrder.Desktop.Controls;
 using RushOrder.Desktop.Helpers;
 using RushOrder.Desktop.Models;
 using RushOrder.Desktop.Services;
-using RushOrder.Desktop.Theme;
+using RushOrder.Desktop.Styles;
 
 namespace RushOrder.Desktop.Views.Kitchen;
 

@@ -1,6 +1,6 @@
 using System.Drawing.Drawing2D;
 
-namespace RushOrder.Desktop.Theme;
+namespace RushOrder.Desktop.Styles;
 
 internal static class GdiExtensions
 {

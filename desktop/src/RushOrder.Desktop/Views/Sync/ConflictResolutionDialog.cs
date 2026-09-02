@@ -1,6 +1,6 @@
 using Newtonsoft.Json;
 using RushOrder.Desktop.Models;
-using RushOrder.Desktop.Theme;
+using RushOrder.Desktop.Styles;
 
 namespace RushOrder.Desktop.Views.Sync;
 

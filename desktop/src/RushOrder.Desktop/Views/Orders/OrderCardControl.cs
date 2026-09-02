@@ -1,6 +1,6 @@
 using System.Drawing.Drawing2D;
 using RushOrder.Desktop.Models;
-using RushOrder.Desktop.Theme;
+using RushOrder.Desktop.Styles;
 
 namespace RushOrder.Desktop.Views.Orders;
 

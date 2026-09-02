@@ -3,7 +3,7 @@ using LiveChartsCore.SkiaSharpView;
 using LiveChartsCore.SkiaSharpView.WinForms;
 using RushOrder.Desktop.Models;
 using RushOrder.Desktop.Services;
-using RushOrder.Desktop.Theme;
+using RushOrder.Desktop.Styles;
 using Color = System.Drawing.Color;
 
 namespace RushOrder.Desktop.Views.Forecast;

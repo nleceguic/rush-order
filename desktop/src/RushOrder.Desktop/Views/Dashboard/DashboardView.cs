@@ -1,7 +1,7 @@
 using RushOrder.Desktop.Models;
 using RushOrder.Desktop.Navigation;
 using RushOrder.Desktop.Services;
-using RushOrder.Desktop.Theme;
+using RushOrder.Desktop.Styles;
 using RushOrder.Desktop.Views.Dashboard.Widgets;
 using RushOrder.Desktop.Views.Menu;
 using RushOrder.Desktop.Views.Orders;

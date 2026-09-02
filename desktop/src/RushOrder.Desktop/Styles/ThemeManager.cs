@@ -1,6 +1,6 @@
 using Microsoft.Win32;
 
-namespace RushOrder.Desktop.Theme;
+namespace RushOrder.Desktop.Styles;
 
 public sealed class ThemeManager
 {

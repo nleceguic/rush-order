@@ -7,7 +7,7 @@ using RushOrder.Desktop.Navigation;
 using RushOrder.Desktop.Controls;
 using RushOrder.Desktop.Services;
 using RushOrder.Desktop.State;
-using RushOrder.Desktop.Theme;
+using RushOrder.Desktop.Styles;
 using RushOrder.Desktop.Views.Dashboard;
 using RushOrder.Desktop.Views.FloorPlan;
 using RushOrder.Desktop.Views.Kitchen;
