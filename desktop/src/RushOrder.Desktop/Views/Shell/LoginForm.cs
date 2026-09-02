@@ -2,7 +2,7 @@ using System.Drawing.Drawing2D;
 using RushOrder.Desktop.Services;
 using RushOrder.Desktop.Theme;
 
-namespace RushOrder.Desktop.Forms;
+namespace RushOrder.Desktop.Views.Shell;
 
 public sealed class LoginForm : Form
 {

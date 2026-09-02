@@ -13,7 +13,7 @@ using RushOrder.Desktop.Views.Print;
 using RushOrder.Desktop.Views.Statistics;
 using RushOrder.Desktop.Models;
 
-namespace RushOrder.Desktop.Forms;
+namespace RushOrder.Desktop.Views.Shell;
 
 public sealed class MainForm : Form
 {

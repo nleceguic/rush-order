@@ -2,7 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using QuestPDF.Infrastructure;
 using RushOrder.Desktop.Data;
-using RushOrder.Desktop.Forms;
+using RushOrder.Desktop.Views.Shell;
 using RushOrder.Desktop.Navigation;
 using RushOrder.Desktop.Controls;
 using RushOrder.Desktop.Services;
