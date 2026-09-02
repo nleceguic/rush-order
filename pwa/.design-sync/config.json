@@ -1,0 +1,24 @@
+{
+  "pkg": "rush-order-pwa",
+  "globalName": "RushOrderPWA",
+  "projectId": "90e2e58b-c5c3-433c-8621-d951209649a0",
+  "shape": "package",
+  "srcDir": "src/shared/components",
+  "tsconfig": "tsconfig.json",
+  "cssEntry": ".design-sync/tailwind-build.css",
+  "extraFonts": [
+    "node_modules/@fontsource/poppins/400.css",
+    "node_modules/@fontsource/poppins/500.css",
+    "node_modules/@fontsource/poppins/600.css",
+    "node_modules/@fontsource/poppins/700.css"
+  ],
+  "buildCmd": "npx vite build && cp dist/assets/index-*.css .design-sync/tailwind-build.css",
+  "extraEntries": ["./src/app/i18n.ts"],
+  "readmeHeader": ".design-sync/conventions.md",
+  "overrides": {
+    "Modal": { "cardMode": "single", "viewport": "700x480" },
+    "PwaInstallBanner": { "cardMode": "single", "viewport": "420x200" },
+    "ToastContainer": { "cardMode": "single", "viewport": "420x260" },
+    "SkipLink": { "cardMode": "single", "primaryStory": "Focused", "viewport": "420x120" }
+  }
+}
