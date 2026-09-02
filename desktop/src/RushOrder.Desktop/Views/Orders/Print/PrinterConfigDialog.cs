@@ -2,7 +2,7 @@ using RushOrder.Desktop.Models;
 using RushOrder.Desktop.Services;
 using RushOrder.Desktop.Styles;
 
-namespace RushOrder.Desktop.Views.Print;
+namespace RushOrder.Desktop.Views.Orders.Print;
 
 public sealed class PrinterConfigDialog : Form
 {

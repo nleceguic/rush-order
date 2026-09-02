@@ -9,7 +9,7 @@ using RushOrder.Desktop.Views.Tables;
 using RushOrder.Desktop.Views.Kitchen;
 using RushOrder.Desktop.Views.Menu;
 using RushOrder.Desktop.Views.Orders;
-using RushOrder.Desktop.Views.Print;
+using RushOrder.Desktop.Views.Orders.Print;
 using RushOrder.Desktop.Views.Statistics;
 using RushOrder.Desktop.Models;
 
