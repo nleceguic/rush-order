@@ -2,7 +2,7 @@ using RushOrder.Desktop.Models;
 using RushOrder.Desktop.Services;
 using RushOrder.Desktop.Styles;
 
-namespace RushOrder.Desktop.Views.FloorPlan;
+namespace RushOrder.Desktop.Views.Tables;
 
 internal sealed class TableDetailPanel : Panel
 {

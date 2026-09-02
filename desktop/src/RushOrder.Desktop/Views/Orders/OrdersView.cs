@@ -5,7 +5,7 @@ using RushOrder.Desktop.Models;
 using RushOrder.Desktop.Services;
 using RushOrder.Desktop.State;
 using RushOrder.Desktop.Styles;
-using RushOrder.Desktop.Views.FloorPlan;
+using RushOrder.Desktop.Views.Tables;
 using RushOrder.Desktop.Views.Orders.Dialogs;
 
 namespace RushOrder.Desktop.Views.Orders;

@@ -3,7 +3,7 @@ using RushOrder.Desktop.Controls;
 using RushOrder.Desktop.Services;
 using RushOrder.Desktop.Styles;
 
-namespace RushOrder.Desktop.Views.FloorPlan;
+namespace RushOrder.Desktop.Views.Tables;
 
 public sealed class FloorPlanView : UserControl
 {

@@ -9,7 +9,7 @@ using RushOrder.Desktop.Services;
 using RushOrder.Desktop.State;
 using RushOrder.Desktop.Styles;
 using RushOrder.Desktop.Views.Dashboard;
-using RushOrder.Desktop.Views.FloorPlan;
+using RushOrder.Desktop.Views.Tables;
 using RushOrder.Desktop.Views.Kitchen;
 using RushOrder.Desktop.Views.Menu;
 using RushOrder.Desktop.Views.Orders;

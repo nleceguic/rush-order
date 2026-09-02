@@ -2,7 +2,7 @@ using System.Drawing.Drawing2D;
 using RushOrder.Desktop.Models;
 using RushOrder.Desktop.Styles;
 
-namespace RushOrder.Desktop.Views.FloorPlan;
+namespace RushOrder.Desktop.Views.Tables;
 
 public sealed class TableFloorPlanControl : Control
 {
