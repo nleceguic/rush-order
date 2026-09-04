@@ -1,0 +1,15 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:RushOrder.Desktop.Avalonia.Controls"
+             xmlns:lvc="using:LiveChartsCore.SkiaSharpView.Avalonia"
+             xmlns:local="using:RushOrder.Desktop.Avalonia.ViewModels.Dashboard.AiDashboard"
+             x:Class="RushOrder.Desktop.Avalonia.Views.Dashboard.AiDashboard.TodayForecastWidgetView"
+             x:DataType="local:TodayForecastWidgetViewModel">
+  <controls:KpiCardBase Title="PREVISIÓN DE HOY" State="{Binding State}"
+                         IsShowingSimulatedData="{Binding IsShowingSimulatedData}"
+                         RetryCommand="{Binding RetryCommand}">
+    <controls:KpiCardBase.Content>
+      <lvc:CartesianChart x:Name="Chart" Series="{Binding Series}" Margin="{StaticResource SpaceThickness2}" />
+    </controls:KpiCardBase.Content>
+  </controls:KpiCardBase>
+</UserControl>
