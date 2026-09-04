@@ -3,6 +3,7 @@
              x:Class="RushOrder.Desktop.Avalonia.App">
   <Application.Styles>
     <FluentTheme />
+    <StyleInclude Source="avares://RushOrder.Desktop.Avalonia/Animations/CardStateTransition.axaml" />
   </Application.Styles>
   <Application.Resources>
     <ResourceDictionary>
