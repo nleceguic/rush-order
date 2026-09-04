@@ -26,17 +26,20 @@ public class DashboardViewModelTests
             realTime);
 
         // The constructor kicks off an initial refresh as fire-and-forget (see spec: the 30s
-        // timer's first tick must not block construction), so it isn't guaranteed to have
-        // populated Tables.Occupied/Total by the time this line runs. Await it directly here
-        // (test-only synchronization, not part of the real-time patch path under test) so the
-        // TablesWidgetViewModel is in its settled (fallback-to-mock, since no backend is
-        // running in this unit test) state before we capture the baseline.
+        // timer's first tick must not block construction), so neither widget is guaranteed to
+        // have settled by the time this line runs. Await both directly here (test-only
+        // synchronization, not part of the real-time patch path under test) so Tables and
+        // Revenue are both in their settled (fallback-to-mock, since no backend is running in
+        // this unit test) state before we capture either baseline — otherwise the background
+        // refresh could still be mutating Revenue.RevenueToday when the isolation assertion
+        // below runs, making it spuriously fail.
         await vm.Tables.InitializeAsync();
+        await vm.Revenue.InitializeAsync();
 
         var occupiedBefore = vm.Tables.Occupied;
         var revenueBefore = vm.Revenue.RevenueToday;
 
-        await vm.OnTableStatusChangedForTest("table-1", "Occupied");
+        await vm.OnTableStatusChanged("table-1", "Occupied");
 
         Assert.NotEqual(occupiedBefore, vm.Tables.Occupied); // patched
         Assert.Equal(revenueBefore, vm.Revenue.RevenueToday); // untouched

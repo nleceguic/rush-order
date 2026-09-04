@@ -50,12 +50,7 @@ public sealed class DashboardViewModel : IDisposable
             return Task.CompletedTask;
         };
 
-        _realTime.TableStatusChanged += (_, status) =>
-        {
-            if (status == "Occupied" && Tables.Occupied < Tables.Total) Tables.Occupied++;
-            else if (status is "Free" or "Cleaning" && Tables.Occupied > 0) Tables.Occupied--;
-            return Task.CompletedTask;
-        };
+        _realTime.TableStatusChanged += OnTableStatusChanged;
 
         _realTime.KitchenAlert += async (message, severity) =>
         {
@@ -74,10 +69,13 @@ public sealed class DashboardViewModel : IDisposable
         };
     }
 
-    /// <summary>Test-only synchronous entry point mirroring the <c>TableStatusChanged</c>
-    /// handler above, since the real event is wired through <see cref="RealTimeService"/>'s
-    /// SignalR connection which isn't started in unit tests.</summary>
-    internal Task OnTableStatusChangedForTest(string tableId, string status)
+    /// <summary>Shared <c>TableStatusChanged</c> guard logic — wired directly as the real
+    /// <see cref="RealTimeService.TableStatusChanged"/> handler above (its delegate shape,
+    /// <c>Func&lt;string, string, Task&gt;</c>, matches this method's signature exactly), and
+    /// called directly by the unit test, since the real event is wired through
+    /// <see cref="RealTimeService"/>'s SignalR connection, which isn't started in unit tests.
+    /// Kept as a single method so production behavior and the test can never drift apart.</summary>
+    internal Task OnTableStatusChanged(string tableId, string status)
     {
         if (status == "Occupied" && Tables.Occupied < Tables.Total) Tables.Occupied++;
         else if (status is "Free" or "Cleaning" && Tables.Occupied > 0) Tables.Occupied--;
