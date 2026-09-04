@@ -1,0 +1,24 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:RushOrder.Desktop.Avalonia.Controls"
+             xmlns:local="using:RushOrder.Desktop.Avalonia.ViewModels.Dashboard"
+             x:Class="RushOrder.Desktop.Avalonia.Views.Dashboard.RevenueWidgetView"
+             x:DataType="local:RevenueWidgetViewModel">
+  <controls:KpiCardBase Title="INGRESOS DEL DÍA" State="{Binding State}"
+                         IsShowingSimulatedData="{Binding IsShowingSimulatedData}"
+                         RetryCommand="{Binding RetryCommand}">
+    <controls:KpiCardBase.Content>
+      <DockPanel>
+        <TextBlock DockPanel.Dock="Top" Text="{Binding RevenueToday, StringFormat='€ {0:N2}'}"
+                   FontFamily="{StaticResource PoppinsFontFamily}" FontSize="{StaticResource FontSizeKpi}"
+                   FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Margin="{StaticResource SpaceThickness2}" />
+        <TextBlock DockPanel.Dock="Top" Text="{Binding DeltaText}"
+                   FontFamily="{StaticResource PoppinsFontFamily}" FontSize="{StaticResource FontSizeLabel}"
+                   Foreground="{Binding DeltaIsUp, Converter={x:Static local:DeltaColorConverter.Instance}}"
+                   Margin="{StaticResource SpaceThickness2}" />
+        <controls:SparklineControl Data="{Binding Hourly}"
+                                    LineBrush="{DynamicResource SuccessBrush}" />
+      </DockPanel>
+    </controls:KpiCardBase.Content>
+  </controls:KpiCardBase>
+</UserControl>
