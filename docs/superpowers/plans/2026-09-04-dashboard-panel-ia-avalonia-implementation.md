@@ -111,6 +111,7 @@ Add inside the existing `<ItemGroup>`, after the `<!-- Desktop-only -->` block:
 
 ```csharp
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 
@@ -131,6 +132,8 @@ public sealed partial class App : Application
 }
 ```
 
+(`using Avalonia.Controls;` is required here for the `Window` type used below — omitted from an earlier draft of this snippet, corrected now so Task 1 and Task 2 agree on the file's exact content.)
+
 - [ ] **Step 5: Create `Program.cs`**
 
 ```csharp
@@ -146,10 +149,11 @@ internal static class Program
 
     public static AppBuilder BuildAvaloniaApp() => AppBuilder.Configure<App>()
         .UsePlatformDetect()
-        .WithInterFont()
         .LogToTrace();
 }
 ```
+
+(No `.WithInterFont()` — that extension method requires the `Avalonia.Fonts.Inter` package, which this project deliberately never references: Task 2 embeds and uses Poppins exclusively via the design tokens, matching the WinForms app. An earlier draft of this snippet carried `.WithInterFont()` over from Avalonia's default project template without noticing the dependency; corrected here so Task 1 doesn't contradict Task 2's already-approved decision.)
 
 - [ ] **Step 6: Add the project to `rush-order.sln`**
 
