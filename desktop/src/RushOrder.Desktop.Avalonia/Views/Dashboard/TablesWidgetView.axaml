@@ -1,0 +1,22 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:RushOrder.Desktop.Avalonia.Controls"
+             xmlns:local="using:RushOrder.Desktop.Avalonia.ViewModels.Dashboard"
+             x:Class="RushOrder.Desktop.Avalonia.Views.Dashboard.TablesWidgetView"
+             x:DataType="local:TablesWidgetViewModel">
+  <controls:KpiCardBase Title="MESAS" State="{Binding State}"
+                         IsShowingSimulatedData="{Binding IsShowingSimulatedData}"
+                         RetryCommand="{Binding RetryCommand}">
+    <controls:KpiCardBase.Content>
+      <Button Command="{Binding NavigateCommand}" Background="Transparent" BorderThickness="0" Cursor="Hand">
+        <DockPanel>
+          <TextBlock DockPanel.Dock="Bottom" Text="{Binding AvgOccupancyMinutes, StringFormat='Tiempo medio: {0:F0} min'}"
+                     FontFamily="{StaticResource PoppinsFontFamily}" FontSize="{StaticResource FontSizeLabel}"
+                     Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center"
+                     Margin="0,0,0,8" />
+          <controls:OccupancyArcControl Occupied="{Binding Occupied}" Total="{Binding Total}" />
+        </DockPanel>
+      </Button>
+    </controls:KpiCardBase.Content>
+  </controls:KpiCardBase>
+</UserControl>
