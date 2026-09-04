@@ -147,3 +147,6 @@ appsettings.*.Local.json
 coverage/
 *.coveragexml
 lcov.info
+
+## Worktrees (superpowers:using-git-worktrees scratch workspaces)
+.worktrees/
