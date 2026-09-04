@@ -40,33 +40,22 @@ public sealed class DashboardViewModel : IDisposable
     }
 
     // Real-time routing table — spec Section 3. Each handler touches exactly one widget's
-    // properties directly; none re-fetches or calls InitializeAsync().
+    // properties directly; none re-fetches or calls InitializeAsync(). Each handler is a named
+    // method (not an inline lambda) so Dispose() can unsubscribe it by reference — an anonymous
+    // lambda's delegate instance can't be recovered later for -=.
     private void WireRealTime()
     {
-        _realTime.OrderReceived += _ =>
-        {
-            Orders.Waiting++;
-            Orders.Total++;
-            return Task.CompletedTask;
-        };
-
+        _realTime.OrderReceived += OnOrderReceived;
         _realTime.TableStatusChanged += OnTableStatusChanged;
+        _realTime.KitchenAlert += OnKitchenAlert;
+        _realTime.MiseEnPlaceAlert += OnMiseEnPlaceAlert;
+    }
 
-        _realTime.KitchenAlert += async (message, severity) =>
-        {
-            var alert = new Models.AlertDto(Guid.NewGuid(), message,
-                Enum.TryParse<Models.AlertSeverity>(severity, true, out var sev) ? sev : Models.AlertSeverity.Info,
-                null, "Order", DateTimeOffset.Now);
-            Alerts.Prepend(alert);
-            await Task.CompletedTask;
-        };
-
-        _realTime.MiseEnPlaceAlert += async message =>
-        {
-            var alert = new Models.AlertDto(Guid.NewGuid(), message, Models.AlertSeverity.Info, null, "mise_en_place", DateTimeOffset.Now);
-            Alerts.Prepend(alert);
-            await Task.CompletedTask;
-        };
+    private Task OnOrderReceived(RushOrder.Desktop.Core.Hubs.OrderReceivedPayload payload)
+    {
+        Orders.Waiting++;
+        Orders.Total++;
+        return Task.CompletedTask;
     }
 
     /// <summary>Shared <c>TableStatusChanged</c> guard logic — wired directly as the real
@@ -82,5 +71,28 @@ public sealed class DashboardViewModel : IDisposable
         return Task.CompletedTask;
     }
 
-    public void Dispose() => _refreshTimer.Dispose();
+    private Task OnKitchenAlert(string message, string severity)
+    {
+        var alert = new Models.AlertDto(Guid.NewGuid(), message,
+            Enum.TryParse<Models.AlertSeverity>(severity, true, out var sev) ? sev : Models.AlertSeverity.Info,
+            null, "Order", DateTimeOffset.Now);
+        Alerts.Prepend(alert);
+        return Task.CompletedTask;
+    }
+
+    private Task OnMiseEnPlaceAlert(string message)
+    {
+        var alert = new Models.AlertDto(Guid.NewGuid(), message, Models.AlertSeverity.Info, null, "mise_en_place", DateTimeOffset.Now);
+        Alerts.Prepend(alert);
+        return Task.CompletedTask;
+    }
+
+    public void Dispose()
+    {
+        _realTime.OrderReceived -= OnOrderReceived;
+        _realTime.TableStatusChanged -= OnTableStatusChanged;
+        _realTime.KitchenAlert -= OnKitchenAlert;
+        _realTime.MiseEnPlaceAlert -= OnMiseEnPlaceAlert;
+        _refreshTimer.Dispose();
+    }
 }

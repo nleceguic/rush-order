@@ -24,7 +24,7 @@ public class AiDashboardViewModelTests
             new KitchenEtaWidgetViewModel(forecastData),
             realTime);
 
-        await vm.OnKitchenAlertForTest("Horno 2 fuera de servicio", "Critical");
+        await vm.OnKitchenAlert("Horno 2 fuera de servicio", "Critical");
 
         Assert.Equal("Horno 2 fuera de servicio", vm.Alerts.Alerts[0].Message);
     }

@@ -20,12 +20,8 @@ public sealed class AiDashboardViewModel : IDisposable
         Forecast = forecast; Suggestion = suggestion; Alerts = alerts; Eta = eta;
         _realTime = realTime;
 
-        _realTime.KitchenAlert += OnKitchenAlertForTest;
-        _realTime.MiseEnPlaceAlert += async message =>
-        {
-            Alerts.Prepend(new Models.AlertDto(Guid.NewGuid(), message, Models.AlertSeverity.Info, null, "mise_en_place", DateTimeOffset.Now));
-            await Task.CompletedTask;
-        };
+        _realTime.KitchenAlert += OnKitchenAlert;
+        _realTime.MiseEnPlaceAlert += OnMiseEnPlaceAlert;
 
         _refreshTimer = new System.Timers.Timer(60_000) { AutoReset = true };
         _refreshTimer.Elapsed += async (_, _) => await RefreshAllAsync();
@@ -37,15 +33,29 @@ public sealed class AiDashboardViewModel : IDisposable
     private async Task RefreshAllAsync() =>
         await Task.WhenAll(Forecast.InitializeAsync(), Suggestion.InitializeAsync(), Alerts.InitializeAsync(), Eta.InitializeAsync());
 
-    /// <summary>Also the production <c>KitchenAlert</c> handler — named for the test that
-    /// exercises it directly since <see cref="RealTimeService"/>'s SignalR connection isn't
-    /// started in unit tests (same pattern as <c>DashboardViewModel</c>'s Task 21 test hook).</summary>
-    internal Task OnKitchenAlertForTest(string message, string severity)
+    /// <summary>The production <c>KitchenAlert</c> handler — also called directly by the unit
+    /// test, since <see cref="RealTimeService"/>'s SignalR connection isn't started in unit tests
+    /// (same pattern as <c>DashboardViewModel</c>'s Task 21 test hook). Kept as a named method
+    /// (not an inline lambda) so <see cref="Dispose"/> can unsubscribe it by reference.</summary>
+    internal Task OnKitchenAlert(string message, string severity)
     {
         var sev = Enum.TryParse<Models.AlertSeverity>(severity, true, out var s) ? s : Models.AlertSeverity.Info;
         Alerts.Prepend(new Models.AlertDto(Guid.NewGuid(), message, sev, null, "Order", DateTimeOffset.Now));
         return Task.CompletedTask;
     }
 
-    public void Dispose() => _refreshTimer.Dispose();
+    /// <summary>Named for the same reason as <see cref="OnKitchenAlert"/> — <see cref="Dispose"/>
+    /// needs a stable delegate reference to unsubscribe.</summary>
+    private Task OnMiseEnPlaceAlert(string message)
+    {
+        Alerts.Prepend(new Models.AlertDto(Guid.NewGuid(), message, Models.AlertSeverity.Info, null, "mise_en_place", DateTimeOffset.Now));
+        return Task.CompletedTask;
+    }
+
+    public void Dispose()
+    {
+        _realTime.KitchenAlert -= OnKitchenAlert;
+        _realTime.MiseEnPlaceAlert -= OnMiseEnPlaceAlert;
+        _refreshTimer.Dispose();
+    }
 }
