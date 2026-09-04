@@ -1,0 +1,14 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ai="using:RushOrder.Desktop.Avalonia.Views.Dashboard.AiDashboard"
+             xmlns:dash="using:RushOrder.Desktop.Avalonia.Views.Dashboard"
+             xmlns:aivm="using:RushOrder.Desktop.Avalonia.ViewModels.Dashboard.AiDashboard"
+             x:Class="RushOrder.Desktop.Avalonia.Views.Dashboard.AiDashboard.AiDashboardView"
+             x:DataType="aivm:AiDashboardViewModel">
+  <Grid RowDefinitions="*,*" ColumnDefinitions="*,*" Margin="{StaticResource SpaceThickness2}">
+    <ai:TodayForecastWidgetView Grid.Row="0" Grid.Column="0" DataContext="{Binding Forecast}" />
+    <dash:AlertsWidgetView Grid.Row="0" Grid.Column="1" DataContext="{Binding Alerts}" />
+    <ai:SuggestionOfTheDayWidgetView Grid.Row="1" Grid.Column="0" DataContext="{Binding Suggestion}" />
+    <ai:KitchenEtaWidgetView Grid.Row="1" Grid.Column="1" DataContext="{Binding Eta}" />
+  </Grid>
+</UserControl>

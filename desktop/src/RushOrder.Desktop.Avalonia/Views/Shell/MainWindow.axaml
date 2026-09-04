@@ -4,6 +4,8 @@
         xmlns:nav="using:RushOrder.Desktop.Avalonia.Navigation"
         xmlns:dashvm="using:RushOrder.Desktop.Avalonia.ViewModels.Dashboard"
         xmlns:dashview="using:RushOrder.Desktop.Avalonia.Views.Dashboard"
+        xmlns:aivm="using:RushOrder.Desktop.Avalonia.ViewModels.Dashboard.AiDashboard"
+        xmlns:aiview="using:RushOrder.Desktop.Avalonia.Views.Dashboard.AiDashboard"
         x:Class="RushOrder.Desktop.Avalonia.Views.Shell.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="Rush Order" Width="1280" Height="800"
@@ -14,6 +16,9 @@
     </DataTemplate>
     <DataTemplate DataType="dashvm:DashboardViewModel">
       <dashview:DashboardView />
+    </DataTemplate>
+    <DataTemplate DataType="aivm:AiDashboardViewModel">
+      <aiview:AiDashboardView />
     </DataTemplate>
   </Window.DataTemplates>
   <Grid ColumnDefinitions="220,*">
