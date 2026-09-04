@@ -1,0 +1,15 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:dash="using:RushOrder.Desktop.Avalonia.Views.Dashboard"
+             xmlns:dashvm="using:RushOrder.Desktop.Avalonia.ViewModels.Dashboard"
+             x:Class="RushOrder.Desktop.Avalonia.Views.Dashboard.DashboardView"
+             x:DataType="dashvm:DashboardViewModel">
+  <Grid RowDefinitions="*,*" ColumnDefinitions="*,*,*" Margin="{StaticResource SpaceThickness2}">
+    <dash:RevenueWidgetView Grid.Row="0" Grid.Column="0" DataContext="{Binding Revenue}" />
+    <dash:ActiveOrdersWidgetView Grid.Row="0" Grid.Column="1" DataContext="{Binding Orders}" />
+    <dash:TablesWidgetView Grid.Row="0" Grid.Column="2" DataContext="{Binding Tables}" />
+    <dash:AvgTicketWidgetView Grid.Row="1" Grid.Column="0" DataContext="{Binding Ticket}" />
+    <dash:AlertsWidgetView Grid.Row="1" Grid.Column="1" DataContext="{Binding Alerts}" />
+    <dash:ReservationsWidgetView Grid.Row="1" Grid.Column="2" DataContext="{Binding Reservations}" />
+  </Grid>
+</UserControl>

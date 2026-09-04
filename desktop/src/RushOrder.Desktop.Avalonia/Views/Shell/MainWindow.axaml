@@ -2,6 +2,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:RushOrder.Desktop.Avalonia.ViewModels.Shell"
         xmlns:nav="using:RushOrder.Desktop.Avalonia.Navigation"
+        xmlns:dashvm="using:RushOrder.Desktop.Avalonia.ViewModels.Dashboard"
+        xmlns:dashview="using:RushOrder.Desktop.Avalonia.Views.Dashboard"
         x:Class="RushOrder.Desktop.Avalonia.Views.Shell.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="Rush Order" Width="1280" Height="800"
@@ -9,6 +11,9 @@
   <Window.DataTemplates>
     <DataTemplate DataType="nav:PlaceholderViewModel">
       <nav:PlaceholderView />
+    </DataTemplate>
+    <DataTemplate DataType="dashvm:DashboardViewModel">
+      <dashview:DashboardView />
     </DataTemplate>
   </Window.DataTemplates>
   <Grid ColumnDefinitions="220,*">
