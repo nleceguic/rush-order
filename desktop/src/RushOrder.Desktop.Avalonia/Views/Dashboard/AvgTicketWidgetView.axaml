@@ -1,0 +1,28 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:RushOrder.Desktop.Avalonia.Controls"
+             xmlns:local="using:RushOrder.Desktop.Avalonia.ViewModels.Dashboard"
+             x:Class="RushOrder.Desktop.Avalonia.Views.Dashboard.AvgTicketWidgetView"
+             x:DataType="local:AvgTicketWidgetViewModel">
+  <controls:KpiCardBase Title="TICKET MEDIO" State="{Binding State}"
+                         IsShowingSimulatedData="{Binding IsShowingSimulatedData}"
+                         RetryCommand="{Binding RetryCommand}">
+    <controls:KpiCardBase.Content>
+      <StackPanel Margin="{StaticResource SpaceThickness2}" Spacing="{StaticResource Space1}">
+        <TextBlock Text="{Binding Today, StringFormat='€ {0:N2}'}" FontFamily="{StaticResource PoppinsFontFamily}"
+                   FontSize="26" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" />
+        <TextBlock Text="{Binding DeltaText}" FontFamily="{StaticResource PoppinsFontFamily}"
+                   FontSize="{StaticResource FontSizeLabel}"
+                   Foreground="{Binding DeltaIsUp, Converter={x:Static local:DeltaColorConverter.Instance}}" />
+        <Grid ColumnDefinitions="*,*" Height="60" Margin="0,8,0,0">
+          <Border Grid.Column="0" VerticalAlignment="Bottom" Background="#5A5A5A" Width="40"
+                  Height="{Binding Yesterday, Converter={x:Static local:BarHeightConverter.Instance}}"
+                  CornerRadius="{StaticResource RadiusSm}" HorizontalAlignment="Center" />
+          <Border Grid.Column="1" VerticalAlignment="Bottom" Background="{DynamicResource SuccessBrush}" Width="40"
+                  Height="{Binding Today, Converter={x:Static local:BarHeightConverter.Instance}}"
+                  CornerRadius="{StaticResource RadiusSm}" HorizontalAlignment="Center" />
+        </Grid>
+      </StackPanel>
+    </controls:KpiCardBase.Content>
+  </controls:KpiCardBase>
+</UserControl>
