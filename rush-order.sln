@@ -37,6 +37,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RushOrder.Desktop.Tests", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RushOrder.Desktop.Avalonia", "desktop\src\RushOrder.Desktop.Avalonia\RushOrder.Desktop.Avalonia.csproj", "{D669EB6C-3EF2-49B9-9D1A-B979CB527FB8}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RushOrder.Desktop.Avalonia.Tests", "desktop\tests\RushOrder.Desktop.Avalonia.Tests\RushOrder.Desktop.Avalonia.Tests.csproj", "{FA397820-313E-46EB-9F25-EF828457530C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -90,6 +92,10 @@ Global
 		{D669EB6C-3EF2-49B9-9D1A-B979CB527FB8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D669EB6C-3EF2-49B9-9D1A-B979CB527FB8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D669EB6C-3EF2-49B9-9D1A-B979CB527FB8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FA397820-313E-46EB-9F25-EF828457530C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FA397820-313E-46EB-9F25-EF828457530C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FA397820-313E-46EB-9F25-EF828457530C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FA397820-313E-46EB-9F25-EF828457530C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{F3075375-6AFB-47B0-976A-C51311EBE210} = {C7FE04A1-7922-4121-A494-2959853BC8C1}
@@ -107,5 +113,6 @@ Global
 		{EDAF7C59-7FFF-4948-AE9B-5CD31303C367} = {8A8225F7-0B8A-4CA7-A36E-E5474498F448}
 		{EE16AB41-139C-4734-8C78-3DEEB6E00638} = {EDAF7C59-7FFF-4948-AE9B-5CD31303C367}
 		{D669EB6C-3EF2-49B9-9D1A-B979CB527FB8} = {EFBBFA95-5433-47AF-BEB9-D79AFF5D956F}
+		{FA397820-313E-46EB-9F25-EF828457530C} = {EDAF7C59-7FFF-4948-AE9B-5CD31303C367}
 	EndGlobalSection
 EndGlobal
