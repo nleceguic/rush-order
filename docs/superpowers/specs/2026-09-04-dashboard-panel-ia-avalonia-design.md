@@ -87,14 +87,29 @@ public abstract partial class WidgetViewModelBase : ObservableObject
 
 | Evento `RealTimeService` | Widget afectado | Acción |
 |---|---|---|
-| `OrderReceived` | ActiveOrdersWidgetVM | incrementa `OrdersWaiting` localmente (optimista) |
+| `OrderReceived` | ActiveOrdersWidgetVM | incrementa `OrdersWaiting` localmente a partir del evento server-pushed recibido |
 | `OrderStatusUpdated(id, status, ts)` | ActiveOrdersWidgetVM | mueve el conteo entre waiting/preparing/ready, sin refetch |
 | `TableStatusChanged(id, status)` | TablesWidgetVM | ajusta `TablesOccupied` localmente |
 | `KitchenAlert` / `MiseEnPlaceAlert` | AlertsWidgetVM | prepend/update |
 
 Cada patch dispara `RefreshPulse` (`Animations/`) solo sobre esa card; el resto del grid no se re-mide ni se re-renderiza.
 
-**Animaciones en hilo de composición:** valores numéricos bindeados a un `double` intermedio (`AnimatedValue`) con `DoubleTransition` de Avalonia (corre en el compositor, no en el hilo de UI); un converter formatea `AnimatedValue` a moneda/entero para el `TextBlock`. Transiciones entre estados de card vía `CardStateTransition` (cross-fade declarativo). Sin `DispatcherTimer` + `Invalidate()` manual (patrón presente como hack de debug en el `DashboardView.cs` WinForms actual — evitarlo es intencional).
+**Animaciones en hilo de composición:** las `Transition` declarativas de Avalonia (`DoubleTransition` incluida) son el mecanismo por defecto para cambios de propiedad simples, pero **no** están garantizadas en el compositor/render thread — no se describen como Composition Animations. Para las animaciones numéricas sensibles a rendimiento del Dashboard (el contador de valor de cada KPI), se usa explícitamente la Composition API de Avalonia 11 (`ElementComposition.GetElementVisual()` + `Compositor.CreateDoubleKeyFrameAnimation()`, o el mecanismo equivalente) para que el valor anime en el compositor sin depender del hilo de UI:
+
+```text
+Valor real recibido
+    ↓
+ViewModel / actualización de estado
+    ↓
+inicio de animación visual
+    ↓
+Composition Animation cuando sea una animación
+sensible a rendimiento
+    ↓
+Compositor / render thread
+```
+
+El cross-fade entre estados de card (`CardStateTransition`) no tiene ese requisito de rendimiento y puede seguir usando el sistema de `Transitions` estándar de Avalonia. Sin `DispatcherTimer` + `Invalidate()` manual en ningún caso (patrón presente como hack de debug en el `DashboardView.cs` WinForms actual — evitarlo es intencional).
 
 **Sin red en el hilo de UI:** todo `Load*Async` es `async Task`, invocado desde `AttachedToVisualTree`/`AsyncRelayCommand`; cero `.Result`/`.Wait()`.
 
@@ -111,5 +126,5 @@ Cada patch dispara `RefreshPulse` (`Animations/`) solo sobre esa card; el resto 
 ## Self-review
 
 - Sin placeholders (`TBD`/`TODO`) — todas las decisiones fueron confirmadas con el usuario o son continuación directa de un patrón ya validado en el WinForms actual.
-- Consistencia interna verificada: la matriz de estados de la Sección 2 no contradice el flujo real-time de la Sección 3 (un patch real-time siempre implica `State = Loaded` porque proviene de datos ya confirmados por el backend vía push, nunca del fallback simulado).
+- Consistencia interna verificada: la matriz de estados de la Sección 2 no contradice el flujo real-time de la Sección 3 — un evento real-time válido del backend (SignalR) actualiza el estado real del widget y siempre implica `State = Loaded`; no es una actualización optimista del cliente ni un dato simulado.
 - Alcance: un solo módulo (Dashboard + Panel IA, ya tratado como una unidad en el WinForms actual) — no requiere descomponerse más.
