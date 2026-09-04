@@ -1,0 +1,40 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:RushOrder.Desktop.Avalonia.ViewModels.Shell"
+        xmlns:nav="using:RushOrder.Desktop.Avalonia.Navigation"
+        x:Class="RushOrder.Desktop.Avalonia.Views.Shell.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="Rush Order" Width="1280" Height="800"
+        Background="{DynamicResource BackgroundBrush}">
+  <Window.DataTemplates>
+    <DataTemplate DataType="nav:PlaceholderViewModel">
+      <nav:PlaceholderView />
+    </DataTemplate>
+  </Window.DataTemplates>
+  <Grid ColumnDefinitions="220,*">
+    <Border Grid.Column="0" Background="{DynamicResource SidebarBgBrush}">
+      <ItemsControl ItemsSource="{Binding NavItems}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:NavItem">
+            <Button Command="{Binding $parent[ItemsControl].((vm:MainWindowViewModel)DataContext).SelectNavCommand}"
+                    CommandParameter="{Binding}"
+                    HorizontalContentAlignment="Left"
+                    HorizontalAlignment="Stretch"
+                    Padding="16"
+                    Background="Transparent"
+                    BorderThickness="0">
+              <StackPanel Orientation="Horizontal" Spacing="{StaticResource Space2}">
+                <TextBlock Text="{Binding Icon}" Foreground="White" />
+                <TextBlock Text="{Binding Label}"
+                           FontFamily="{StaticResource PoppinsFontFamily}"
+                           FontSize="{StaticResource FontSizeLabel}"
+                           Foreground="White" />
+              </StackPanel>
+            </Button>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </Border>
+    <ContentControl Grid.Column="1" Content="{Binding CurrentContent}" Margin="16" />
+  </Grid>
+</Window>

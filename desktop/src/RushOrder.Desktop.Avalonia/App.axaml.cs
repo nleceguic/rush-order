@@ -13,7 +13,11 @@ public sealed partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            desktop.MainWindow = new Window { Width = 1280, Height = 800, Title = "Rush Order" };
+            var nav = new Navigation.NavigationService();
+            desktop.MainWindow = new Views.Shell.MainWindow
+            {
+                DataContext = new ViewModels.Shell.MainWindowViewModel(nav)
+            };
         }
         base.OnFrameworkInitializationCompleted();
     }
