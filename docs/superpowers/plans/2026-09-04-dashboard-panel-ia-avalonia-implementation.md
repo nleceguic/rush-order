@@ -2763,7 +2763,7 @@ namespace RushOrder.Desktop.Avalonia.ViewModels.Dashboard;
 public sealed class BarHeightConverter : IValueConverter
 {
     public static readonly BarHeightConverter Instance = new();
-    private const double MaxReference = 60m switch { var m => (double)m }; // €60 ceiling ≈ typical avg-ticket range
+    private const double MaxReference = 60; // €60 ceiling ≈ typical avg-ticket range
 
     public object Convert(object? value, Type targetType, object? parameter, System.Globalization.CultureInfo culture)
     {
