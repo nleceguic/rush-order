@@ -4,7 +4,7 @@ using Avalonia.Rendering.Composition.Animations;
 
 namespace RushOrder.Desktop.Avalonia.Animations;
 
-/// <summary>Brief scale+opacity pulse on a widget card's Visual, run entirely on the
+/// <summary>Brief scale pulse on a widget card's Visual, run entirely on the
 /// compositor/render thread via Avalonia's Composition API — the only animation in this
 /// module that legitimately claims that guarantee. Triggered whenever a widget's bound
 /// content changes (targeted real-time patch or a normal refresh), never on a timer.</summary>
