@@ -1,0 +1,50 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:RushOrder.Desktop.Avalonia.ViewModels"
+             x:Class="RushOrder.Desktop.Avalonia.Controls.KpiCardBase"
+             x:Name="Root">
+  <Border Background="{DynamicResource SurfaceBrush}"
+          BorderBrush="{DynamicResource BorderBrush2}"
+          BorderThickness="1"
+          CornerRadius="{StaticResource RadiusLg}"
+          Margin="{StaticResource SpaceThickness1}">
+    <DockPanel>
+      <TextBlock DockPanel.Dock="Top"
+                 Text="{Binding #Root.Title}"
+                 FontFamily="{StaticResource PoppinsFontFamily}"
+                 FontSize="{StaticResource FontSizeLabel}"
+                 FontWeight="Bold"
+                 Foreground="{DynamicResource TextSecondaryBrush}"
+                 Margin="{StaticResource SpaceThickness3}" />
+
+      <Border DockPanel.Dock="Top"
+              Background="#1AF44336"
+              Padding="{StaticResource SpaceThickness2}"
+              IsVisible="{Binding #Root.IsShowingSimulatedData}">
+        <Grid ColumnDefinitions="*,Auto">
+          <TextBlock Grid.Column="0" Text="Sin conexión — datos de ejemplo"
+                     FontFamily="{StaticResource PoppinsFontFamily}"
+                     FontSize="{StaticResource FontSizeLabel}"
+                     Foreground="{DynamicResource ErrorBrush}"
+                     VerticalAlignment="Center" />
+          <Button Grid.Column="1" Content="Reintentar" Command="{Binding #Root.RetryCommand}" />
+        </Grid>
+      </Border>
+
+      <Panel>
+        <TextBlock Text="Cargando…" HorizontalAlignment="Center" VerticalAlignment="Center"
+                   FontFamily="{StaticResource PoppinsFontFamily}"
+                   Foreground="{DynamicResource TextSecondaryBrush}"
+                   IsVisible="{Binding #Root.State, Converter={x:Static vm:WidgetStateConverters.IsLoading}}" />
+
+        <TextBlock Text="Sin datos" HorizontalAlignment="Center" VerticalAlignment="Center"
+                   FontFamily="{StaticResource PoppinsFontFamily}"
+                   Foreground="{DynamicResource TextSecondaryBrush}"
+                   IsVisible="{Binding #Root.State, Converter={x:Static vm:WidgetStateConverters.IsEmpty}}" />
+
+        <ContentPresenter Classes="card-state" Content="{Binding #Root.Content}"
+                           IsVisible="{Binding #Root.State, Converter={x:Static vm:WidgetStateConverters.HasContent}}" />
+      </Panel>
+    </DockPanel>
+  </Border>
+</UserControl>

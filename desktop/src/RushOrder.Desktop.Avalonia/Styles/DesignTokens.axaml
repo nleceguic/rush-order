@@ -36,7 +36,12 @@
   <SolidColorBrush x:Key="BorderBrush2" Color="#E5E5E5" />
   <SolidColorBrush x:Key="InputBrush" Color="#FFFFFF" />
 
-  <!-- Spacing (8px scale, 4px fine step) -->
+  <!-- Spacing (8px scale, 4px fine step). x:Double values are for double-typed properties
+       (Spacing, Width, Height); the parallel SpaceThicknessN resources below are for
+       Margin/Padding (Thickness-typed) — StaticResource does not implicitly convert a
+       boxed double to Thickness the way a literal string does via ThicknessTypeConverter,
+       so a Double resource assigned directly to Margin/Padding throws InvalidCastException
+       at runtime (found during Task 7 implementation review). -->
   <x:Double x:Key="Space1">4</x:Double>
   <x:Double x:Key="Space2">8</x:Double>
   <x:Double x:Key="Space3">16</x:Double>
@@ -44,6 +49,14 @@
   <x:Double x:Key="Space5">32</x:Double>
   <x:Double x:Key="Space6">48</x:Double>
   <x:Double x:Key="Space7">64</x:Double>
+
+  <Thickness x:Key="SpaceThickness1">4</Thickness>
+  <Thickness x:Key="SpaceThickness2">8</Thickness>
+  <Thickness x:Key="SpaceThickness3">16</Thickness>
+  <Thickness x:Key="SpaceThickness4">24</Thickness>
+  <Thickness x:Key="SpaceThickness5">32</Thickness>
+  <Thickness x:Key="SpaceThickness6">48</Thickness>
+  <Thickness x:Key="SpaceThickness7">64</Thickness>
 
   <!-- Radii -->
   <CornerRadius x:Key="RadiusSm">8</CornerRadius>
