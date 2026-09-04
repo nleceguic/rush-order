@@ -15,7 +15,7 @@
         <TextBlock DockPanel.Dock="Top" Text="{Binding DeltaText}"
                    FontFamily="{StaticResource PoppinsFontFamily}" FontSize="{StaticResource FontSizeLabel}"
                    Foreground="{Binding DeltaIsUp, Converter={x:Static local:DeltaColorConverter.Instance}}"
-                   Margin="{StaticResource SpaceThickness2}" />
+                   Margin="8,0" />
         <controls:SparklineControl Data="{Binding Hourly}"
                                     LineBrush="{DynamicResource SuccessBrush}" />
       </DockPanel>
