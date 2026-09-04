@@ -1,0 +1,22 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:RushOrder.Desktop.Avalonia.Controls"
+             xmlns:local="using:RushOrder.Desktop.Avalonia.ViewModels.Dashboard.AiDashboard"
+             x:Class="RushOrder.Desktop.Avalonia.Views.Dashboard.AiDashboard.SuggestionOfTheDayWidgetView"
+             x:DataType="local:SuggestionOfTheDayWidgetViewModel">
+  <controls:KpiCardBase Title="SUGERENCIA DEL DÍA" State="{Binding State}"
+                         IsShowingSimulatedData="{Binding IsShowingSimulatedData}"
+                         RetryCommand="{Binding RetryCommand}">
+    <controls:KpiCardBase.Content>
+      <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="{StaticResource Space1}">
+        <TextBlock Text="💡" FontSize="28" HorizontalAlignment="Center" />
+        <TextBlock Text="{Binding ProductName, TargetNullValue='Sin datos suficientes'}"
+                   FontFamily="{StaticResource PoppinsFontFamily}" FontSize="13" FontWeight="Bold"
+                   Foreground="{DynamicResource TextPrimaryBrush}" HorizontalAlignment="Center" />
+        <TextBlock Text="{Binding DetailText}" FontFamily="{StaticResource PoppinsFontFamily}"
+                   FontSize="{StaticResource FontSizeLabel}" Foreground="{DynamicResource TextSecondaryBrush}"
+                   HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" />
+      </StackPanel>
+    </controls:KpiCardBase.Content>
+  </controls:KpiCardBase>
+</UserControl>
