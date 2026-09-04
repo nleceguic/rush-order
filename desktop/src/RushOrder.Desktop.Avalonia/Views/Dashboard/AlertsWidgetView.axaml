@@ -1,0 +1,32 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:RushOrder.Desktop.Avalonia.Controls"
+             xmlns:local="using:RushOrder.Desktop.Avalonia.ViewModels.Dashboard"
+             x:Class="RushOrder.Desktop.Avalonia.Views.Dashboard.AlertsWidgetView"
+             x:DataType="local:AlertsWidgetViewModel">
+  <controls:KpiCardBase Title="ALERTAS ACTIVAS" State="{Binding State}"
+                         IsShowingSimulatedData="{Binding IsShowingSimulatedData}"
+                         RetryCommand="{Binding RetryCommand}">
+    <controls:KpiCardBase.Content>
+      <ScrollViewer>
+        <ItemsControl ItemsSource="{Binding Alerts}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="local:AlertRowViewModel">
+              <Button Command="{Binding $parent[ItemsControl].((local:AlertsWidgetViewModel)DataContext).RowClickedCommand}"
+                      CommandParameter="{Binding}" Background="Transparent" BorderThickness="0"
+                      HorizontalContentAlignment="Stretch" HorizontalAlignment="Stretch" Cursor="Hand">
+                <StackPanel Margin="{StaticResource SpaceThickness2}">
+                  <TextBlock Text="{Binding Message}" FontFamily="{StaticResource PoppinsFontFamily}"
+                             FontSize="{StaticResource FontSizeLabel}" TextTrimming="CharacterEllipsis"
+                             Foreground="{DynamicResource TextPrimaryBrush}" />
+                  <TextBlock Text="{Binding Age}" FontFamily="{StaticResource PoppinsFontFamily}"
+                             FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" />
+                </StackPanel>
+              </Button>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </ScrollViewer>
+    </controls:KpiCardBase.Content>
+  </controls:KpiCardBase>
+</UserControl>
