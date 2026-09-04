@@ -1,0 +1,21 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:nav="clr-namespace:RushOrder.Desktop.Avalonia.Navigation"
+             x:Class="RushOrder.Desktop.Avalonia.Navigation.PlaceholderView"
+             x:DataType="nav:PlaceholderViewModel">
+  <Grid Background="{DynamicResource BackgroundBrush}">
+    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="{StaticResource Space2}">
+      <TextBlock Text="Próximamente"
+                 FontFamily="{StaticResource PoppinsFontFamily}"
+                 FontSize="{StaticResource FontSizeTitle}"
+                 FontWeight="SemiBold"
+                 Foreground="{DynamicResource TextPrimaryBrush}"
+                 HorizontalAlignment="Center" />
+      <TextBlock Text="{Binding RouteKey}"
+                 FontFamily="{StaticResource PoppinsFontFamily}"
+                 FontSize="{StaticResource FontSizeLabel}"
+                 Foreground="{DynamicResource TextSecondaryBrush}"
+                 HorizontalAlignment="Center" />
+    </StackPanel>
+  </Grid>
+</UserControl>
