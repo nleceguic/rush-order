@@ -238,7 +238,12 @@ Run: `cp desktop/src/RushOrder.Desktop/Assets/Fonts/Poppins-*.ttf desktop/src/Ru
   <SolidColorBrush x:Key="BorderBrush2" Color="#E5E5E5" />
   <SolidColorBrush x:Key="InputBrush" Color="#FFFFFF" />
 
-  <!-- Spacing (8px scale, 4px fine step) -->
+  <!-- Spacing (8px scale, 4px fine step). x:Double values are for double-typed properties
+       (Spacing, Width, Height); the parallel SpaceThicknessN resources below are for
+       Margin/Padding (Thickness-typed) — StaticResource does not implicitly convert a
+       boxed double to Thickness the way a literal string does via ThicknessTypeConverter,
+       so a Double resource assigned directly to Margin/Padding throws InvalidCastException
+       at runtime (found during Task 7 implementation review). -->
   <x:Double x:Key="Space1">4</x:Double>
   <x:Double x:Key="Space2">8</x:Double>
   <x:Double x:Key="Space3">16</x:Double>
@@ -246,6 +251,14 @@ Run: `cp desktop/src/RushOrder.Desktop/Assets/Fonts/Poppins-*.ttf desktop/src/Ru
   <x:Double x:Key="Space5">32</x:Double>
   <x:Double x:Key="Space6">48</x:Double>
   <x:Double x:Key="Space7">64</x:Double>
+
+  <Thickness x:Key="SpaceThickness1">4</Thickness>
+  <Thickness x:Key="SpaceThickness2">8</Thickness>
+  <Thickness x:Key="SpaceThickness3">16</Thickness>
+  <Thickness x:Key="SpaceThickness4">24</Thickness>
+  <Thickness x:Key="SpaceThickness5">32</Thickness>
+  <Thickness x:Key="SpaceThickness6">48</Thickness>
+  <Thickness x:Key="SpaceThickness7">64</Thickness>
 
   <!-- Radii -->
   <CornerRadius x:Key="RadiusSm">8</CornerRadius>
@@ -1014,19 +1027,27 @@ Expected: PASS (2 tests).
 ```xml
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:RushOrder.Desktop.Avalonia.ViewModels.Shell"
+        xmlns:nav="using:RushOrder.Desktop.Avalonia.Navigation"
         x:Class="RushOrder.Desktop.Avalonia.Views.Shell.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
         Title="Rush Order" Width="1280" Height="800"
         Background="{DynamicResource BackgroundBrush}">
+  <Window.DataTemplates>
+    <DataTemplate DataType="nav:PlaceholderViewModel">
+      <nav:PlaceholderView />
+    </DataTemplate>
+  </Window.DataTemplates>
   <Grid ColumnDefinitions="220,*">
     <Border Grid.Column="0" Background="{DynamicResource SidebarBgBrush}">
       <ItemsControl ItemsSource="{Binding NavItems}">
         <ItemsControl.ItemTemplate>
-          <DataTemplate>
+          <DataTemplate x:DataType="vm:NavItem">
             <Button Command="{Binding $parent[ItemsControl].((vm:MainWindowViewModel)DataContext).SelectNavCommand}"
                     CommandParameter="{Binding}"
                     HorizontalContentAlignment="Left"
                     HorizontalAlignment="Stretch"
-                    Padding="{StaticResource Space3}"
+                    Padding="16"
                     Background="Transparent"
                     BorderThickness="0">
               <StackPanel Orientation="Horizontal" Spacing="{StaticResource Space2}">
@@ -1041,12 +1062,12 @@ Expected: PASS (2 tests).
         </ItemsControl.ItemTemplate>
       </ItemsControl>
     </Border>
-    <ContentControl Grid.Column="1" Content="{Binding CurrentContent}" Margin="{StaticResource Space3}" />
+    <ContentControl Grid.Column="1" Content="{Binding CurrentContent}" Margin="16" />
   </Grid>
 </Window>
 ```
 
-(`xmlns:vm` needs `xmlns:vm="using:RushOrder.Desktop.Avalonia.ViewModels.Shell"` added to the root `Window` tag — full attribute list restated correctly in Task 26 once `ViewLocator`-based `DataTemplate`s replace this manual binding path; acceptable as a working placeholder wiring for this task.)
+(`Padding="16"`/`Margin="16"` are literal, not `{StaticResource SpaceThickness3}` — `StaticResource` does not implicitly convert the `x:Double` `SpaceN` tokens to `Thickness`, and this file was implemented and reviewed before `SpaceThicknessN` existed; kept literal here rather than re-touching already-approved, working code. `SpaceThicknessN` tokens exist from Task 2 onward for every later task's `Margin`/`Padding`. `x:DataType`/`Window.DataTemplates`/the `ItemsControl.ItemTemplate`'s `x:DataType` are required for the compiled bindings above to resolve — corrected here to match the actual, reviewed implementation. Tasks 21 and 25 each add one more `DataTemplate` entry to this same `Window.DataTemplates` block for their own view model, per the plan's explicit "no ViewLocator" decision — not a generic convention-based resolver.)
 
 - [ ] **Step 7: Create `Views/Shell/MainWindow.axaml.cs`**
 
@@ -1283,7 +1304,7 @@ State-driven card chrome shared by every widget: title, loading skeleton, empty 
           BorderBrush="{DynamicResource BorderBrush2}"
           BorderThickness="1"
           CornerRadius="{StaticResource RadiusLg}"
-          Margin="{StaticResource Space1}">
+          Margin="{StaticResource SpaceThickness1}">
     <DockPanel>
       <TextBlock DockPanel.Dock="Top"
                  Text="{Binding #Root.Title}"
@@ -1291,11 +1312,11 @@ State-driven card chrome shared by every widget: title, loading skeleton, empty 
                  FontSize="{StaticResource FontSizeLabel}"
                  FontWeight="Bold"
                  Foreground="{DynamicResource TextSecondaryBrush}"
-                 Margin="{StaticResource Space3}" />
+                 Margin="{StaticResource SpaceThickness3}" />
 
       <Border DockPanel.Dock="Top"
               Background="#1AF44336"
-              Padding="{StaticResource Space2}"
+              Padding="{StaticResource SpaceThickness2}"
               IsVisible="{Binding #Root.IsShowingSimulatedData}">
         <Grid ColumnDefinitions="*,Auto">
           <TextBlock Grid.Column="0" Text="Sin conexión — datos de ejemplo"
@@ -2272,11 +2293,11 @@ Expected: PASS.
       <DockPanel>
         <TextBlock DockPanel.Dock="Top" Text="{Binding RevenueToday, StringFormat='€ {0:N2}'}"
                    FontFamily="{StaticResource PoppinsFontFamily}" FontSize="{StaticResource FontSizeKpi}"
-                   FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Margin="{StaticResource Space2}" />
+                   FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" Margin="{StaticResource SpaceThickness2}" />
         <TextBlock DockPanel.Dock="Top" Text="{Binding DeltaText}"
                    FontFamily="{StaticResource PoppinsFontFamily}" FontSize="{StaticResource FontSizeLabel}"
                    Foreground="{Binding DeltaIsUp, Converter={x:Static local:DeltaColorConverter.Instance}}"
-                   Margin="{StaticResource Space2},0" />
+                   Margin="8,0" />
         <controls:SparklineControl Data="{Binding Hourly}"
                                     LineBrush="{DynamicResource SuccessBrush}" />
       </DockPanel>
@@ -2449,7 +2470,7 @@ public sealed partial class ActiveOrdersWidgetViewModel : WidgetViewModelBase
     <controls:KpiCardBase.Content>
       <Button Command="{Binding NavigateCommand}" Background="Transparent" BorderThickness="0"
               HorizontalContentAlignment="Stretch" Cursor="Hand">
-        <StackPanel Margin="{StaticResource Space2}" Spacing="{StaticResource Space1}">
+        <StackPanel Margin="{StaticResource SpaceThickness2}" Spacing="{StaticResource Space1}">
           <TextBlock Text="{Binding Total}" FontFamily="{StaticResource PoppinsFontFamily}"
                      FontSize="{StaticResource FontSizeKpi}" FontWeight="Bold"
                      Foreground="{DynamicResource TextPrimaryBrush}" />
@@ -2589,7 +2610,7 @@ public sealed partial class TablesWidgetViewModel : WidgetViewModelBase
           <TextBlock DockPanel.Dock="Bottom" Text="{Binding AvgOccupancyMinutes, StringFormat='Tiempo medio: {0:F0} min'}"
                      FontFamily="{StaticResource PoppinsFontFamily}" FontSize="{StaticResource FontSizeLabel}"
                      Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center"
-                     Margin="0,0,0,{StaticResource Space2}" />
+                     Margin="0,0,0,8" />
           <controls:OccupancyArcControl Occupied="{Binding Occupied}" Total="{Binding Total}" />
         </DockPanel>
       </Button>
@@ -2712,13 +2733,13 @@ public sealed partial class AvgTicketWidgetViewModel : WidgetViewModelBase
                          IsShowingSimulatedData="{Binding IsShowingSimulatedData}"
                          RetryCommand="{Binding RetryCommand}">
     <controls:KpiCardBase.Content>
-      <StackPanel Margin="{StaticResource Space2}" Spacing="{StaticResource Space1}">
+      <StackPanel Margin="{StaticResource SpaceThickness2}" Spacing="{StaticResource Space1}">
         <TextBlock Text="{Binding Today, StringFormat='€ {0:N2}'}" FontFamily="{StaticResource PoppinsFontFamily}"
                    FontSize="26" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" />
         <TextBlock Text="{Binding DeltaText}" FontFamily="{StaticResource PoppinsFontFamily}"
                    FontSize="{StaticResource FontSizeLabel}"
                    Foreground="{Binding DeltaIsUp, Converter={x:Static local:DeltaColorConverter.Instance}}" />
-        <Grid ColumnDefinitions="*,*" Height="60" Margin="0,{StaticResource Space2},0,0">
+        <Grid ColumnDefinitions="*,*" Height="60" Margin="0,8,0,0">
           <Border Grid.Column="0" VerticalAlignment="Bottom" Background="#5A5A5A" Width="40"
                   Height="{Binding Yesterday, Converter={x:Static local:BarHeightConverter.Instance}}"
                   CornerRadius="{StaticResource RadiusSm}" HorizontalAlignment="Center" />
@@ -2953,7 +2974,7 @@ public sealed partial class AlertsWidgetViewModel : WidgetViewModelBase
                       xmlns:vm="using:RushOrder.Desktop.Avalonia.ViewModels.Dashboard"
                       CommandParameter="{Binding}" Background="Transparent" BorderThickness="0"
                       HorizontalContentAlignment="Stretch" HorizontalAlignment="Stretch" Cursor="Hand">
-                <StackPanel Margin="{StaticResource Space2}">
+                <StackPanel Margin="{StaticResource SpaceThickness2}">
                   <TextBlock Text="{Binding Message}" FontFamily="{StaticResource PoppinsFontFamily}"
                              FontSize="{StaticResource FontSizeLabel}" TextTrimming="CharacterEllipsis"
                              Foreground="{DynamicResource TextPrimaryBrush}" />
@@ -3107,14 +3128,14 @@ public sealed partial class ReservationsWidgetViewModel : WidgetViewModelBase
       <ItemsControl ItemsSource="{Binding Reservations}">
         <ItemsControl.ItemTemplate>
           <DataTemplate>
-            <Grid ColumnDefinitions="52,*" Margin="{StaticResource Space2}">
+            <Grid ColumnDefinitions="52,*" Margin="{StaticResource SpaceThickness2}">
               <Border Grid.Column="0" CornerRadius="{StaticResource RadiusSm}"
                       Background="{Binding IsUrgent, Converter={x:Static BoolBrushConverters.WarningOrInfo}}"
                       Height="44">
                 <TextBlock Text="{Binding TimeText}" Foreground="White" FontWeight="Bold"
                            HorizontalAlignment="Center" VerticalAlignment="Center" />
               </Border>
-              <StackPanel Grid.Column="1" Margin="{StaticResource Space2},0,0,0">
+              <StackPanel Grid.Column="1" Margin="8,0,0,0">
                 <TextBlock Text="{Binding CustomerName}" FontFamily="{StaticResource PoppinsFontFamily}"
                            FontWeight="SemiBold" FontSize="{StaticResource FontSizeLabel}"
                            TextTrimming="CharacterEllipsis" Foreground="{DynamicResource TextPrimaryBrush}" />
@@ -3169,6 +3190,7 @@ Grid of the 6 widgets from Tasks 15-20, real-time patch routing (spec Section 3'
 **Files:**
 - Create: `desktop/src/RushOrder.Desktop.Avalonia/ViewModels/Dashboard/DashboardViewModel.cs`
 - Create: `desktop/src/RushOrder.Desktop.Avalonia/Views/Dashboard/DashboardView.axaml` (+ `.axaml.cs`)
+- Modify: `desktop/src/RushOrder.Desktop.Avalonia/Views/Shell/MainWindow.axaml` (register the `DashboardViewModel → DashboardView` DataTemplate)
 - Test: `desktop/tests/RushOrder.Desktop.Avalonia.Tests/ViewModels/Dashboard/DashboardViewModelTests.cs`
 
 **Interfaces:**
@@ -3320,7 +3342,7 @@ public sealed class DashboardViewModel : IDisposable
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:dash="using:RushOrder.Desktop.Avalonia.Views.Dashboard"
              x:Class="RushOrder.Desktop.Avalonia.Views.Dashboard.DashboardView">
-  <Grid RowDefinitions="*,*" ColumnDefinitions="*,*,*" Margin="{StaticResource Space2}">
+  <Grid RowDefinitions="*,*" ColumnDefinitions="*,*,*" Margin="{StaticResource SpaceThickness2}">
     <dash:RevenueWidgetView Grid.Row="0" Grid.Column="0" DataContext="{Binding Revenue}" />
     <dash:ActiveOrdersWidgetView Grid.Row="0" Grid.Column="1" DataContext="{Binding Orders}" />
     <dash:TablesWidgetView Grid.Row="0" Grid.Column="2" DataContext="{Binding Tables}" />
@@ -3333,12 +3355,29 @@ public sealed class DashboardViewModel : IDisposable
 
 - [ ] **Step 6: Create `Views/Dashboard/DashboardView.axaml.cs`** (identical shape to Task 15 Step 7)
 
-- [ ] **Step 7: Build.** Expected: 0 errors.
+- [ ] **Step 7: Register the `DashboardViewModel → DashboardView` DataTemplate in `Views/Shell/MainWindow.axaml`**
 
-- [ ] **Step 8: Commit**
+Add an `xmlns:dashvm="using:RushOrder.Desktop.Avalonia.ViewModels.Dashboard"` and `xmlns:dashview="using:RushOrder.Desktop.Avalonia.Views.Dashboard"` to the root `Window` tag (alongside the existing `xmlns:vm`/`xmlns:nav`), then add one more entry to the existing `Window.DataTemplates` block from Task 7 (do not remove the `PlaceholderViewModel` entry already there):
+
+```xml
+<Window.DataTemplates>
+  <DataTemplate DataType="nav:PlaceholderViewModel">
+    <nav:PlaceholderView />
+  </DataTemplate>
+  <DataTemplate DataType="dashvm:DashboardViewModel">
+    <dashview:DashboardView />
+  </DataTemplate>
+</Window.DataTemplates>
+```
+
+This is the same explicit, per-type pattern Task 7 already established for `PlaceholderViewModel` — not a generic convention-based resolver.
+
+- [ ] **Step 8: Build.** Expected: 0 errors.
+
+- [ ] **Step 9: Commit**
 
 ```bash
-git add desktop/src/RushOrder.Desktop.Avalonia/ViewModels/Dashboard/DashboardViewModel.cs desktop/src/RushOrder.Desktop.Avalonia/Views/Dashboard/DashboardView.axaml desktop/src/RushOrder.Desktop.Avalonia/Views/Dashboard/DashboardView.axaml.cs desktop/tests/RushOrder.Desktop.Avalonia.Tests/ViewModels/Dashboard/DashboardViewModelTests.cs
+git add desktop/src/RushOrder.Desktop.Avalonia/ViewModels/Dashboard/DashboardViewModel.cs desktop/src/RushOrder.Desktop.Avalonia/Views/Dashboard/DashboardView.axaml desktop/src/RushOrder.Desktop.Avalonia/Views/Dashboard/DashboardView.axaml.cs desktop/src/RushOrder.Desktop.Avalonia/Views/Shell/MainWindow.axaml desktop/tests/RushOrder.Desktop.Avalonia.Tests/ViewModels/Dashboard/DashboardViewModelTests.cs
 git commit -m "feat(desktop-avalonia): assemble DashboardView/DashboardViewModel — DASH-01 complete"
 ```
 
@@ -3452,7 +3491,7 @@ public sealed partial class TodayForecastWidgetViewModel : WidgetViewModelBase
                          IsShowingSimulatedData="{Binding IsShowingSimulatedData}"
                          RetryCommand="{Binding RetryCommand}">
     <controls:KpiCardBase.Content>
-      <lvc:CartesianChart Series="{Binding Series}" Margin="{StaticResource Space2}" />
+      <lvc:CartesianChart Series="{Binding Series}" Margin="{StaticResource SpaceThickness2}" />
     </controls:KpiCardBase.Content>
   </controls:KpiCardBase>
 </UserControl>
@@ -3758,6 +3797,7 @@ git commit -m "feat(desktop-avalonia): add KitchenEtaWidget"
 **Files:**
 - Create: `desktop/src/RushOrder.Desktop.Avalonia/ViewModels/Dashboard/AiDashboard/AiDashboardViewModel.cs`
 - Create: `desktop/src/RushOrder.Desktop.Avalonia/Views/Dashboard/AiDashboard/AiDashboardView.axaml` (+ `.axaml.cs`)
+- Modify: `desktop/src/RushOrder.Desktop.Avalonia/Views/Shell/MainWindow.axaml` (register the `AiDashboardViewModel → AiDashboardView` DataTemplate)
 - Test: `desktop/tests/RushOrder.Desktop.Avalonia.Tests/ViewModels/Dashboard/AiDashboard/AiDashboardViewModelTests.cs`
 
 **Interfaces:**
@@ -3868,7 +3908,7 @@ public sealed class AiDashboardViewModel : IDisposable
              xmlns:ai="using:RushOrder.Desktop.Avalonia.Views.Dashboard.AiDashboard"
              xmlns:dash="using:RushOrder.Desktop.Avalonia.Views.Dashboard"
              x:Class="RushOrder.Desktop.Avalonia.Views.Dashboard.AiDashboard.AiDashboardView">
-  <Grid RowDefinitions="*,*" ColumnDefinitions="*,*" Margin="{StaticResource Space2}">
+  <Grid RowDefinitions="*,*" ColumnDefinitions="*,*" Margin="{StaticResource SpaceThickness2}">
     <ai:TodayForecastWidgetView Grid.Row="0" Grid.Column="0" DataContext="{Binding Forecast}" />
     <dash:AlertsWidgetView Grid.Row="0" Grid.Column="1" DataContext="{Binding Alerts}" />
     <ai:SuggestionOfTheDayWidgetView Grid.Row="1" Grid.Column="0" DataContext="{Binding Suggestion}" />
@@ -3879,12 +3919,30 @@ public sealed class AiDashboardViewModel : IDisposable
 
 - [ ] **Step 6: Create `Views/Dashboard/AiDashboard/AiDashboardView.axaml.cs`** (identical shape to Task 15 Step 7)
 
-- [ ] **Step 7: Build.** Expected: 0 errors.
+- [ ] **Step 7: Register the `AiDashboardViewModel → AiDashboardView` DataTemplate in `Views/Shell/MainWindow.axaml`**
 
-- [ ] **Step 8: Commit**
+Add `xmlns:aivm="using:RushOrder.Desktop.Avalonia.ViewModels.Dashboard.AiDashboard"` and `xmlns:aiview="using:RushOrder.Desktop.Avalonia.Views.Dashboard.AiDashboard"` to the root `Window` tag (alongside `xmlns:vm`/`xmlns:nav`/`xmlns:dashvm`/`xmlns:dashview` from Task 21), then add one more entry to `Window.DataTemplates` (keep the `PlaceholderViewModel` and `DashboardViewModel` entries from Tasks 7/21):
+
+```xml
+<Window.DataTemplates>
+  <DataTemplate DataType="nav:PlaceholderViewModel">
+    <nav:PlaceholderView />
+  </DataTemplate>
+  <DataTemplate DataType="dashvm:DashboardViewModel">
+    <dashview:DashboardView />
+  </DataTemplate>
+  <DataTemplate DataType="aivm:AiDashboardViewModel">
+    <aiview:AiDashboardView />
+  </DataTemplate>
+</Window.DataTemplates>
+```
+
+- [ ] **Step 8: Build.** Expected: 0 errors.
+
+- [ ] **Step 9: Commit**
 
 ```bash
-git add desktop/src/RushOrder.Desktop.Avalonia/ViewModels/Dashboard/AiDashboard/AiDashboardViewModel.cs desktop/src/RushOrder.Desktop.Avalonia/Views/Dashboard/AiDashboard/AiDashboardView.axaml desktop/src/RushOrder.Desktop.Avalonia/Views/Dashboard/AiDashboard/AiDashboardView.axaml.cs desktop/tests/RushOrder.Desktop.Avalonia.Tests/ViewModels/Dashboard/AiDashboard/AiDashboardViewModelTests.cs
+git add desktop/src/RushOrder.Desktop.Avalonia/ViewModels/Dashboard/AiDashboard/AiDashboardViewModel.cs desktop/src/RushOrder.Desktop.Avalonia/Views/Dashboard/AiDashboard/AiDashboardView.axaml desktop/src/RushOrder.Desktop.Avalonia/Views/Dashboard/AiDashboard/AiDashboardView.axaml.cs desktop/src/RushOrder.Desktop.Avalonia/Views/Shell/MainWindow.axaml desktop/tests/RushOrder.Desktop.Avalonia.Tests/ViewModels/Dashboard/AiDashboard/AiDashboardViewModelTests.cs
 git commit -m "feat(desktop-avalonia): assemble AiDashboardView/AiDashboardViewModel — DASH-02 complete"
 ```
 
