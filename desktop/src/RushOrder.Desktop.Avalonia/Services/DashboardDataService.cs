@@ -51,7 +51,11 @@ public sealed class DashboardDataService
                 tablesTotal = JsonConvert.DeserializeObject<ApiEnvelope<List<object>>>(tJson)?.Data?.Count ?? 0;
             }
         }
-        catch { /* leave at 0 — matches WinForms behavior, this sub-call isn't the primary fetch */ }
+        catch (Exception ex)
+        {
+            // leave at 0 — matches WinForms behavior, this sub-call isn't the primary fetch
+            _logger.LogWarning(ex, "Tables total sub-fetch failed");
+        }
 
         var occupied = (int)Math.Round(dto.TableOccupancy.Percentage / 100m * tablesTotal);
         var changeFactor = 1m + dto.AvgTicket.ChangePercent / 100m;
