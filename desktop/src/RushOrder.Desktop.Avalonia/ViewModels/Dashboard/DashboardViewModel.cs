@@ -1,3 +1,4 @@
+using Avalonia.Threading;
 using RushOrder.Desktop.Avalonia.Services;
 
 namespace RushOrder.Desktop.Avalonia.ViewModels.Dashboard;
@@ -26,7 +27,7 @@ public sealed class DashboardViewModel : IDisposable
         WireRealTime();
 
         _refreshTimer = new System.Timers.Timer(30_000) { AutoReset = true };
-        _refreshTimer.Elapsed += async (_, _) => await RefreshAllAsync();
+        _refreshTimer.Elapsed += (_, _) => Dispatcher.UIThread.InvokeAsync(RefreshAllAsync);
         _refreshTimer.Start();
 
         _ = RefreshAllAsync();

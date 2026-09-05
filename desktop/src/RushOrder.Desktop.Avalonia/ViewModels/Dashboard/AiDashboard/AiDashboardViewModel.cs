@@ -1,3 +1,4 @@
+using Avalonia.Threading;
 using RushOrder.Desktop.Avalonia.Services;
 using RushOrder.Desktop.Avalonia.ViewModels.Dashboard;
 
@@ -24,7 +25,7 @@ public sealed class AiDashboardViewModel : IDisposable
         _realTime.MiseEnPlaceAlert += OnMiseEnPlaceAlert;
 
         _refreshTimer = new System.Timers.Timer(60_000) { AutoReset = true };
-        _refreshTimer.Elapsed += async (_, _) => await RefreshAllAsync();
+        _refreshTimer.Elapsed += (_, _) => Dispatcher.UIThread.InvokeAsync(RefreshAllAsync);
         _refreshTimer.Start();
 
         _ = RefreshAllAsync();
