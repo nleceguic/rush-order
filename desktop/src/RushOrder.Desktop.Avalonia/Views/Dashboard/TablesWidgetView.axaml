@@ -8,7 +8,9 @@
                          IsShowingSimulatedData="{Binding IsShowingSimulatedData}"
                          RetryCommand="{Binding RetryCommand}">
     <controls:KpiCardBase.Content>
-      <Button Command="{Binding NavigateCommand}" Background="Transparent" BorderThickness="0" Cursor="Hand">
+      <Button Command="{Binding NavigateCommand}" Background="Transparent" BorderThickness="0" Cursor="Hand"
+              HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+              HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
         <DockPanel>
           <TextBlock DockPanel.Dock="Bottom" Text="{Binding AvgOccupancyMinutes, StringFormat='Tiempo medio: {0:F0} min'}"
                      FontFamily="{StaticResource PoppinsFontFamily}" FontSize="{StaticResource FontSizeLabel}"

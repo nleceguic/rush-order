@@ -27,4 +27,23 @@ public class NavigationServiceTests
 
         Assert.Same(nav.CurrentViewModel, raised);
     }
+
+    [Fact]
+    public void NavigateTo_disposes_the_outgoing_view_model_when_it_implements_IDisposable()
+    {
+        var nav = new NavigationService();
+        var disposableVm = new DisposableFakeViewModel();
+        nav.Register("current", _ => disposableVm);
+
+        nav.NavigateTo("current");
+        nav.NavigateTo("elsewhere");
+
+        Assert.True(disposableVm.WasDisposed);
+    }
+
+    private sealed class DisposableFakeViewModel : IDisposable
+    {
+        public bool WasDisposed { get; private set; }
+        public void Dispose() => WasDisposed = true;
+    }
 }

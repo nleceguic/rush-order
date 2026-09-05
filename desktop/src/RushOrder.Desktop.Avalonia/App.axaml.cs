@@ -1,5 +1,8 @@
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
+#if DEBUG
+using Avalonia.Diagnostics;
+#endif
 using Avalonia.Markup.Xaml;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -59,6 +62,9 @@ public sealed partial class App : Application
             nav.Register("panel-ia", _ => sp.GetRequiredService<AiDashboardViewModel>());
 
             desktop.MainWindow = new MainWindow { DataContext = sp.GetRequiredService<MainWindowViewModel>() };
+#if DEBUG
+            this.AttachDevTools();
+#endif
             desktop.Exit += (_, _) => _host.Dispose();
         }
         base.OnFrameworkInitializationCompleted();
