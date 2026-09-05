@@ -52,12 +52,12 @@ public sealed class DashboardViewModel : IDisposable
         _realTime.MiseEnPlaceAlert += OnMiseEnPlaceAlert;
     }
 
-    private Task OnOrderReceived(RushOrder.Desktop.Core.Hubs.OrderReceivedPayload payload)
-    {
-        Orders.Waiting++;
-        Orders.Total++;
-        return Task.CompletedTask;
-    }
+    private async Task OnOrderReceived(RushOrder.Desktop.Core.Hubs.OrderReceivedPayload payload) =>
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            Orders.Waiting++;
+            Orders.Total++;
+        });
 
     /// <summary>Shared <c>TableStatusChanged</c> guard logic — wired directly as the real
     /// <see cref="RealTimeService.TableStatusChanged"/> handler above (its delegate shape,
@@ -65,28 +65,28 @@ public sealed class DashboardViewModel : IDisposable
     /// called directly by the unit test, since the real event is wired through
     /// <see cref="RealTimeService"/>'s SignalR connection, which isn't started in unit tests.
     /// Kept as a single method so production behavior and the test can never drift apart.</summary>
-    internal Task OnTableStatusChanged(string tableId, string status)
-    {
-        if (status == "Occupied" && Tables.Occupied < Tables.Total) Tables.Occupied++;
-        else if (status is "Free" or "Cleaning" && Tables.Occupied > 0) Tables.Occupied--;
-        return Task.CompletedTask;
-    }
+    internal async Task OnTableStatusChanged(string tableId, string status) =>
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            if (status == "Occupied" && Tables.Occupied < Tables.Total) Tables.Occupied++;
+            else if (status is "Free" or "Cleaning" && Tables.Occupied > 0) Tables.Occupied--;
+        });
 
-    private Task OnKitchenAlert(string message, string severity)
-    {
-        var alert = new Models.AlertDto(Guid.NewGuid(), message,
-            Enum.TryParse<Models.AlertSeverity>(severity, true, out var sev) ? sev : Models.AlertSeverity.Info,
-            null, "Order", DateTimeOffset.Now);
-        Alerts.Prepend(alert);
-        return Task.CompletedTask;
-    }
+    private async Task OnKitchenAlert(string message, string severity) =>
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            var alert = new Models.AlertDto(Guid.NewGuid(), message,
+                Enum.TryParse<Models.AlertSeverity>(severity, true, out var sev) ? sev : Models.AlertSeverity.Info,
+                null, "Order", DateTimeOffset.Now);
+            Alerts.Prepend(alert);
+        });
 
-    private Task OnMiseEnPlaceAlert(string message)
-    {
-        var alert = new Models.AlertDto(Guid.NewGuid(), message, Models.AlertSeverity.Info, null, "mise_en_place", DateTimeOffset.Now);
-        Alerts.Prepend(alert);
-        return Task.CompletedTask;
-    }
+    private async Task OnMiseEnPlaceAlert(string message) =>
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            var alert = new Models.AlertDto(Guid.NewGuid(), message, Models.AlertSeverity.Info, null, "mise_en_place", DateTimeOffset.Now);
+            Alerts.Prepend(alert);
+        });
 
     public void Dispose()
     {

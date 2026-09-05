@@ -22,7 +22,7 @@ public sealed partial class TablesWidgetViewModel : WidgetViewModelBase
 
     protected override async Task LoadAsync()
     {
-        State = WidgetLoadState.Loading;
+        BeginLoad();
         var result = await _data.GetKpiAsync();
         var kpi = result.IsSuccess ? result.Value! : MockDashboardData.Kpi();
 

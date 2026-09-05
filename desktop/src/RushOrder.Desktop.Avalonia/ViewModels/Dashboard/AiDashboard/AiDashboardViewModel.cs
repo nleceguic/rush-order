@@ -38,20 +38,20 @@ public sealed class AiDashboardViewModel : IDisposable
     /// test, since <see cref="RealTimeService"/>'s SignalR connection isn't started in unit tests
     /// (same pattern as <c>DashboardViewModel</c>'s Task 21 test hook). Kept as a named method
     /// (not an inline lambda) so <see cref="Dispose"/> can unsubscribe it by reference.</summary>
-    internal Task OnKitchenAlert(string message, string severity)
-    {
-        var sev = Enum.TryParse<Models.AlertSeverity>(severity, true, out var s) ? s : Models.AlertSeverity.Info;
-        Alerts.Prepend(new Models.AlertDto(Guid.NewGuid(), message, sev, null, "Order", DateTimeOffset.Now));
-        return Task.CompletedTask;
-    }
+    internal async Task OnKitchenAlert(string message, string severity) =>
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            var sev = Enum.TryParse<Models.AlertSeverity>(severity, true, out var s) ? s : Models.AlertSeverity.Info;
+            Alerts.Prepend(new Models.AlertDto(Guid.NewGuid(), message, sev, null, "Order", DateTimeOffset.Now));
+        });
 
     /// <summary>Named for the same reason as <see cref="OnKitchenAlert"/> — <see cref="Dispose"/>
     /// needs a stable delegate reference to unsubscribe.</summary>
-    private Task OnMiseEnPlaceAlert(string message)
-    {
-        Alerts.Prepend(new Models.AlertDto(Guid.NewGuid(), message, Models.AlertSeverity.Info, null, "mise_en_place", DateTimeOffset.Now));
-        return Task.CompletedTask;
-    }
+    private async Task OnMiseEnPlaceAlert(string message) =>
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            Alerts.Prepend(new Models.AlertDto(Guid.NewGuid(), message, Models.AlertSeverity.Info, null, "mise_en_place", DateTimeOffset.Now));
+        });
 
     public void Dispose()
     {

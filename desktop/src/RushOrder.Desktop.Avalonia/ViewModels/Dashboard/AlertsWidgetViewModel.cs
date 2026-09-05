@@ -21,7 +21,7 @@ public sealed partial class AlertsWidgetViewModel : WidgetViewModelBase
 
     protected override async Task LoadAsync()
     {
-        State = WidgetLoadState.Loading;
+        BeginLoad();
         var result = await _data.GetAlertsAsync();
         var alerts = result.IsSuccess ? result.Value! : MockDashboardData.Alerts();
 

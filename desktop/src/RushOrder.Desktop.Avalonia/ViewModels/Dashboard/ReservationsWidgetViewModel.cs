@@ -13,7 +13,7 @@ public sealed partial class ReservationsWidgetViewModel : WidgetViewModelBase
 
     protected override async Task LoadAsync()
     {
-        State = WidgetLoadState.Loading;
+        BeginLoad();
         var result = await _data.GetUpcomingReservationsAsync();
         var reservations = result.IsSuccess ? result.Value! : MockDashboardData.Reservations();
 

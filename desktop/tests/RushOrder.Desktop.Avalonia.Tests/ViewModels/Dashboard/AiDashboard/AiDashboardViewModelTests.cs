@@ -1,3 +1,4 @@
+using Avalonia.Headless.XUnit;
 using RushOrder.Desktop.Avalonia.Navigation;
 using RushOrder.Desktop.Avalonia.Services;
 using RushOrder.Desktop.Avalonia.ViewModels.Dashboard;
@@ -8,7 +9,10 @@ namespace RushOrder.Desktop.Avalonia.Tests.ViewModels.Dashboard.AiDashboard;
 
 public class AiDashboardViewModelTests
 {
-    [Fact]
+    // [AvaloniaFact] (not [Fact]): OnKitchenAlert now marshals its body through
+    // Dispatcher.UIThread.InvokeAsync (Fix 3), which requires a pumped dispatcher loop — a
+    // bare xunit host does not provide one; see AvaloniaTestSetup.cs.
+    [AvaloniaFact]
     public async Task KitchenAlert_patches_only_the_AiDashboard_Alerts_widget()
     {
         var appState = new AppState();

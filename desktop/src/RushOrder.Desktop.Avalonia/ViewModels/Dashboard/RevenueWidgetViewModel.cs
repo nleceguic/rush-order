@@ -19,7 +19,7 @@ public sealed partial class RevenueWidgetViewModel : WidgetViewModelBase
 
     protected override async Task LoadAsync()
     {
-        State = WidgetLoadState.Loading;
+        BeginLoad();
         var result = await _data.GetKpiAsync();
 
         if (result.IsSuccess)

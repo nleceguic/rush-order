@@ -14,7 +14,7 @@ public sealed partial class SuggestionOfTheDayWidgetViewModel : WidgetViewModelB
 
     protected override async Task LoadAsync()
     {
-        State = WidgetLoadState.Loading;
+        BeginLoad();
         var today = DateOnly.FromDateTime(DateTime.Today);
         var result = await _forecast.GetDemandForecastAsync(today);
         var summary = result.IsSuccess ? result.Value!.Summary : MockForecastData.DemandForecast().Summary;

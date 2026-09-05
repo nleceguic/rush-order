@@ -17,7 +17,7 @@ public sealed partial class TodayForecastWidgetViewModel : WidgetViewModelBase
 
     protected override async Task LoadAsync()
     {
-        State = WidgetLoadState.Loading;
+        BeginLoad();
         var today = DateOnly.FromDateTime(DateTime.Today);
         var result = await _forecast.GetDemandForecastAsync(today);
         var hourly = result.IsSuccess ? result.Value!.Hourly : MockForecastData.DemandForecast().Hourly;

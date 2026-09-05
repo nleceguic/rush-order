@@ -1,3 +1,4 @@
+using Avalonia.Headless.XUnit;
 using RushOrder.Desktop.Avalonia.Navigation;
 using RushOrder.Desktop.Avalonia.Services;
 using RushOrder.Desktop.Avalonia.ViewModels.Dashboard;
@@ -7,7 +8,11 @@ namespace RushOrder.Desktop.Avalonia.Tests.ViewModels.Dashboard;
 
 public class DashboardViewModelTests
 {
-    [Fact]
+    // [AvaloniaFact] (not [Fact]): OnTableStatusChanged now marshals its body through
+    // Dispatcher.UIThread.InvokeAsync (Fix 3 — real-time handlers must run on the UI thread,
+    // same as the periodic refresh timers). That requires a pumped dispatcher loop, which a
+    // bare xunit host does not provide — see AvaloniaTestSetup.cs.
+    [AvaloniaFact]
     public async Task TableStatusChanged_patches_only_TablesOccupied_not_other_widgets()
     {
         var appState = new AppState();

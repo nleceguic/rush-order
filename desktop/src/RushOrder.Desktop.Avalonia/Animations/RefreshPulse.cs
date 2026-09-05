@@ -6,8 +6,12 @@ namespace RushOrder.Desktop.Avalonia.Animations;
 
 /// <summary>Brief scale pulse on a widget card's Visual, run entirely on the
 /// compositor/render thread via Avalonia's Composition API — the only animation in this
-/// module that legitimately claims that guarantee. Triggered whenever a widget's bound
-/// content changes (targeted real-time patch or a normal refresh), never on a timer.</summary>
+/// module that legitimately claims that guarantee. Triggered by <c>KpiCardBase</c> whenever
+/// a widget's <see cref="RushOrder.Desktop.Avalonia.ViewModels.WidgetLoadState"/> transitions
+/// to <see cref="RushOrder.Desktop.Avalonia.ViewModels.WidgetLoadState.Loaded"/> — covering
+/// the initial load and any full refresh that ends up <c>Loaded</c>. A targeted real-time
+/// patch (e.g. <c>Orders.Waiting++</c>) never changes <c>State</c>, so it does not trigger
+/// this pulse today — that's a known gap, not yet implemented.</summary>
 public static class RefreshPulse
 {
     public static void Play(Visual target)

@@ -14,7 +14,7 @@ public sealed partial class KitchenEtaWidgetViewModel : WidgetViewModelBase
 
     protected override async Task LoadAsync()
     {
-        State = WidgetLoadState.Loading;
+        BeginLoad();
         var result = await _forecast.GetKitchenEtaAsync();
         var eta = result.IsSuccess ? result.Value! : MockForecastData.KitchenEta();
 
