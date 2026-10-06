@@ -60,18 +60,14 @@ public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     {
         builder.UseEnvironment("Development");
 
-        builder.ConfigureAppConfiguration((_, config) =>
-        {
-            config.AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["Database:ConnectionString"] = _postgres.GetConnectionString(),
-                ["Redis:ConnectionString"]    = _redis.GetConnectionString(),
-                ["DisableRateLimit"]          = "true",
-                ["Stripe:SecretKey"]          = "sk_test_dummy",
-                ["Stripe:PublishableKey"]     = "pk_test_dummy",
-                ["Stripe:WebhookSecret"]      = TestConstants.StripeWebhookSecret,
-            });
-        });
+        // UseSetting (not ConfigureAppConfiguration): Program reads these keys while
+        // registering services, before ConfigureAppConfiguration callbacks are applied.
+        builder.UseSetting("Database:ConnectionString", _postgres.GetConnectionString());
+        builder.UseSetting("Redis:ConnectionString",    _redis.GetConnectionString());
+        builder.UseSetting("DisableRateLimit",          "true");
+        builder.UseSetting("Stripe:SecretKey",          "sk_test_dummy");
+        builder.UseSetting("Stripe:PublishableKey",     "pk_test_dummy");
+        builder.UseSetting("Stripe:WebhookSecret",      TestConstants.StripeWebhookSecret);
 
         builder.ConfigureServices(services =>
         {
