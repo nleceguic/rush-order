@@ -41,7 +41,7 @@ public sealed class MfaTests : IntegrationTestBase
         });
         loginResp.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var loginBody = await loginResp.Content.ReadFromJsonAsync<JsonElement>();
+        var loginBody = (await loginResp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
         loginBody.GetProperty("requiresMfa").GetBoolean().Should().BeTrue();
         var tempToken = loginBody.GetProperty("tempToken").GetString();
         tempToken.Should().NotBeNullOrEmpty();
@@ -54,7 +54,7 @@ public sealed class MfaTests : IntegrationTestBase
         });
         verifyResp.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var verifyBody = await verifyResp.Content.ReadFromJsonAsync<JsonElement>();
+        var verifyBody = (await verifyResp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
         verifyBody.GetProperty("accessToken").GetString().Should().NotBeNullOrEmpty();
         verifyBody.GetProperty("refreshToken").GetString().Should().NotBeNullOrEmpty();
     }
@@ -79,7 +79,7 @@ public sealed class MfaTests : IntegrationTestBase
             email    = TestConstants.OwnerEmail,
             password = TestConstants.DemoPassword
         });
-        var loginBody = await loginResp.Content.ReadFromJsonAsync<JsonElement>();
+        var loginBody = (await loginResp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
         var tempToken = loginBody.GetProperty("tempToken").GetString();
 
         // Try to verify with a wrong code

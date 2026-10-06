@@ -31,7 +31,7 @@ public sealed class AuthHelper
 
         loginResp.EnsureSuccessStatusCode();
 
-        var json = await loginResp.Content.ReadFromJsonAsync<JsonElement>();
+        var json = (await loginResp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
         var accessToken  = json.GetProperty("accessToken").GetString()!;
         var refreshToken = json.GetProperty("refreshToken").GetString()!;
 

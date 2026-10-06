@@ -149,9 +149,11 @@ public sealed class PaymentTests : IntegrationTestBase
     {
         var json = JsonSerializer.Serialize(new
         {
-            id   = $"evt_test_{Guid.NewGuid():N}",
-            type = eventType,
-            data = new { @object = dataObject }
+            id          = $"evt_test_{Guid.NewGuid():N}",
+            @object     = "event",
+            api_version = Stripe.StripeConfiguration.ApiVersion,
+            type        = eventType,
+            data        = new { @object = dataObject }
         });
         return json;
     }

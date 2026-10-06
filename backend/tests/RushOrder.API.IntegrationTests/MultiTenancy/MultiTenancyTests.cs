@@ -123,7 +123,7 @@ public sealed class MultiTenancyTests : IntegrationTestBase
         response.StatusCode.Should().Be(HttpStatusCode.Created,
             "onboarding should succeed for a fresh tenant");
 
-        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var body = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
         var accessToken  = body.GetProperty("accessToken").GetString()!;
         var restaurantId = Guid.Parse(body.GetProperty("restaurantId").GetString()!);
 
