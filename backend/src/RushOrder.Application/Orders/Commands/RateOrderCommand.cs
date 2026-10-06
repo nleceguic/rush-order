@@ -39,7 +39,7 @@ public sealed class RateOrderCommandHandler : IRequestHandler<RateOrderCommand, 
 
     public async Task<Unit> Handle(RateOrderCommand request, CancellationToken cancellationToken)
     {
-        var order = await _orders.GetByIdAsync(request.OrderId, cancellationToken)
+        var order = await _orders.GetByIdPublicAsync(request.OrderId, cancellationToken)
             ?? throw new NotFoundException(nameof(Order), request.OrderId);
 
         var existing = await _ratings.GetByOrderIdAsync(request.OrderId, cancellationToken);

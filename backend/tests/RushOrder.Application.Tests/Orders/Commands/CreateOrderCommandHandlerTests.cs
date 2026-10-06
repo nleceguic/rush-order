@@ -77,11 +77,11 @@ public sealed class CreateOrderCommandHandlerTests
     private void SetupHappyPath(Table? table = null, Restaurant? restaurant = null, Product? product = null)
     {
         _tenantService.Setup(s => s.TenantId).Returns(TenantId);
-        _tableRepo.Setup(r => r.GetByIdAsync(TableId, It.IsAny<CancellationToken>()))
+        _tableRepo.Setup(r => r.GetByIdPublicAsync(TableId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(table ?? BuildTable());
-        _restaurantRepo.Setup(r => r.GetByIdAsync(RestaurantId, It.IsAny<CancellationToken>()))
+        _restaurantRepo.Setup(r => r.GetByIdPublicAsync(RestaurantId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(restaurant ?? BuildRestaurant());
-        _productRepo.Setup(r => r.GetByIdAsync(ProductId, It.IsAny<CancellationToken>()))
+        _productRepo.Setup(r => r.GetByIdPublicAsync(ProductId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(product ?? BuildProduct());
         _orderRepo.Setup(r => r.GetNextSequenceNumberAsync(RestaurantId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(1);
@@ -125,20 +125,50 @@ public sealed class CreateOrderCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_NoTenantContext_ThrowsUnauthorizedAccessException()
+    public async Task Handle_AnonymousGuest_UsesTenantFromTable()
     {
+        SetupHappyPath();
         _tenantService.Setup(s => s.TenantId).Returns((Guid?)null);
+        Order? captured = null;
+        _orderRepo.Setup(r => r.AddAsync(It.IsAny<Order>(), It.IsAny<CancellationToken>()))
+            .Callback<Order, CancellationToken>((o, _) => captured = o)
+            .ReturnsAsync((Order o, CancellationToken _) => o);
+
+        await _handler.Handle(BuildCommand(), CancellationToken.None);
+
+        captured!.TenantId.Should().Be(TenantId);
+    }
+
+    [Fact]
+    public async Task Handle_TableFromAnotherTenant_ThrowsNotFoundException()
+    {
+        SetupHappyPath();
+        _tenantService.Setup(s => s.TenantId).Returns(Guid.NewGuid());
 
         var act = () => _handler.Handle(BuildCommand(), CancellationToken.None);
 
-        await act.Should().ThrowAsync<UnauthorizedAccessException>();
+        await act.Should().ThrowAsync<NotFoundException>()
+            .WithMessage("*Table*");
+    }
+
+    [Fact]
+    public async Task Handle_ProductFromAnotherRestaurant_ThrowsNotFoundException()
+    {
+        var foreignProduct = Product.Create(TenantId, Guid.NewGuid(), CategoryId, "Ajeno",
+            new Money(2.00m, "EUR"));
+        SetupHappyPath(product: foreignProduct);
+
+        var act = () => _handler.Handle(BuildCommand(), CancellationToken.None);
+
+        await act.Should().ThrowAsync<NotFoundException>()
+            .WithMessage("*Product*");
     }
 
     [Fact]
     public async Task Handle_TableNotFound_ThrowsNotFoundException()
     {
         _tenantService.Setup(s => s.TenantId).Returns(TenantId);
-        _tableRepo.Setup(r => r.GetByIdAsync(TableId, It.IsAny<CancellationToken>()))
+        _tableRepo.Setup(r => r.GetByIdPublicAsync(TableId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((Table?)null);
 
         var act = () => _handler.Handle(BuildCommand(), CancellationToken.None);
@@ -153,7 +183,7 @@ public sealed class CreateOrderCommandHandlerTests
         _tenantService.Setup(s => s.TenantId).Returns(TenantId);
         var table = Table.Create(TenantId, RestaurantId, "Mesa 1", 4);
         table.MarkCleaning();
-        _tableRepo.Setup(r => r.GetByIdAsync(TableId, It.IsAny<CancellationToken>()))
+        _tableRepo.Setup(r => r.GetByIdPublicAsync(TableId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(table);
 
         var act = () => _handler.Handle(BuildCommand(), CancellationToken.None);
@@ -166,9 +196,9 @@ public sealed class CreateOrderCommandHandlerTests
     public async Task Handle_RestaurantNotFound_ThrowsNotFoundException()
     {
         _tenantService.Setup(s => s.TenantId).Returns(TenantId);
-        _tableRepo.Setup(r => r.GetByIdAsync(TableId, It.IsAny<CancellationToken>()))
+        _tableRepo.Setup(r => r.GetByIdPublicAsync(TableId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(BuildTable());
-        _restaurantRepo.Setup(r => r.GetByIdAsync(RestaurantId, It.IsAny<CancellationToken>()))
+        _restaurantRepo.Setup(r => r.GetByIdPublicAsync(RestaurantId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((Restaurant?)null);
 
         var act = () => _handler.Handle(BuildCommand(), CancellationToken.None);
@@ -181,11 +211,11 @@ public sealed class CreateOrderCommandHandlerTests
     public async Task Handle_ProductNotFound_ThrowsNotFoundException()
     {
         _tenantService.Setup(s => s.TenantId).Returns(TenantId);
-        _tableRepo.Setup(r => r.GetByIdAsync(TableId, It.IsAny<CancellationToken>()))
+        _tableRepo.Setup(r => r.GetByIdPublicAsync(TableId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(BuildTable());
-        _restaurantRepo.Setup(r => r.GetByIdAsync(RestaurantId, It.IsAny<CancellationToken>()))
+        _restaurantRepo.Setup(r => r.GetByIdPublicAsync(RestaurantId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(BuildRestaurant());
-        _productRepo.Setup(r => r.GetByIdAsync(ProductId, It.IsAny<CancellationToken>()))
+        _productRepo.Setup(r => r.GetByIdPublicAsync(ProductId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((Product?)null);
         _orderRepo.Setup(r => r.GetNextSequenceNumberAsync(RestaurantId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(1);
@@ -200,11 +230,11 @@ public sealed class CreateOrderCommandHandlerTests
     public async Task Handle_UnavailableProduct_ThrowsBusinessRuleException()
     {
         _tenantService.Setup(s => s.TenantId).Returns(TenantId);
-        _tableRepo.Setup(r => r.GetByIdAsync(TableId, It.IsAny<CancellationToken>()))
+        _tableRepo.Setup(r => r.GetByIdPublicAsync(TableId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(BuildTable());
-        _restaurantRepo.Setup(r => r.GetByIdAsync(RestaurantId, It.IsAny<CancellationToken>()))
+        _restaurantRepo.Setup(r => r.GetByIdPublicAsync(RestaurantId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(BuildRestaurant());
-        _productRepo.Setup(r => r.GetByIdAsync(ProductId, It.IsAny<CancellationToken>()))
+        _productRepo.Setup(r => r.GetByIdPublicAsync(ProductId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(BuildProduct(isAvailable: false));
         _orderRepo.Setup(r => r.GetNextSequenceNumberAsync(RestaurantId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(1);
@@ -223,7 +253,7 @@ public sealed class CreateOrderCommandHandlerTests
             new Money(1.20m, "EUR"));
 
         SetupHappyPath();
-        _productRepo.Setup(r => r.GetByIdAsync(productId2, It.IsAny<CancellationToken>()))
+        _productRepo.Setup(r => r.GetByIdPublicAsync(productId2, It.IsAny<CancellationToken>()))
             .ReturnsAsync(product2);
 
         var command = new CreateOrderCommand(

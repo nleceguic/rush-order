@@ -159,7 +159,8 @@ try
     builder.Services.AddMediatR(cfg =>
         cfg.RegisterServicesFromAssemblies(
             typeof(Program).Assembly,
-            typeof(ICurrentTenantService).Assembly));   // Application assembly
+            typeof(ICurrentTenantService).Assembly,     // Application assembly
+            typeof(RushOrder.Infrastructure.DependencyInjection).Assembly)); // domain event handlers (SignalR, status history)
 
     // ── 9. FLUENT VALIDATION ──────────────────────────────────────────────────
     builder.Services.AddValidatorsFromAssemblies(

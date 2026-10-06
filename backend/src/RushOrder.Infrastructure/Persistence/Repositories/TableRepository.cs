@@ -9,6 +9,11 @@ public sealed class TableRepository : Repository<Table>, ITableRepository
 {
     public TableRepository(AppDbContext context) : base(context) { }
 
+    public async Task<Table?> GetByIdPublicAsync(Guid id, CancellationToken cancellationToken = default)
+        => await DbSet.IgnoreQueryFilters()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
+
     public async Task<Table?> GetByQrCodeAsync(string qrCode, CancellationToken cancellationToken = default)
         => await DbSet.IgnoreQueryFilters()
             .AsNoTracking()

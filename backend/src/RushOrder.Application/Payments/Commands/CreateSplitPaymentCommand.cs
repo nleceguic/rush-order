@@ -52,7 +52,7 @@ public sealed class CreateSplitPaymentCommandHandler
         CreateSplitPaymentCommand request,
         CancellationToken cancellationToken)
     {
-        var order = await _orderRepository.GetByIdAsync(request.OrderId, cancellationToken)
+        var order = await _orderRepository.GetByIdPublicAsync(request.OrderId, cancellationToken)
             ?? throw new NotFoundException(nameof(Order), request.OrderId);
 
         if (order.Status is Domain.Enums.OrderStatus.Paid)
@@ -65,7 +65,7 @@ public sealed class CreateSplitPaymentCommandHandler
             throw new BusinessRuleException(
                 $"Split amounts ({splitsTotal:F2}) do not match order total ({order.Total.Amount:F2}).");
 
-        var restaurant = await _restaurantRepository.GetByIdAsync(order.RestaurantId, cancellationToken)
+        var restaurant = await _restaurantRepository.GetByIdPublicAsync(order.RestaurantId, cancellationToken)
             ?? throw new NotFoundException(nameof(Restaurant), order.RestaurantId);
 
         var currency = order.Total.Currency.ToLowerInvariant();

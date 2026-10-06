@@ -20,7 +20,7 @@ public sealed class MfaTests : IntegrationTestBase
         var setupResp = await ownerClient.PostAsync("/api/v1/auth/mfa/setup", null);
         setupResp.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var setupBody = await setupResp.Content.ReadFromJsonAsync<JsonElement>();
+        var setupBody = (await setupResp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
         setupBody.GetProperty("secret").GetString().Should().Be(FixedCodeTotpService.TestSecret,
             "FixedCodeTotpService always returns the deterministic test secret");
 

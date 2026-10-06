@@ -19,4 +19,8 @@ public sealed class CustomerRepository : Repository<Customer>, ICustomerReposito
         CancellationToken cancellationToken = default)
         => await DbSet
             .FirstOrDefaultAsync(c => c.Email != null && c.Email.Value == email, cancellationToken);
+
+    public async Task<Customer?> GetByIdPublicAsync(Guid id, CancellationToken cancellationToken = default)
+        => await DbSet.IgnoreQueryFilters()
+            .FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
 }

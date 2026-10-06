@@ -15,4 +15,8 @@ public sealed class UserRepository : Repository<User>, IUserRepository
     public async Task<bool> ExistsAnyWithEmailAsync(string email, CancellationToken cancellationToken = default)
         => await DbSet.IgnoreQueryFilters()
             .AnyAsync(u => u.Email.Value == email, cancellationToken);
+
+    public async Task<User?> GetByIdIgnoringTenantAsync(Guid id, CancellationToken cancellationToken = default)
+        => await DbSet.IgnoreQueryFilters()
+            .FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
 }

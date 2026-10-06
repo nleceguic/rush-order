@@ -44,7 +44,7 @@ public sealed class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordC
         var userId = await _authCacheService.GetPasswordResetUserIdAsync(request.Token, cancellationToken)
             ?? throw new BusinessRuleException("Invalid or expired password reset token.");
 
-        var user = await _userRepository.GetByIdAsync(userId, cancellationToken)
+        var user = await _userRepository.GetByIdIgnoringTenantAsync(userId, cancellationToken)
             ?? throw new NotFoundException(nameof(User), userId);
 
         var newHash = _passwordHasher.Hash(request.NewPassword);

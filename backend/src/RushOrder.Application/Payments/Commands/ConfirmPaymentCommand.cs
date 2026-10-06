@@ -63,7 +63,7 @@ public sealed class ConfirmPaymentCommandHandler
 
         payment.Complete(request.PaymentIntentId);
 
-        var order = await _orderRepository.GetByIdAsync(payment.OrderId, cancellationToken)
+        var order = await _orderRepository.GetByIdPublicAsync(payment.OrderId, cancellationToken)
             ?? throw new NotFoundException(nameof(Order), payment.OrderId);
 
         order.Pay();
@@ -80,12 +80,12 @@ public sealed class ConfirmPaymentCommandHandler
         try
         {
             Customer? customer = payment.CustomerId.HasValue
-                ? await _customerRepository.GetByIdAsync(payment.CustomerId.Value, ct)
+                ? await _customerRepository.GetByIdPublicAsync(payment.CustomerId.Value, ct)
                 : null;
 
             if (customer?.Email is null) return;
 
-            var restaurant = await _restaurantRepository.GetByIdAsync(order.RestaurantId, ct);
+            var restaurant = await _restaurantRepository.GetByIdPublicAsync(order.RestaurantId, ct);
             if (restaurant is null) return;
 
             var receiptData = new ReceiptData(

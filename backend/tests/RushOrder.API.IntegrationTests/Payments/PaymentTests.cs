@@ -152,6 +152,11 @@ public sealed class PaymentTests : IntegrationTestBase
             id          = $"evt_test_{Guid.NewGuid():N}",
             @object     = "event",
             api_version = Stripe.StripeConfiguration.ApiVersion,
+            created     = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+            livemode    = false,
+            pending_webhooks = 0,
+            // Stripe.net fails to parse events without "request" (real events always carry it).
+            request     = new { id = (string?)null, idempotency_key = (string?)null },
             type        = eventType,
             data        = new { @object = dataObject }
         });
