@@ -309,4 +309,6 @@ jobs:
         working-directory: pwa
         run: |
           npm ci --prefer-offline 2>/dev/null || npm install
-          npm audit --audit-level=high
+          # Gate on what ships to users. Dev tooling (Vite, Vitest, Tailwind, LHCI)
+          # carries advisories without non-major fixes; review those via Dependabot.
+          npm audit --omit=dev --audit-level=high

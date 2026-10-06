@@ -16,15 +16,13 @@ namespace RushOrder.API.IntegrationTests.Infrastructure;
 
 public class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder()
-        .WithImage("postgres:16-alpine")
+    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:16-alpine")
         .WithDatabase("rushorder_test")
         .WithUsername("test")
         .WithPassword("test")
         .Build();
 
-    private readonly RedisContainer _redis = new RedisBuilder()
-        .WithImage("redis:7-alpine")
+    private readonly RedisContainer _redis = new RedisBuilder("redis:7-alpine")
         .Build();
 
     private Respawner? _respawner;
