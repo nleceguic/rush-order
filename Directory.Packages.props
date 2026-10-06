@@ -88,7 +88,7 @@
        by the project that pulls them in. -->
   <ItemGroup>
     <!-- GHSA-m5vv-6r4h-3vj9, via Respawn / Microsoft.Data.SqlClient (integration tests) -->
-    <PackageVersion Include="Azure.Identity" Version="1.11.4" />
+    <PackageVersion Include="Azure.Identity" Version="1.21.0" />
     <!-- GHSA-2m69-gcr7-jv3q, via Microsoft.Data.Sqlite (desktop) -->
     <PackageVersion Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.13" />
   </ItemGroup>
