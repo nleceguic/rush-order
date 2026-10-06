@@ -9,6 +9,7 @@ interface ThemeContextValue {
 
 const ThemeContext = createContext<ThemeContextValue>({ theme: 'light', toggle: () => undefined })
 
+// eslint-disable-next-line react-refresh/only-export-components -- hook co-located with its context provider
 export function useTheme() {
   return useContext(ThemeContext)
 }

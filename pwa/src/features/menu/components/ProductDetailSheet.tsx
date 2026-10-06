@@ -113,6 +113,7 @@ export function ProductDetailSheet({ product, onClose }: ProductDetailSheetProps
       setOpts(INITIAL_OPTS)
       setDragY(0)
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- reset only when a different product opens
   }, [product?.id])
 
   // ESC to close + lock body scroll

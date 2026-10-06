@@ -26,6 +26,7 @@ const useToastStore = create<ToastStore>()((set) => ({
   remove: (id) => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
 }))
 
+// eslint-disable-next-line react-refresh/only-export-components -- imperative toast API lives with its store
 export const toast = {
   success: (msg: string) => useToastStore.getState().push(msg, 'success'),
   error:   (msg: string) => useToastStore.getState().push(msg, 'error'),

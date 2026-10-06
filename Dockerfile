@@ -3,7 +3,7 @@ FROM mcr.microsoft.com/dotnet/sdk:8.0-alpine AS build
 WORKDIR /src
 
 # Restaurar dependencias por separado para aprovechar la caché de Docker
-COPY rush-order.sln .
+COPY rush-order.sln global.json Directory.Packages.props ./
 COPY backend/src/RushOrder.Domain/RushOrder.Domain.csproj             backend/src/RushOrder.Domain/
 COPY backend/src/RushOrder.Application/RushOrder.Application.csproj   backend/src/RushOrder.Application/
 COPY backend/src/RushOrder.Infrastructure/RushOrder.Infrastructure.csproj backend/src/RushOrder.Infrastructure/
