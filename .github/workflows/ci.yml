@@ -204,7 +204,7 @@ jobs:
             type=raw,value=ci-scan,enable=true
 
       - name: Build Docker image (no push on feature branches)
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: Dockerfile
