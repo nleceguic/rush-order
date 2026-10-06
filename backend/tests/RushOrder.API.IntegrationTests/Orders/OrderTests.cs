@@ -35,7 +35,7 @@ public sealed class OrderTests : IntegrationTestBase
     }
 
     [Fact]
-    public async Task CreateOrder_WithoutAuth_Returns401()
+    public async Task CreateOrder_AsAnonymousGuest_Returns201()
     {
         var anonClient = Factory.CreateClient();
         var (_, tableId, productId) = await GetSeededIdsAsync();
@@ -49,8 +49,8 @@ public sealed class OrderTests : IntegrationTestBase
             source = "QR"
         });
 
-        // Handler requires TenantId from JWT — anonymous request → UnauthorizedAccessException → 401
-        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        // Guests order from the PWA without a JWT; the tenant is resolved from the table.
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
     }
 
     [Fact]

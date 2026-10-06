@@ -6,6 +6,9 @@ namespace RushOrder.Application.Common.Interfaces;
 public interface IOrderRepository : IRepository<Order>
 {
     Task<Order?> GetByOrderNumberAsync(string orderNumber, CancellationToken cancellationToken = default);
+
+    /// <summary>Looks up an order across tenants, for anonymous customer flows (e.g. paying from the PWA).</summary>
+    Task<Order?> GetByIdPublicAsync(Guid id, CancellationToken cancellationToken = default);
     Task<int> GetNextSequenceNumberAsync(Guid restaurantId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Order>> GetPagedByRestaurantAsync(
         Guid restaurantId,

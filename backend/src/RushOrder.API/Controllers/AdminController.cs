@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using RushOrder.Application.Admin.Commands;
 using RushOrder.Application.Admin.DTOs;
 using RushOrder.Application.Admin.Queries;
+using RushOrder.API.Common;
 
 namespace RushOrder.API.Controllers;
 
@@ -17,12 +18,12 @@ public sealed class AdminController : ControllerBase
     public AdminController(IMediator mediator) => _mediator = mediator;
 
     [HttpGet("tenants")]
-    public async Task<ActionResult<IReadOnlyList<TenantSummaryDto>>> GetTenants(CancellationToken ct)
-        => Ok(await _mediator.Send(new GetTenantsQuery(), ct));
+    public async Task<ActionResult<ApiResponse<IReadOnlyList<TenantSummaryDto>>>> GetTenants(CancellationToken ct)
+        => Ok(ApiResponse<IReadOnlyList<TenantSummaryDto>>.Ok(await _mediator.Send(new GetTenantsQuery(), ct)));
 
     [HttpGet("tenants/{id:guid}")]
-    public async Task<ActionResult<TenantDetailDto>> GetTenant(Guid id, CancellationToken ct)
-        => Ok(await _mediator.Send(new GetTenantDetailQuery(id), ct));
+    public async Task<ActionResult<ApiResponse<TenantDetailDto>>> GetTenant(Guid id, CancellationToken ct)
+        => Ok(ApiResponse<TenantDetailDto>.Ok(await _mediator.Send(new GetTenantDetailQuery(id), ct)));
 
     [HttpPost("tenants/{id:guid}/suspend")]
     public async Task<IActionResult> Suspend(
@@ -48,10 +49,10 @@ public sealed class AdminController : ControllerBase
     }
 
     [HttpGet("metrics")]
-    public async Task<ActionResult<GlobalMetricsDto>> GetMetrics(CancellationToken ct)
-        => Ok(await _mediator.Send(new GetGlobalMetricsQuery(), ct));
+    public async Task<ActionResult<ApiResponse<GlobalMetricsDto>>> GetMetrics(CancellationToken ct)
+        => Ok(ApiResponse<GlobalMetricsDto>.Ok(await _mediator.Send(new GetGlobalMetricsQuery(), ct)));
 
     [HttpPost("tenants/{id:guid}/impersonate")]
-    public async Task<ActionResult<ImpersonateTokenDto>> Impersonate(Guid id, CancellationToken ct)
-        => Ok(await _mediator.Send(new ImpersonateTenantCommand(id), ct));
+    public async Task<ActionResult<ApiResponse<ImpersonateTokenDto>>> Impersonate(Guid id, CancellationToken ct)
+        => Ok(ApiResponse<ImpersonateTokenDto>.Ok(await _mediator.Send(new ImpersonateTenantCommand(id), ct)));
 }

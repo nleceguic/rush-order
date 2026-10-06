@@ -83,8 +83,14 @@ public sealed class CompleteOrderFlowTests : IntegrationTestBase
         // ── 5. Simulate Stripe webhook: payment_intent.succeeded ─────────────
         var webhookBody = JsonSerializer.Serialize(new
         {
-            id   = $"evt_test_{Guid.NewGuid():N}",
-            type = "payment_intent.succeeded",
+            id          = $"evt_test_{Guid.NewGuid():N}",
+            @object     = "event",
+            api_version = Stripe.StripeConfiguration.ApiVersion,
+            created     = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+            livemode    = false,
+            pending_webhooks = 0,
+            request     = new { id = (string?)null, idempotency_key = (string?)null },
+            type        = "payment_intent.succeeded",
             data = new
             {
                 @object = new

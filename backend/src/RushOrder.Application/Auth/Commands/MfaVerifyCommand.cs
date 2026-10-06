@@ -51,7 +51,7 @@ public sealed class MfaVerifyCommandHandler : IRequestHandler<MfaVerifyCommand, 
         var userId = await _authCacheService.GetMfaPendingUserIdAsync(request.TempToken, cancellationToken)
             ?? throw new BusinessRuleException("Invalid or expired MFA session.");
 
-        var user = await _userRepository.GetByIdAsync(userId, cancellationToken)
+        var user = await _userRepository.GetByIdIgnoringTenantAsync(userId, cancellationToken)
             ?? throw new NotFoundException(nameof(User), userId);
 
         if (user.MfaSecret is null || !_totpService.VerifyCode(user.MfaSecret, request.Code))

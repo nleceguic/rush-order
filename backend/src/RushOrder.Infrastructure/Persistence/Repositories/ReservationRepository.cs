@@ -52,13 +52,16 @@ public sealed class ReservationRepository : Repository<Reservation>, IReservatio
         DateTimeOffset to,
         CancellationToken cancellationToken = default)
     {
+        // Scoped by restaurantId, so the tenant filter is bypassed: anonymous self-booking
+        // has no tenant claim and would otherwise always see zero tables and reservations.
         var capableTablesCount = await _context.Tables
+            .IgnoreQueryFilters()
             .AsNoTracking()
             .CountAsync(t => t.RestaurantId == restaurantId && t.Capacity >= partySize, cancellationToken);
 
         if (capableTablesCount == 0) return false;
 
-        var overlappingCount = await DbSet.AsNoTracking()
+        var overlappingCount = await DbSet.IgnoreQueryFilters().AsNoTracking()
             .CountAsync(r => r.RestaurantId == restaurantId
                 && r.Status != ReservationStatus.Cancelled
                 && r.Status != ReservationStatus.NoShow

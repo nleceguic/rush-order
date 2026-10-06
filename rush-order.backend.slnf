@@ -1,0 +1,14 @@
+{
+  "solution": {
+    "path": "rush-order.sln",
+    "projects": [
+      "backend\\src\\RushOrder.Domain\\RushOrder.Domain.csproj",
+      "backend\\src\\RushOrder.Application\\RushOrder.Application.csproj",
+      "backend\\src\\RushOrder.Infrastructure\\RushOrder.Infrastructure.csproj",
+      "backend\\src\\RushOrder.API\\RushOrder.API.csproj",
+      "backend\\tests\\RushOrder.Domain.Tests\\RushOrder.Domain.Tests.csproj",
+      "backend\\tests\\RushOrder.Application.Tests\\RushOrder.Application.Tests.csproj",
+      "backend\\tests\\RushOrder.API.IntegrationTests\\RushOrder.API.IntegrationTests.csproj"
+    ]
+  }
+}

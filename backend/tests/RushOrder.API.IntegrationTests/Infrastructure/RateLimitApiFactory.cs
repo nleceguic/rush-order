@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.Extensions.Configuration;
 
 namespace RushOrder.API.IntegrationTests.Infrastructure;
 
@@ -15,10 +14,6 @@ public sealed class RateLimitApiFactory : ApiFactory
 
         // The base sets DisableRateLimit = "true". Override with "false" so the
         // PartitionedRateLimiter is active during rate-limit-specific tests.
-        builder.ConfigureAppConfiguration((_, config) =>
-            config.AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["DisableRateLimit"] = "false"
-            }));
+        builder.UseSetting("DisableRateLimit", "false");
     }
 }

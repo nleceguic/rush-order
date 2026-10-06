@@ -11,6 +11,7 @@ const LoyaltyPage       = lazy(() => import('@features/loyalty/LoyaltyPage'))
 const ProfilePage       = lazy(() => import('@features/profile/ProfilePage'))
 const OrderHistoryPage  = lazy(() => import('@features/profile/OrderHistoryPage'))
 
+// eslint-disable-next-line react-refresh/only-export-components -- route module, not hot-reloaded as a component
 function PageFallback() {
   return (
     <div className="flex min-h-screen items-center justify-center">

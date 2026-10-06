@@ -82,16 +82,19 @@ public sealed class CreateOrderCommandHandler : IRequestHandler<CreateOrderComma
 
     public async Task<CreateOrderResult> Handle(CreateOrderCommand request, CancellationToken cancellationToken)
     {
-        var tenantId = _tenantService.TenantId
-            ?? throw new UnauthorizedAccessException("Tenant context is required.");
+        // Guests order from the PWA without a JWT: the tenant comes from the table.
+        // Authenticated staff may only order into their own tenant's tables.
+        var table = await _tableRepository.GetByIdPublicAsync(request.TableId, cancellationToken);
+        if (table is null
+            || (_tenantService.TenantId is { } currentTenant && table.TenantId != currentTenant))
+            throw new NotFoundException(nameof(Table), request.TableId);
 
-        var table = await _tableRepository.GetByIdAsync(request.TableId, cancellationToken)
-            ?? throw new NotFoundException(nameof(Table), request.TableId);
+        var tenantId = table.TenantId;
 
         if (table.Status != TableStatus.Free && table.Status != TableStatus.Occupied)
             throw new BusinessRuleException($"Table is not available for orders. Current status: {table.Status}.");
 
-        var restaurant = await _restaurantRepository.GetByIdAsync(table.RestaurantId, cancellationToken)
+        var restaurant = await _restaurantRepository.GetByIdPublicAsync(table.RestaurantId, cancellationToken)
             ?? throw new NotFoundException(nameof(Restaurant), table.RestaurantId);
 
         var sequenceNumber = await _orderRepository.GetNextSequenceNumberAsync(restaurant.Id, cancellationToken);
@@ -111,8 +114,9 @@ public sealed class CreateOrderCommandHandler : IRequestHandler<CreateOrderComma
 
         foreach (var itemInput in request.Items)
         {
-            var product = await _productRepository.GetByIdAsync(itemInput.ProductId, cancellationToken)
-                ?? throw new NotFoundException(nameof(Product), itemInput.ProductId);
+            var product = await _productRepository.GetByIdPublicAsync(itemInput.ProductId, cancellationToken);
+            if (product is null || product.RestaurantId != table.RestaurantId)
+                throw new NotFoundException(nameof(Product), itemInput.ProductId);
 
             if (!product.IsAvailable)
                 throw new BusinessRuleException($"Product '{product.Name}' is not available.");

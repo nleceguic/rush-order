@@ -14,6 +14,11 @@ public sealed class OrderRepository : Repository<Order>, IOrderRepository
             .AsNoTracking()
             .FirstOrDefaultAsync(o => o.OrderNumber == orderNumber, cancellationToken);
 
+    public async Task<Order?> GetByIdPublicAsync(Guid id, CancellationToken cancellationToken = default)
+        => await DbSet
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(o => o.Id == id, cancellationToken);
+
     public async Task<IReadOnlyList<Order>> GetActiveByRestaurantAsync(
         Guid restaurantId,
         CancellationToken cancellationToken = default)
