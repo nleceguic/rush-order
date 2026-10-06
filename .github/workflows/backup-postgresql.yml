@@ -55,7 +55,7 @@ jobs:
 
       - name: Notify on failure
         if: failure()
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             core.setFailed(`PostgreSQL backup FAILED for environment: ${process.env.ENVIRONMENT}`);
