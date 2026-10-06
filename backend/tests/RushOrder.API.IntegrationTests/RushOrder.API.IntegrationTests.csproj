@@ -24,6 +24,8 @@
     <PackageReference Include="Testcontainers.PostgreSql" />
     <PackageReference Include="Testcontainers.Redis" />
     <PackageReference Include="Respawn" />
+    <!-- Patched Azure.Identity over Respawn's transitive 1.3.0 (GHSA-m5vv-6r4h-3vj9) -->
+    <PackageReference Include="Azure.Identity" />
     <PackageReference Include="FluentAssertions" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" />
     <PackageReference Include="Npgsql" />

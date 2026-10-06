@@ -1,6 +1,7 @@
 import { useRef, useState, type ReactNode } from 'react'
 
 /** Wrap matched substring in <strong> tags */
+// eslint-disable-next-line react-refresh/only-export-components -- helper co-located with its only consumer
 export function highlightMatch(text: string, query: string): ReactNode {
   if (query.length === 0) return text
   const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')

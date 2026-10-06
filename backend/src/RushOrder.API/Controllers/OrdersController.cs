@@ -34,7 +34,8 @@ public sealed class OrdersController : ApiController
 
     // GET /api/v1/orders?restaurantId=...&status=...&page=1&pageSize=20
     [HttpGet]
-    [Authorize(Roles = "Admin,Owner,Manager,Waiter")]
+    // Kitchen: the KDS lists active orders through this endpoint.
+    [Authorize(Roles = "Admin,Owner,Manager,Waiter,Kitchen")]
     [ProducesResponseType(typeof(ApiResponse<IReadOnlyList<OrderSummaryDto>>), StatusCodes.Status200OK)]
     public Task<IActionResult> GetOrders(
         [FromQuery] Guid restaurantId,

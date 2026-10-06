@@ -57,11 +57,14 @@ public sealed class CreateReservationCommandHandler : IRequestHandler<CreateRese
 
     public async Task<CreateReservationResult> Handle(CreateReservationCommand request, CancellationToken cancellationToken)
     {
-        var tenantId = _tenantService.TenantId
-            ?? throw new UnauthorizedAccessException("Tenant context is required.");
+        // Public self-booking has no tenant claim: the tenant comes from the restaurant.
+        // Authenticated staff may only book into their own tenant's restaurants.
+        var restaurant = await _restaurantRepository.GetByIdPublicAsync(request.RestaurantId, cancellationToken);
+        if (restaurant is null
+            || (_tenantService.TenantId is { } currentTenant && restaurant.TenantId != currentTenant))
+            throw new NotFoundException(nameof(Restaurant), request.RestaurantId);
 
-        var restaurant = await _restaurantRepository.GetByIdAsync(request.RestaurantId, cancellationToken)
-            ?? throw new NotFoundException(nameof(Restaurant), request.RestaurantId);
+        var tenantId = restaurant.TenantId;
 
         if (!restaurant.IsActive)
             throw new BusinessRuleException("Restaurant is not currently accepting reservations.");

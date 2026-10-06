@@ -16,11 +16,12 @@ public sealed class AdminRepository : IAdminRepository
 
     public async Task<IReadOnlyList<TenantMetricsRow>> GetTenantMetricsAsync(CancellationToken ct = default)
     {
+        // COUNT() is bigint in PostgreSQL; cast to match the int-typed rows Dapper maps into.
         const string sql = """
             SELECT
                 t."Id"          AS "TenantId",
-                COUNT(DISTINCT r."Id") AS "RestaurantsCount",
-                COUNT(DISTINCT u."Id") AS "UsersCount"
+                COUNT(DISTINCT r."Id")::int AS "RestaurantsCount",
+                COUNT(DISTINCT u."Id")::int AS "UsersCount"
             FROM tenants t
             LEFT JOIN restaurants r ON r."TenantId" = t."Id"
             LEFT JOIN users u       ON u."TenantId" = t."Id" AND u."IsActive" = TRUE
@@ -38,9 +39,9 @@ public sealed class AdminRepository : IAdminRepository
     {
         const string sql = """
             SELECT
-                COUNT(DISTINCT r."Id")    AS "RestaurantsCount",
-                COUNT(DISTINCT u."Id")    AS "UsersCount",
-                COUNT(DISTINCT tb."Id")   AS "TablesCount"
+                COUNT(DISTINCT r."Id")::int AS "RestaurantsCount",
+                COUNT(DISTINCT u."Id")::int AS "UsersCount",
+                COUNT(DISTINCT tb."Id")::int AS "TablesCount"
             FROM tenants t
             LEFT JOIN restaurants r ON r."TenantId" = t."Id"
             LEFT JOIN users u       ON u."TenantId" = t."Id" AND u."IsActive" = TRUE
@@ -72,17 +73,17 @@ public sealed class AdminRepository : IAdminRepository
                 WHERE s."Status" = 'Active'
             )
             SELECT
-                c.total             AS "TotalTenants",
-                c.active            AS "ActiveTenants",
-                c.trial             AS "TrialTenants",
-                c.suspended         AS "SuspendedTenants",
+                c.total::int        AS "TotalTenants",
+                c.active::int       AS "ActiveTenants",
+                c.trial::int        AS "TrialTenants",
+                c.suspended::int    AS "SuspendedTenants",
                 m.mrr               AS "Mrr",
                 m.mrr * 12          AS "Arr",
-                c.new_week          AS "NewTenantsThisWeek",
+                c.new_week::int     AS "NewTenantsThisWeek",
                 CASE WHEN c.active > 0
                     THEN ROUND((c.suspended::numeric / NULLIF(c.active + c.suspended, 0)) * 100, 2)
                     ELSE 0
-                END                 AS "ChurnRatePercent"
+                END::float8         AS "ChurnRatePercent"
             FROM counts c, mrr_calc m
             """;
 

@@ -22,7 +22,7 @@ public sealed class AuthTests : IntegrationTestBase
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var body = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
         body.GetProperty("accessToken").GetString().Should().NotBeNullOrEmpty();
         body.GetProperty("refreshToken").GetString().Should().NotBeNullOrEmpty();
     }
@@ -83,7 +83,7 @@ public sealed class AuthTests : IntegrationTestBase
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var body = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
         body.GetProperty("accessToken").GetString().Should().NotBeNullOrEmpty();
 
         var newRefreshToken = body.GetProperty("refreshToken").GetString();
@@ -117,7 +117,7 @@ public sealed class AuthTests : IntegrationTestBase
         var client = Factory.CreateClient();
         var rotateResp = await client.PostAsJsonAsync("/api/v1/auth/refresh", new { refreshToken = refreshToken1 });
         rotateResp.EnsureSuccessStatusCode();
-        var body = await rotateResp.Content.ReadFromJsonAsync<JsonElement>();
+        var body = (await rotateResp.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
         var refreshToken2 = body.GetProperty("refreshToken").GetString()!;
 
         // Try to reuse the already-consumed token1 — the entire family must be invalidated
@@ -142,7 +142,7 @@ public sealed class AuthTests : IntegrationTestBase
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var body = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
         body.GetProperty("accessToken").GetString().Should().NotBeNullOrEmpty();
     }
 }

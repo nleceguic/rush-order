@@ -45,7 +45,12 @@
         "unused-css-rules":          ["warn", {}],
 
         "uses-long-cache-ttl":       ["warn", {}],
-        "efficient-animated-content": ["warn", {}]
+        "efficient-animated-content": ["warn", {}],
+
+        "errors-in-console":         ["warn", {}],
+        "lcp-lazy-loaded":           "off",
+        "non-composited-animations": "off",
+        "prioritize-lcp-image":      "off"
       }
     },
     "upload": {

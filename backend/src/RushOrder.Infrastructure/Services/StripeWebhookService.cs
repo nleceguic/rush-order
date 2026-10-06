@@ -107,7 +107,7 @@ public sealed class StripeWebhookService : IStripeWebhookService
 
         payment.Complete(intent.Id);
 
-        var order = await _orderRepository.GetByIdAsync(payment.OrderId, ct);
+        var order = await _orderRepository.GetByIdPublicAsync(payment.OrderId, ct);
         if (order is not null) order.Pay();
 
         await _unitOfWork.SaveChangesAsync(ct);
@@ -138,9 +138,9 @@ public sealed class StripeWebhookService : IStripeWebhookService
         var payment = await _paymentRepository.GetByProviderPaymentIdAsync(dispute.PaymentIntentId, ct);
         if (payment is null) return;
 
-        var order = await _orderRepository.GetByIdAsync(payment.OrderId, ct);
+        var order = await _orderRepository.GetByIdPublicAsync(payment.OrderId, ct);
         var restaurant = order is not null
-            ? await _restaurantRepository.GetByIdAsync(order.RestaurantId, ct)
+            ? await _restaurantRepository.GetByIdPublicAsync(order.RestaurantId, ct)
             : null;
 
         if (restaurant is not null && order is not null)
@@ -159,10 +159,10 @@ public sealed class StripeWebhookService : IStripeWebhookService
         {
             if (order is null || !payment.CustomerId.HasValue) return;
 
-            var customer = await _customerRepository.GetByIdAsync(payment.CustomerId.Value, ct);
+            var customer = await _customerRepository.GetByIdPublicAsync(payment.CustomerId.Value, ct);
             if (customer?.Email is null) return;
 
-            var restaurant = await _restaurantRepository.GetByIdAsync(order.RestaurantId, ct);
+            var restaurant = await _restaurantRepository.GetByIdPublicAsync(order.RestaurantId, ct);
             if (restaurant is null) return;
 
             var receiptData = new ReceiptData(
@@ -234,10 +234,10 @@ public sealed class StripeWebhookService : IStripeWebhookService
         try
         {
             if (!payment.CustomerId.HasValue) return;
-            var customer = await _customerRepository.GetByIdAsync(payment.CustomerId.Value, ct);
+            var customer = await _customerRepository.GetByIdPublicAsync(payment.CustomerId.Value, ct);
             if (customer?.Email is null) return;
 
-            var order = await _orderRepository.GetByIdAsync(payment.OrderId, ct);
+            var order = await _orderRepository.GetByIdPublicAsync(payment.OrderId, ct);
             if (order is null) return;
 
             await _notificationService.SendPaymentFailedAsync(customer.Email.Value, order.OrderNumber, reason, ct);

@@ -68,8 +68,10 @@ public sealed class AppDbContext : DbContext, IUnitOfWork
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
-        SetAuditFields();
+        // Dispatch first: handlers may add entities (e.g. order status history) that
+        // ride along in this save and need audit fields too.
         await DispatchDomainEventsAsync(cancellationToken);
+        SetAuditFields();
         return await base.SaveChangesAsync(cancellationToken);
     }
 

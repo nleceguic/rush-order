@@ -45,7 +45,7 @@ public sealed class CreatePaymentIntentCommandHandler
         CreatePaymentIntentCommand request,
         CancellationToken cancellationToken)
     {
-        var order = await _orderRepository.GetByIdAsync(request.OrderId, cancellationToken)
+        var order = await _orderRepository.GetByIdPublicAsync(request.OrderId, cancellationToken)
             ?? throw new NotFoundException(nameof(Order), request.OrderId);
 
         if (order.Status is Domain.Enums.OrderStatus.Paid)
@@ -53,7 +53,7 @@ public sealed class CreatePaymentIntentCommandHandler
         if (order.Status is Domain.Enums.OrderStatus.Cancelled)
             throw new BusinessRuleException("Cannot pay a cancelled order.");
 
-        var restaurant = await _restaurantRepository.GetByIdAsync(order.RestaurantId, cancellationToken)
+        var restaurant = await _restaurantRepository.GetByIdPublicAsync(order.RestaurantId, cancellationToken)
             ?? throw new NotFoundException(nameof(Restaurant), order.RestaurantId);
 
         var amountCents = (long)(order.Total.Amount * 100);

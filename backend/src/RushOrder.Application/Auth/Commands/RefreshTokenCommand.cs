@@ -51,7 +51,7 @@ public sealed class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCom
         if (existingToken.IsExpired)
             throw new BusinessRuleException("Refresh token has expired.");
 
-        var user = await _userRepository.GetByIdAsync(existingToken.UserId, cancellationToken)
+        var user = await _userRepository.GetByIdIgnoringTenantAsync(existingToken.UserId, cancellationToken)
             ?? throw new NotFoundException(nameof(User), existingToken.UserId);
 
         var rawNewRefreshToken = _jwtTokenService.GenerateRefreshToken();
