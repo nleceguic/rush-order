@@ -139,7 +139,7 @@ flowchart TD
 | CQRS / Mediator | MediatR 12.5 |
 | Validation | FluentValidation |
 | Mapping | Mapster |
-| ORM — transactional | EF Core 9.0.18 + Npgsql provider (12 migrations) |
+| ORM — transactional | EF Core 9.0.20 (EF Core 9 supports `net8.0`; the app runs on .NET 8) + Npgsql provider (12 migrations) |
 | ORM — analytics reads | Dapper (forecasting, recommendations, experiments) |
 | Database | PostgreSQL 16 (Row-Level Security) |
 | Cache / real-time backplane | Redis 7 |
