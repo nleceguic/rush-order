@@ -53,7 +53,7 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
               workflow_id: 'cd-staging.yml',
-              branch: 'develop',
+              branch: 'main',
               status: 'completed',
               per_page: 1,
             });

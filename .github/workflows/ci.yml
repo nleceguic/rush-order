@@ -4,7 +4,7 @@ on:
   push:
     branches: ['**']
   pull_request:
-    branches: [main, develop]
+    branches: [main]
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -203,20 +203,20 @@ jobs:
             type=sha,prefix=sha-,format=short
             type=raw,value=ci-scan,enable=true
 
-      - name: Build Docker image (no push on feature branches)
+      - name: Build Docker image (scan only, not pushed)
         uses: docker/build-push-action@v7
         with:
           context: .
           file: Dockerfile
-          push: ${{ github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main' }}
+          push: false
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          load: ${{ github.ref != 'refs/heads/develop' && github.ref != 'refs/heads/main' }}
+          load: true
 
       - name: Run Trivy vulnerability scan (table output)
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:ci-scan
           format: table
@@ -226,7 +226,7 @@ jobs:
           severity: 'CRITICAL,HIGH'
 
       - name: Run Trivy scan (SARIF for GitHub Security tab)
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@v0.36.0
         if: always()
         with:
           image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:ci-scan
@@ -246,7 +246,8 @@ jobs:
   dast-zap:
     name: DAST — OWASP ZAP
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' && github.base_ref == 'main'
+    # Needs a deployed staging API to scan; skipped until STAGING_API_URL is set.
+    if: github.event_name == 'pull_request' && github.base_ref == 'main' && vars.STAGING_API_URL != ''
     steps:
       - uses: actions/checkout@v7
 

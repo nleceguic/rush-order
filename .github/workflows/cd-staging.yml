@@ -1,8 +1,8 @@
 name: CD — Staging
 
+# Manual until a staging environment exists (Azure credentials + STAGING_API_URL).
 on:
-  push:
-    branches: [develop]
+  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
@@ -71,7 +71,7 @@ jobs:
 
       # ── Trivy scan on pushed image ────────────────────────────────────────
       - name: Trivy vulnerability scan
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:staging-latest
           format: table
@@ -366,26 +366,9 @@ jobs:
     if: always()
     permissions:
       contents: read
-      pull-requests: write
 
     steps:
-      - name: Find associated PR
-        id: find-pr
-        uses: actions/github-script@v9
-        with:
-          script: |
-            const prs = await github.rest.pulls.list({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              state: 'open',
-              head: `${context.repo.owner}:develop`,
-            });
-            const pr = prs.data[0];
-            return pr ? pr.number : null;
-          result-encoding: string
-
-      - name: Comment on PR
-        if: steps.find-pr.outputs.result != 'null'
+      - name: Write deploy summary
         uses: actions/github-script@v9
         with:
           script: |
@@ -411,12 +394,7 @@ jobs:
               `| Actor | @${{ github.actor }} |`,
             ].join('\n');
 
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo:  context.repo.repo,
-              issue_number: parseInt('${{ steps.find-pr.outputs.result }}'),
-              body,
-            });
+            await core.summary.addRaw(body).write();
 
       - name: Slack notification
         if: always()
