@@ -63,3 +63,6 @@ updates:
     ignore:
       - dependency-name: '*'
         update-types: ['version-update:semver-major']
+      # 0.5+ requires ESLint 9; the PWA is still on ESLint 8 (.eslintrc).
+      - dependency-name: 'eslint-plugin-react-refresh'
+        versions: ['>=0.5.0']
