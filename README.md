@@ -7,6 +7,7 @@
 ![React 18](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.5-3178C6?logo=typescript&logoColor=white)
 ![PostgreSQL 16](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 Rush Order targets independent restaurants that need one system covering three audiences at once: the **diner** ordering from their table via a PWA, **waitstaff and kitchen** running the floor from a Windows desktop app, and the **owner/manager** who needs occupancy, demand and revenue visibility without a separate BI tool. The backend is a Clean Architecture + CQRS system (.NET 8, MediatR, EF Core + Dapper) with tenant isolation enforced at the PostgreSQL row level — not only in application code — because it's built to host more than one restaurant.
 
@@ -332,4 +333,4 @@ This is a solo-maintained portfolio project, so the repository is configured for
 
 ## License
 
-No `LICENSE` file is currently included in this repository — all rights reserved by default until one is added.
+Released under the [MIT License](LICENSE).
