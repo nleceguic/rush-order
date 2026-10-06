@@ -250,6 +250,19 @@ try
 
     // ── PIPELINE DE MIDDLEWARES (orden importa) ───────────────────────────────
 
+    app.UseSerilogRequestLogging(opts => // 0. Log estructurado de requests (fuera del exception handler
+                                     //    para registrar el status final, no un 500 por excepción manejada)
+    {
+        opts.EnrichDiagnosticContext = (diag, http) =>
+        {
+            diag.Set("UserId",        http.User.FindFirst("sub")?.Value ?? "anonymous");
+            diag.Set("RequestHost",   http.Request.Host.Value);
+            diag.Set("UserAgent",     http.Request.Headers.UserAgent.ToString());
+            diag.Set("CorrelationId", http.Items["CorrelationId"]?.ToString() ?? "-");
+            diag.Set("TenantId",      http.User.FindFirst("tid")?.Value ?? "-");
+        };
+    });
+
     app.UseExceptionHandler();           // 1. Captura excepciones no controladas
     app.UseHttpsRedirection();           // 2. Redirige HTTP → HTTPS
     app.UseMiddleware<RushOrder.API.Middleware.SecurityHeadersMiddleware>(); // 3. Security headers (OWASP)
@@ -258,18 +271,6 @@ try
     app.UseCors();                       // 6. CORS
 
     app.UseMiddleware<RushOrder.API.Middleware.CorrelationIdMiddleware>(); // 7. X-Correlation-ID
-
-    app.UseSerilogRequestLogging(opts => // 8. Log estructurado de requests
-    {
-        opts.EnrichDiagnosticContext = (diag, http) =>
-        {
-            diag.Set("UserId",        http.User.FindFirst("sub")?.Value ?? "anonymous");
-            diag.Set("RequestHost",   http.Request.Host.Value);
-            diag.Set("UserAgent",     http.Request.Headers.UserAgent.ToString());
-            diag.Set("CorrelationId", http.Items["CorrelationId"]?.ToString() ?? "-");
-            diag.Set("TenantId",      http.User.FindFirst("tenant_id")?.Value ?? "-");
-        };
-    });
 
     app.UseAuthentication();             // 9. Autenticación
     app.UseAuthorization();              // 10. Autorización
