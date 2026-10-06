@@ -288,7 +288,7 @@ cd pwa && npm run test:ci
 npx playwright test tests/e2e
 ```
 
-CI (`.github/workflows/ci.yml`) enforces a hard **≥70% line-coverage** gate on `Domain` + `Application` only (`coverlet.runsettings` + ReportGenerator), on every push and PR to `main`/`develop`. No external coverage service (Codecov/Coveralls) is connected, so no coverage badge or number is claimed here beyond that gate.
+CI (`.github/workflows/ci.yml`) enforces a hard **≥70% line-coverage** gate on `Domain` + `Application` only (`coverlet.runsettings` + ReportGenerator), on every push to any branch, which is also what pull requests are checked against. No external coverage service (Codecov/Coveralls) is connected, so no coverage badge or number is claimed here beyond that gate.
 
 ## Deployment
 
@@ -301,11 +301,11 @@ cp .env.production.example .env.production   # fill in real values
 docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
 ```
 
-**Cloud (Azure, via IaC + CI/CD).** `infrastructure/terraform/` provisions Azure App Service, managed PostgreSQL, Redis, Key Vault, Service Bus, Static Web Apps, Storage and Monitor across `dev`/`staging`/`prod` environments. Two GitHub Actions workflows drive deploys on top of that: `cd-staging.yml` deploys automatically on every push to `develop` (build → push image → deploy API + PWA → run migrations → Playwright smoke tests → k6 load test → auto-rollback on failure), and `cd-production.yml` is a manually-triggered, tag-gated blue/green App Service slot swap with the same rollback safety net. Neither workflow has a live target URL committed to the repo — staging/production endpoints are injected at deploy time via GitHub Actions `vars`/`secrets`, configured outside of source control.
+**Cloud (Azure, via IaC + CI/CD).** `infrastructure/terraform/` provisions Azure App Service, managed PostgreSQL, Redis, Key Vault, Service Bus, Static Web Apps, Storage and Monitor across `dev`/`staging`/`prod` environments. Two GitHub Actions workflows drive deploys on top of that: `cd-staging.yml` deploys automatically from a dedicated staging integration branch (build → push image → deploy API + PWA → run migrations → Playwright smoke tests → k6 load test → auto-rollback on failure) — development currently happens directly on `master` and that branch hasn't been created, so this pipeline has never run — and `cd-production.yml` is a manually-triggered, tag-gated blue/green App Service slot swap with the same rollback safety net. Neither workflow has a live target URL committed to the repo — staging/production endpoints are injected at deploy time via GitHub Actions `vars`/`secrets`, configured outside of source control.
 
 ## Demo
 
-No public demo is currently deployed. Given the pipelines above already exist, the lowest-effort path to one would be provisioning an Azure subscription, configuring `cd-staging.yml`'s required secrets/vars (App Service name, PostgreSQL/Redis connection info, Stripe test keys), and letting a push to `develop` run the existing staging pipeline — no architectural change needed, just infrastructure to point it at.
+No public demo is currently deployed. Given the pipelines above already exist, the lowest-effort path to one would be provisioning an Azure subscription, configuring `cd-staging.yml`'s required secrets/vars (App Service name, PostgreSQL/Redis connection info, Stripe test keys), and creating the integration branch `cd-staging.yml` deploys from so a push runs the existing staging pipeline — no architectural change needed, just infrastructure to point it at.
 
 ## Roadmap
 
