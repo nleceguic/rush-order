@@ -43,7 +43,7 @@ public sealed class RealTimeService : IAsyncDisposable
 
         if (_state.AccessToken is null) return;
 
-        var hubUrl = $"{baseUrl.TrimEnd('/')}/hubs/restaurant";
+        var hubUrl = $"{baseUrl.TrimEnd('/')}/ws/restaurant";
         _logger.LogInformation("Connecting to SignalR hub: {Url}", hubUrl);
 
         using var loggerFactory = LoggerFactory.Create(b => b.SetMinimumLevel(LogLevel.Warning));

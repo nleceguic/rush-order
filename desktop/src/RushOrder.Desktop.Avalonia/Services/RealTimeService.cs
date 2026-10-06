@@ -34,7 +34,7 @@ public sealed class RealTimeService : IAsyncDisposable
         }
         if (_state.AccessToken is null) return;
 
-        var hubUrl = $"{baseUrl.TrimEnd('/')}/hubs/restaurant";
+        var hubUrl = $"{baseUrl.TrimEnd('/')}/ws/restaurant";
         using var loggerFactory = LoggerFactory.Create(b => b.SetMinimumLevel(LogLevel.Warning));
         var hubLogger = loggerFactory.CreateLogger<RestaurantHubClient>();
         _client = new RestaurantHubClient(hubUrl, _state.AccessToken, hubLogger);
