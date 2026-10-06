@@ -50,7 +50,8 @@
         "errors-in-console":         ["warn", {}],
         "lcp-lazy-loaded":           "off",
         "non-composited-animations": "off",
-        "prioritize-lcp-image":      "off"
+        "prioritize-lcp-image":      "off",
+        "network-dependency-tree-insight": ["warn", {}]
       }
     },
     "upload": {
