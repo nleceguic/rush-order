@@ -47,7 +47,7 @@ jobs:
       # workflows (different triggers), so this checks the last completed
       # cd-staging.yml run via the API instead of a `needs:` dependency.
       - name: Verify staging load test passed
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const { data: runsData } = await github.rest.actions.listWorkflowRuns({
@@ -310,7 +310,7 @@ jobs:
 
       - name: Generate release notes from conventional commits
         id: notes
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const tag = context.payload.inputs.tag;
