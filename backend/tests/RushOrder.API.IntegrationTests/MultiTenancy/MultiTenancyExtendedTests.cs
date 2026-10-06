@@ -90,7 +90,7 @@ public sealed class MultiTenancyExtendedTests : IntegrationTestBase
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        var body = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
         var accessToken  = body.GetProperty("accessToken").GetString()!;
         var restaurantId = Guid.Parse(body.GetProperty("restaurantId").GetString()!);
 
