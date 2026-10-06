@@ -316,7 +316,19 @@ Two concrete next steps are already designed in `docs/product/` (not yet built):
 
 ## Contributing
 
-This is a solo-maintained project (single `CODEOWNERS` entry) built as a portfolio piece, with per-module review rules and a PR template already in place. Every PR runs through the full CI gate — build, tests with the coverage threshold, lint/type-check, Lighthouse, and a container security scan — before it can merge.
+This is a solo-maintained portfolio project, so the repository is configured for one maintainer rather than a team.
+
+**Branch protection on `master`** (GitHub → Settings → Branches):
+
+| Rule | Setting | Why |
+|------|---------|-----|
+| Required status checks | `Backend CI (.NET)`, `PWA CI (Node)`, `Docker Build & Trivy Scan`, `Dependency Vulnerability Check`, `Lighthouse CI` | Nothing merges through a PR unless build, tests (≥70% coverage gate), lint/type-check, Lighthouse, container scan and dependency audit pass. |
+| Require a pull request | Yes, **0 approvals** | GitHub doesn't let authors approve their own PRs, so a required approval would block a solo maintainer. The checks are the gate. |
+| Require up-to-date branch | No | Avoids forcing a rebase of every Dependabot PR after each merge. |
+| Force pushes / deletion | Blocked | Protects published history. |
+| Enforce for admins | No | The maintainer can still push directly to `master`; those pushes run the same CI. |
+
+`CODEOWNERS` assigns everything to the maintainer so PRs (including Dependabot's) are auto-requested for review; code-owner review is not required.
 
 ## License
 

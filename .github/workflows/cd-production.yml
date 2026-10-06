@@ -21,10 +21,9 @@ jobs:
   validate-staging:
     name: Validate Staging
     runs-on: ubuntu-latest
-    # ⚠️  Configure 'production' environment in GitHub Settings:
-    #     - Required reviewers: 2
-    #     - Wait timer: 5 minutes
-    #     - Deployment branches: tag pattern vX.Y.Z
+    # The 'production' environment (GitHub → Settings → Environments) should require
+    # the maintainer as reviewer — a manual go/no-go before deploying — and only
+    # allow tags matching vX.Y.Z. It isn't created yet; nothing is deployed.
     environment: production
     permissions:
       id-token: write
