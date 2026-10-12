@@ -40,7 +40,7 @@
   },
   "devDependencies": {
     "@lhci/cli": "^0.15.1",
-    "@playwright/test": "^1.63.0",
+    "@playwright/test": "^1.64.0",
     "@tailwindcss/forms": "^0.5.7",
     "@tanstack/react-query-devtools": "^5.104.1",
     "@testing-library/jest-dom": "^6.4.6",
