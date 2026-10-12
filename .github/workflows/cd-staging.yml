@@ -137,7 +137,7 @@ jobs:
 
       # ── PWA: deploy to Azure Static Web Apps ─────────────────────────────
       - name: Download PWA artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: pwa-dist-${{ needs.build-and-push.outputs.image-tag }}
           path: pwa/dist
