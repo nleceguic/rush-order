@@ -154,7 +154,7 @@ jobs:
         run: npm ci
 
       - name: Download PWA build
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: pwa-build-${{ github.sha }}
           path: pwa/dist
