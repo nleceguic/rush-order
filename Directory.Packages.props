@@ -9,12 +9,12 @@
     <PackageVersion Include="AspNetCore.HealthChecks.NpgSql" Version="9.0.0" />
     <PackageVersion Include="AspNetCore.HealthChecks.Redis" Version="9.0.0" />
     <PackageVersion Include="AspNetCore.HealthChecks.Uris" Version="8.0.1" />
-    <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.31" />
-    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.31" />
-    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="8.0.31" />
-    <PackageVersion Include="Microsoft.AspNetCore.SignalR.Client" Version="8.0.31" />
-    <PackageVersion Include="Microsoft.AspNetCore.SignalR.StackExchangeRedis" Version="8.0.31" />
-    <PackageVersion Include="Swashbuckle.AspNetCore" Version="10.2.3" />
+    <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.33" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.33" />
+    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="8.0.33" />
+    <PackageVersion Include="Microsoft.AspNetCore.SignalR.Client" Version="8.0.33" />
+    <PackageVersion Include="Microsoft.AspNetCore.SignalR.StackExchangeRedis" Version="8.0.33" />
+    <PackageVersion Include="Swashbuckle.AspNetCore" Version="10.3.1" />
 
     <!-- Observability -->
     <PackageVersion Include="Azure.Monitor.OpenTelemetry.AspNetCore" Version="1.6.0" />
@@ -33,7 +33,7 @@
 
     <!-- Microsoft.Extensions.* abstractions -->
     <PackageVersion Include="Microsoft.Extensions.Caching.Abstractions" Version="8.0.0" />
-    <PackageVersion Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="8.0.31" />
+    <PackageVersion Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="8.0.33" />
     <PackageVersion Include="Microsoft.Extensions.Configuration.Abstractions" Version="8.0.0" />
     <PackageVersion Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.3" />
@@ -47,10 +47,10 @@
          <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
          added to RushOrder.API.IntegrationTests.csproj, the one project whose own
          resolution actually disagreed with the rest of the solution. -->
-    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="9.0.20" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.20" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.20" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.20" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="9.0.22" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.22" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.22" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.22" />
     <PackageVersion Include="Npgsql" Version="9.0.5" />
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4" />
 
@@ -59,25 +59,25 @@
     <PackageVersion Include="BCrypt.Net-Next" Version="4.2.0" />
     <PackageVersion Include="ClosedXML" Version="0.105.1" />
     <PackageVersion Include="Dapper" Version="2.1.89" />
-    <PackageVersion Include="MailKit" Version="4.18.1" />
+    <PackageVersion Include="MailKit" Version="4.18.2" />
     <PackageVersion Include="Otp.NET" Version="1.4.1" />
-    <PackageVersion Include="QRCoder" Version="1.8.0" />
+    <PackageVersion Include="QRCoder" Version="1.8.1" />
     <PackageVersion Include="QuestPDF" Version="2024.12.3" />
     <PackageVersion Include="SendGrid" Version="9.29.3" />
     <PackageVersion Include="Stripe.net" Version="46.2.2" />
 
     <!-- Desktop-only -->
     <PackageVersion Include="LiveChartsCore.SkiaSharpView.WinForms" Version="2.0.5" />
-    <PackageVersion Include="Microsoft.Data.Sqlite" Version="8.0.31" />
+    <PackageVersion Include="Microsoft.Data.Sqlite" Version="8.0.33" />
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.4" />
 
     <!-- Desktop-only (Avalonia) -->
-    <PackageVersion Include="Avalonia" Version="11.3.20" />
-    <PackageVersion Include="Avalonia.Desktop" Version="11.3.20" />
-    <PackageVersion Include="Avalonia.Diagnostics" Version="11.3.20" />
-    <PackageVersion Include="Avalonia.Headless" Version="11.3.20" />
-    <PackageVersion Include="Avalonia.Headless.XUnit" Version="11.3.20" />
-    <PackageVersion Include="Avalonia.Themes.Fluent" Version="11.3.20" />
+    <PackageVersion Include="Avalonia" Version="11.3.22" />
+    <PackageVersion Include="Avalonia.Desktop" Version="11.3.22" />
+    <PackageVersion Include="Avalonia.Diagnostics" Version="11.3.22" />
+    <PackageVersion Include="Avalonia.Headless" Version="11.3.22" />
+    <PackageVersion Include="Avalonia.Headless.XUnit" Version="11.3.22" />
+    <PackageVersion Include="Avalonia.Themes.Fluent" Version="11.3.22" />
     <PackageVersion Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <PackageVersion Include="LiveChartsCore.SkiaSharpView.Avalonia" Version="2.0.5" />
 
@@ -88,8 +88,8 @@
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageVersion Include="Moq" Version="4.21.0" />
     <PackageVersion Include="Respawn" Version="6.2.1" />
-    <PackageVersion Include="Testcontainers.PostgreSql" Version="4.15.0" />
-    <PackageVersion Include="Testcontainers.Redis" Version="4.15.0" />
+    <PackageVersion Include="Testcontainers.PostgreSql" Version="4.16.0" />
+    <PackageVersion Include="Testcontainers.Redis" Version="4.16.0" />
     <PackageVersion Include="xunit" Version="2.9.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="2.8.2" />
   </ItemGroup>
@@ -100,7 +100,7 @@
     <!-- GHSA-m5vv-6r4h-3vj9, via Respawn / Microsoft.Data.SqlClient (integration tests) -->
     <PackageVersion Include="Azure.Identity" Version="1.21.0" />
     <!-- GHSA-2m69-gcr7-jv3q, via Microsoft.Data.Sqlite (desktop) -->
-    <PackageVersion Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.13" />
+    <PackageVersion Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.14" />
   </ItemGroup>
 
 </Project>
